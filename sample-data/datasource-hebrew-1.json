@@ -1,0 +1,10 @@
+{
+  "name": "נתוני לקוחות - בנק הפועלים",
+  "supplierName": "בנק הפועלים בע״מ",
+  "category": "נתונים פיננסיים",
+  "description": "קובץ נתוני לקוחות יומי מבנק הפועלים כולל פרטי חשבונות ועסקאות",
+  "connectionString": "/data/banking/poalim/customers_daily.csv",
+  "isActive": true,
+  "fileFormat": "CSV",
+  "retentionDays": 90
+}

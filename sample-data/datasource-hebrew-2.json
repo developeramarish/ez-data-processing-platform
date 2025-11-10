@@ -1,0 +1,10 @@
+{
+  "name": "דוחות מכירות - רשת רמי לוי",
+  "supplierName": "רמי לוי שיווק השקמה בע״מ",
+  "category": "נתוני מכירות",
+  "description": "דוח מכירות שבועי מרשת רמי לוי כולל פירוט מוצרים וסניפים",
+  "connectionString": "/data/retail/rami_levy/weekly_sales.xlsx",
+  "isActive": false,
+  "fileFormat": "Excel",
+  "retentionDays": 365
+}

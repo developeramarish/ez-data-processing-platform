@@ -1,0 +1,51 @@
+{
+  "validation": {
+    "required_field": "שדה חובה חסר",
+    "invalid_format": "פורמט לא תקין",
+    "invalid_schema": "סכמת JSON לא תקינה",
+    "duplicate_name": "שם מקור הנתונים כבר קיים במערכת",
+    "invalid_polling_rate": "תדירות סריקה לא תקינה",
+    "invalid_file_path": "נתיב קובץ לא תקין",
+    "name_too_long": "שם מקור הנתונים ארוך מדי",
+    "supplier_name_too_long": "שם הספק ארוך מדי",
+    "description_too_long": "תיאור ארוך מדי",
+    "file_pattern_invalid": "תבנית קובץ לא תקינה",
+    "category_invalid": "קטגוריה לא תקינה"
+  },
+  "not_found": {
+    "data_source": "מקור הנתונים לא נמצא",
+    "resource": "המשאב המבוקש לא נמצא"
+  },
+  "conflict": {
+    "data_source_exists": "מקור נתונים עם השם הזה כבר קיים",
+    "resource_in_use": "המשאב בשימוש ולא ניתן לעדכן",
+    "schema_compatibility": "סכמה חדשה לא תואמת לגרסה הקודמת"
+  },
+  "server_error": {
+    "database_error": "שגיאת מסד נתונים",
+    "processing_error": "שגיאה בעיבוד הבקשה",
+    "validation_service_error": "שגיאה בשירות האימות",
+    "schema_processing_error": "שגיאה בעיבוד הסכמה",
+    "unexpected_error": "שגיאה לא צפויה"
+  },
+  "unauthorized": {
+    "authentication_required": "נדרש אימות משתמש",
+    "invalid_credentials": "פרטי הזדהות לא תקינים"
+  },
+  "forbidden": {
+    "insufficient_permissions": "אין הרשאות מספיקות לביצוע הפעולה",
+    "operation_not_allowed": "הפעולה אינה מותרת"
+  },
+  "fields": {
+    "name": "שם",
+    "supplier_name": "שם ספק",
+    "file_path": "נתיב קובץ", 
+    "polling_rate": "תדירות סריקה",
+    "json_schema": "סכמת JSON",
+    "category": "קטגוריה",
+    "description": "תיאור",
+    "file_pattern": "תבנית קובץ",
+    "is_active": "פעיל",
+    "schema_version": "גרסת סכמה"
+  }
+}

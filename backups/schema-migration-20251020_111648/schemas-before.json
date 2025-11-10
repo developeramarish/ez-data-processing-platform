@@ -1,0 +1,208 @@
+{
+  "isSuccess": true,
+  "data": [
+    {
+      "Name": "user_profile_simple",
+      "DisplayName": "פרופיל משתמש פשוט",
+      "Description": "סכמה פשוטה לפרופיל משתמש בסיסי",
+      "DataSourceId": "ds001",
+      "SchemaVersion": "v1.0",
+      "Status": 1,
+      "JsonSchemaContent": "{\n  \"$schema\": \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\": \"object\",\n  \"properties\": {\n    \"userId\": {\n      \"type\": \"string\",\n      \"description\": \"מזהה משתמש ייחודי\"\n    },\n    \"firstName\": {\n      \"type\": \"string\",\n      \"description\": \"שם פרטי\"\n    },\n    \"lastName\": {\n      \"type\": \"string\",\n      \"description\": \"שם משפחה\"\n    },\n    \"email\": {\n      \"type\": \"string\",\n      \"description\": \"כתובת דואר אלקטרוני\",\n      \"format\": \"email\",\n      \"pattern\": \"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\\\.[a-zA-Z]{2,}$\"\n    },\n    \"phone\": {\n      \"type\": \"string\",\n      \"description\": \"מספר טלפון\"\n    },\n    \"birthDate\": {\n      \"type\": \"string\",\n      \"format\": \"date\",\n      \"description\": \"תאריך לידה\"\n    },\n    \"gender\": {\n      \"type\": \"string\",\n      \"description\": \"מין\"\n    },\n    \"isActive\": {\n      \"type\": \"boolean\",\n      \"description\": \"האם המשתמש פעיל\"\n    }\n  },\n  \"required\": [\n    \"userId\",\n    \"firstName\",\n    \"lastName\",\n    \"email\"\n  ]\n}",
+      "Fields": [],
+      "Tags": [
+        "user",
+        "profile"
+      ],
+      "PublishedAt": null,
+      "DeprecatedAt": null,
+      "DeprecationReason": null,
+      "UsageCount": 0,
+      "Metadata": {
+        "Author": "",
+        "Category": "",
+        "RelatedSchemas": [],
+        "DocumentationUrl": null,
+        "CustomProperties": {}
+      },
+      "CreatedAt": "2025-10-19T08:38:36.345Z",
+      "UpdatedAt": "2025-10-19T08:52:12.656Z",
+      "IsDeleted": false,
+      "CorrelationId": "f800505c-c76b-40ca-90b9-0f2e401e238c",
+      "Version": 5,
+      "CreatedBy": "System",
+      "UpdatedBy": "User",
+      "ID": "68f4a38ccd260c001ee6bbb5"
+    },
+    {
+      "Name": "sales_transaction_complex",
+      "DisplayName": "עסקת מכירות מורכבת",
+      "Description": "סכמה מורכבת לעסקות מכירות עם פרטי לקוח",
+      "DataSourceId": "ds002",
+      "SchemaVersion": "v1.0",
+      "Status": 1,
+      "JsonSchemaContent": "{\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"type\":\"object\",\"properties\":{\"transactionId\":{\"type\":\"string\",\"description\":\"מזהה עסקה ייחודי\"},\"customerId\":{\"type\":\"string\",\"description\":\"מזהה לקוח\"},\"customer\":{\"type\":\"object\",\"description\":\"פרטי לקוח\",\"properties\":{\"name\":{\"type\":\"string\",\"description\":\"שם מלא\"},\"email\":{\"type\":\"string\",\"description\":\"דואר אלקטרוני\"},\"phone\":{\"type\":\"string\",\"description\":\"מספר טלפון\"}}},\"products\":{\"type\":\"array\",\"description\":\"רשימת מוצרים\",\"items\":{\"type\":\"object\"}},\"totalAmount\":{\"type\":\"number\",\"description\":\"סכום כולל\"},\"vatAmount\":{\"type\":\"number\",\"description\":\"מעמ\"},\"discountAmount\":{\"type\":\"number\",\"description\":\"הנחה\"},\"paymentMethod\":{\"type\":\"string\",\"description\":\"אמצעי תשלום\"},\"transactionDate\":{\"type\":\"string\",\"description\":\"תאריך עסקה\"},\"branchId\":{\"type\":\"string\",\"description\":\"מזהה סניף\"},\"salesPersonId\":{\"type\":\"string\",\"description\":\"מזהה איש מכירות\"},\"status\":{\"type\":\"string\",\"description\":\"סטטוס העסקה\"}},\"required\":[\"transactionId\",\"customerId\",\"totalAmount\",\"transactionDate\"]}",
+      "Fields": [],
+      "Tags": [
+        "sales",
+        "transaction"
+      ],
+      "PublishedAt": null,
+      "DeprecatedAt": null,
+      "DeprecationReason": null,
+      "UsageCount": 0,
+      "Metadata": {
+        "Author": "",
+        "Category": "",
+        "RelatedSchemas": [],
+        "DocumentationUrl": null,
+        "CustomProperties": {}
+      },
+      "CreatedAt": "2025-10-19T08:38:36.345Z",
+      "UpdatedAt": "2025-10-19T08:38:36.345Z",
+      "IsDeleted": false,
+      "CorrelationId": "86190bbf-f399-4f2f-a5ce-e26a1ff937ff",
+      "Version": 5,
+      "CreatedBy": "System",
+      "UpdatedBy": "System",
+      "ID": "68f4a38ccd260c001ee6bbb6"
+    },
+    {
+      "Name": "product_basic",
+      "DisplayName": "מוצר בסיסי",
+      "Description": "סכמה בסיסית למוצר",
+      "DataSourceId": "ds003",
+      "SchemaVersion": "v1.0",
+      "Status": 1,
+      "JsonSchemaContent": "{\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"type\":\"object\",\"properties\":{\"productId\":{\"type\":\"string\",\"description\":\"מזהה מוצר\"},\"name\":{\"type\":\"string\",\"description\":\"שם מוצר\"},\"price\":{\"type\":\"number\",\"description\":\"מחיר\"},\"category\":{\"type\":\"string\",\"description\":\"קטגוריה\"},\"inStock\":{\"type\":\"boolean\",\"description\":\"במלאי\"}},\"required\":[\"productId\",\"name\",\"price\"]}",
+      "Fields": [],
+      "Tags": [
+        "product",
+        "inventory"
+      ],
+      "PublishedAt": null,
+      "DeprecatedAt": null,
+      "DeprecationReason": null,
+      "UsageCount": 0,
+      "Metadata": {
+        "Author": "",
+        "Category": "",
+        "RelatedSchemas": [],
+        "DocumentationUrl": null,
+        "CustomProperties": {}
+      },
+      "CreatedAt": "2025-10-19T08:38:36.345Z",
+      "UpdatedAt": "2025-10-19T08:38:36.345Z",
+      "IsDeleted": false,
+      "CorrelationId": "4e3aab1a-d8fa-4d99-9819-bb96cfd1c827",
+      "Version": 5,
+      "CreatedBy": "System",
+      "UpdatedBy": "System",
+      "ID": "68f4a38ccd260c001ee6bbb7"
+    },
+    {
+      "Name": "employee_record_comprehensive",
+      "DisplayName": "רשומת עובד מקיפה",
+      "Description": "סכמה מקיפה לרשומת עובד",
+      "DataSourceId": "ds004",
+      "SchemaVersion": "v1.0",
+      "Status": 1,
+      "JsonSchemaContent": "{\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"type\":\"object\",\"properties\":{\"employeeId\":{\"type\":\"string\",\"description\":\"מזהה עובד\"},\"personalInfo\":{\"type\":\"object\",\"description\":\"מידע אישי\",\"properties\":{\"firstName\":{\"type\":\"string\",\"description\":\"שם פרטי\"},\"lastName\":{\"type\":\"string\",\"description\":\"שם משפחה\"},\"birthDate\":{\"type\":\"string\",\"description\":\"תאריך לידה\"},\"idNumber\":{\"type\":\"string\",\"description\":\"תעודת זהות\"}}},\"contactInfo\":{\"type\":\"object\",\"description\":\"פרטי קשר\",\"properties\":{\"email\":{\"type\":\"string\",\"description\":\"דואר אלקטרוני\"},\"phone\":{\"type\":\"string\",\"description\":\"טלפון\"},\"address\":{\"type\":\"string\",\"description\":\"כתובת\"}}},\"jobInfo\":{\"type\":\"object\",\"description\":\"מידע תעסוקתי\",\"properties\":{\"title\":{\"type\":\"string\",\"description\":\"תפקיד\"},\"department\":{\"type\":\"string\",\"description\":\"מחלקה\"},\"hireDate\":{\"type\":\"string\",\"description\":\"תאריך קליטה\"},\"salary\":{\"type\":\"number\",\"description\":\"משכורת שנתית\"}}},\"status\":{\"type\":\"string\",\"description\":\"סטטוס\"},\"lastUpdated\":{\"type\":\"string\",\"description\":\"עדכון אחרון\"}},\"required\":[\"employeeId\",\"personalInfo\",\"contactInfo\",\"jobInfo\"]}",
+      "Fields": [],
+      "Tags": [
+        "employee",
+        "hr"
+      ],
+      "PublishedAt": null,
+      "DeprecatedAt": null,
+      "DeprecationReason": null,
+      "UsageCount": 0,
+      "Metadata": {
+        "Author": "",
+        "Category": "",
+        "RelatedSchemas": [],
+        "DocumentationUrl": null,
+        "CustomProperties": {}
+      },
+      "CreatedAt": "2025-10-19T08:38:36.345Z",
+      "UpdatedAt": "2025-10-19T08:38:36.345Z",
+      "IsDeleted": false,
+      "CorrelationId": "add81cdd-7c7c-48b9-899e-48e189485fde",
+      "Version": 5,
+      "CreatedBy": "System",
+      "UpdatedBy": "System",
+      "ID": "68f4a38ccd260c001ee6bbb8"
+    },
+    {
+      "Name": "financial_report_extended",
+      "DisplayName": "דו״ח כספי מורחב",
+      "Description": "סכמה מורחבת לדו״ח כספי",
+      "DataSourceId": "ds005",
+      "SchemaVersion": "v1.0",
+      "Status": 1,
+      "JsonSchemaContent": "{\n  \"$schema\": \"https://json-schema.org/draft/2020-12/schema\",\n  \"type\": \"object\",\n  \"properties\": {\n    \"reportId\": {\n      \"type\": \"string\",\n      \"description\": \"מזהה דוח\",\n      \"minLength\": 10,\n      \"maxLength\": 10\n    },\n    \"reportDate\": {\n      \"type\": \"string\",\n      \"description\": \"תאריך דוח\"\n    },\n    \"reportPeriod\": {\n      \"type\": \"object\",\n      \"description\": \"תקופת דיווח\",\n      \"properties\": {\n        \"startDate\": {\n          \"type\": \"string\",\n          \"description\": \"תאריך התחלה\"\n        },\n        \"endDate\": {\n          \"type\": \"string\",\n          \"description\": \"תאריך סיום\"\n        },\n        \"quarter\": {\n          \"type\": \"string\",\n          \"description\": \"רבעון\"\n        }\n      }\n    },\n    \"revenue\": {\n      \"type\": \"object\",\n      \"description\": \"הכנסות\",\n      \"properties\": {\n        \"total\": {\n          \"type\": \"number\",\n          \"description\": \"סה״כ הכנסות\"\n        },\n        \"byCategory\": {\n          \"type\": \"object\",\n          \"description\": \"לפי קטגוריה\"\n        }\n      }\n    },\n    \"expenses\": {\n      \"type\": \"object\",\n      \"description\": \"הוצאות\",\n      \"properties\": {\n        \"total\": {\n          \"type\": \"number\",\n          \"description\": \"סה״כ הוצאות\"\n        },\n        \"byCategory\": {\n          \"type\": \"object\",\n          \"description\": \"לפי קטגוריה\"\n        }\n      }\n    },\n    \"profitLoss\": {\n      \"type\": \"object\",\n      \"description\": \"רווח והפסד\",\n      \"properties\": {\n        \"grossProfit\": {\n          \"type\": \"number\",\n          \"description\": \"רווח גולמי\"\n        },\n        \"netProfit\": {\n          \"type\": \"number\",\n          \"description\": \"רווח נקי\"\n        },\n        \"margin\": {\n          \"type\": \"number\",\n          \"description\": \"אחוז רווח\"\n        }\n      }\n    },\n    \"taxes\": {\n      \"type\": \"object\",\n      \"description\": \"מיסים\",\n      \"properties\": {\n        \"amount\": {\n          \"type\": \"number\",\n          \"description\": \"סכום מס\"\n        },\n        \"rate\": {\n          \"type\": \"number\",\n          \"description\": \"שיעור מס\"\n        }\n      }\n    },\n    \"companyId\": {\n      \"type\": \"string\",\n      \"description\": \"מזהה חברה\"\n    },\n    \"preparedBy\": {\n      \"type\": \"string\",\n      \"description\": \"הוכן על ידי\"\n    },\n    \"approvedBy\": {\n      \"type\": \"string\",\n      \"description\": \"אושר על ידי\"\n    },\n    \"status\": {\n      \"type\": \"string\",\n      \"description\": \"סטטוס דוח\",\n      \"enum\": [\n        \"פעיל\",\n        \"לא פעיל\",\n        \"היסטורי\",\n        \"עתידי\"\n      ]\n    }\n  },\n  \"required\": [\n    \"reportId\",\n    \"reportDate\",\n    \"companyId\",\n    \"status\"\n  ]\n}",
+      "Fields": [],
+      "Tags": [
+        "financial",
+        "report"
+      ],
+      "PublishedAt": null,
+      "DeprecatedAt": null,
+      "DeprecationReason": null,
+      "UsageCount": 0,
+      "Metadata": {
+        "Author": "",
+        "Category": "",
+        "RelatedSchemas": [],
+        "DocumentationUrl": null,
+        "CustomProperties": {}
+      },
+      "CreatedAt": "2025-10-19T08:38:36.345Z",
+      "UpdatedAt": "2025-10-19T08:48:41.654Z",
+      "IsDeleted": false,
+      "CorrelationId": "b762be88-c585-4204-9e49-96dd054f7c26",
+      "Version": 5,
+      "CreatedBy": "System",
+      "UpdatedBy": "User",
+      "ID": "68f4a38ccd260c001ee6bbb9"
+    },
+    {
+      "Name": "customer_survey_advanced",
+      "DisplayName": "סקר לקוחות מתקדם",
+      "Description": "סכמה מתקדמת לסקר לקוחות",
+      "DataSourceId": "ds006",
+      "SchemaVersion": "v1.0",
+      "Status": 1,
+      "JsonSchemaContent": "{\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"type\":\"object\",\"properties\":{\"surveyId\":{\"type\":\"string\",\"description\":\"מזהה סקר\"},\"customerId\":{\"type\":\"string\",\"description\":\"מזהה לקוח\"},\"surveyDate\":{\"type\":\"string\",\"description\":\"תאריך סקר\"},\"ratings\":{\"type\":\"object\",\"description\":\"דירוגים\",\"properties\":{\"productQuality\":{\"type\":\"integer\",\"description\":\"דירוג איכות מוצר\"},\"serviceQuality\":{\"type\":\"integer\",\"description\":\"דירוג שירות\"},\"valueForMoney\":{\"type\":\"integer\",\"description\":\"דירוג תמורה\"},\"overall\":{\"type\":\"integer\",\"description\":\"דירוג כללי\"}}},\"feedback\":{\"type\":\"object\",\"description\":\"משוב\",\"properties\":{\"positive\":{\"type\":\"string\",\"description\":\"משוב חיובי\"},\"negative\":{\"type\":\"string\",\"description\":\"משוב שלילי\"},\"suggestions\":{\"type\":\"string\",\"description\":\"הצעות לשיפור\"}}},\"demographics\":{\"type\":\"object\",\"description\":\"נתונים דמוגרפיים\",\"properties\":{\"ageGroup\":{\"type\":\"string\",\"description\":\"קבוצת גיל\"},\"location\":{\"type\":\"string\",\"description\":\"מיקום\"},\"purchaseFrequency\":{\"type\":\"string\",\"description\":\"תדירות רכישה\"}}},\"recommendationScore\":{\"type\":\"integer\",\"description\":\"ציון NPS\"},\"followUpRequired\":{\"type\":\"boolean\",\"description\":\"נדרש מעקב\"},\"surveyVersion\":{\"type\":\"string\",\"description\":\"גרסת סקר\"},\"completionTime\":{\"type\":\"integer\",\"description\":\"זמן מילוי (שניות)\"}},\"required\":[\"surveyId\",\"customerId\",\"surveyDate\",\"ratings\"]}",
+      "Fields": [],
+      "Tags": [
+        "survey",
+        "customer",
+        "feedback"
+      ],
+      "PublishedAt": null,
+      "DeprecatedAt": null,
+      "DeprecationReason": null,
+      "UsageCount": 0,
+      "Metadata": {
+        "Author": "",
+        "Category": "",
+        "RelatedSchemas": [],
+        "DocumentationUrl": null,
+        "CustomProperties": {}
+      },
+      "CreatedAt": "2025-10-19T08:38:36.345Z",
+      "UpdatedAt": "2025-10-19T08:38:36.345Z",
+      "IsDeleted": false,
+      "CorrelationId": "d318b9f0-b0a8-4b36-96c4-61f54a7c1185",
+      "Version": 5,
+      "CreatedBy": "System",
+      "UpdatedBy": "System",
+      "ID": "68f4a38ccd260c001ee6bbba"
+    }
+  ],
+  "total": 6,
+  "page": 1,
+  "size": 100,
+  "totalPages": 1
+}

@@ -1,0 +1,10 @@
+{
+  "name": "מידע חולים - כללית",
+  "supplierName": "שירותי בריאות כללית",
+  "category": "נתוני בריאות",
+  "description": "קובץ יומי של נתוני חולים ומטופלים מקופת חולים כללית",
+  "connectionString": "/data/health/clalit/patients_daily.json",
+  "isActive": true,
+  "fileFormat": "JSON",
+  "retentionDays": 2555
+}

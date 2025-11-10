@@ -1,0 +1,6 @@
+@DataProcessing.DataSourceManagement_HostAddress = http://localhost:5211
+
+GET {{DataProcessing.DataSourceManagement_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

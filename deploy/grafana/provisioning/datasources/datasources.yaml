@@ -1,0 +1,52 @@
+# Grafana Datasource Provisioning
+# Configures System Prometheus, Business Prometheus, and Elasticsearch
+
+apiVersion: 1
+
+datasources:
+  # System Prometheus - Infrastructure Metrics
+  - name: System-Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus-system:9090
+    isDefault: false
+    editable: false
+    uid: system-prometheus-uid
+    jsonData:
+      timeInterval: 15s
+      queryTimeout: 60s
+      httpMethod: POST
+    version: 1
+
+  # Business Prometheus - Business KPIs
+  - name: Business-Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus-business:9091
+    isDefault: true
+    editable: false
+    uid: business-prometheus-uid
+    jsonData:
+      timeInterval: 1m
+      queryTimeout: 60s
+      httpMethod: POST
+    version: 1
+
+  # Elasticsearch - Logs and Traces
+  - name: Elasticsearch-Logs
+    type: elasticsearch
+    access: proxy
+    url: http://elasticsearch:9200
+    database: dataprocessing-logs-*
+    isDefault: false
+    editable: false
+    uid: elasticsearch-logs-uid
+    jsonData:
+      index: dataprocessing-logs
+      interval: Daily
+      timeField: "@timestamp"
+      esVersion: "8.0.0"
+      logMessageField: message
+      logLevelField: level
+      maxConcurrentShardRequests: 5
+    version: 1

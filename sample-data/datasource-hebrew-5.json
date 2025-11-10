@@ -1,0 +1,26 @@
+{
+  "name": "נתוני עובדים - משרד החינוך",
+  "supplierName": "משרד החינוך",
+  "category": "משאבי אנוש",
+  "connectionString": "Server=hr-edu-01.gov.il;Database=EmployeeRecords;User Id=hr_reader;Password=SecurePass789;",
+  "description": "נתוני עובדי הוראה ומינהל במערכת החינוך הממלכתי",
+  "dataFormat": "SQL",
+  "validationRules": [
+    "מספר זהות חייב להיות תקין",
+    "תאריך תחילת עבודה חייב להיות קודם לתאריך סיום",
+    "דרגה מקצועית חייבת להיות מהרשימה המאושרת"
+  ],
+  "tags": ["חינוך", "עובדים", "שכר", "ממשלתי", "משאבי_אנוש"],
+  "isActive": true,
+  "scheduleEnabled": true,
+  "pollingIntervalMinutes": 360,
+  "lastSuccessfulRun": "2024-01-15T06:00:00Z",
+  "totalRecordsProcessed": 45230,
+  "errorCount": 23,
+  "metadata": {
+    "dataOwner": "אגף משאבי אנוש - משרד החינוך",
+    "complianceLevel": "גבוה",
+    "dataClassification": "רגיש",
+    "retentionPeriodYears": 50
+  }
+}

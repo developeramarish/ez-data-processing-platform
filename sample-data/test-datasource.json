@@ -1,0 +1,10 @@
+{
+  "name": "Test Data Source",
+  "supplierName": "Test Supplier",
+  "category": "File Processing",
+  "description": "Testing CRUD operations",
+  "connectionString": "/test/data/path",
+  "isActive": true,
+  "fileFormat": "CSV",
+  "retentionDays": 30
+}

@@ -1,0 +1,278 @@
+{
+  "app": {
+    "title": "Data Processing System",
+    "subtitle": "Platform for Data Management and Processing"
+  },
+  "navigation": {
+    "dashboard": "Dashboard",
+    "datasources": "Data Sources",
+    "validation": "Validation Results",
+    "monitoring": "System Monitoring",
+    "settings": "Settings"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "overview": "Overview",
+    "totalFiles": "Total Files",
+    "validRecords": "Valid Records",
+    "invalidRecords": "Invalid Records",
+    "errorRate": "Error Rate",
+    "lastUpdate": "Last Update",
+    "metrics": {
+      "filesProcessed": "Files Processed",
+      "processingTime": "Processing Time",
+      "systemHealth": "System Health",
+      "activeDataSources": "Active Data Sources"
+    }
+  },
+  "datasources": {
+    "title": "Data Source Management",
+    "subtitle": "View and manage data sources in the system",
+    "create": "Add New Data Source",
+    "edit": "Edit Data Source",
+    "delete": "Delete Data Source",
+    "search": "Search data sources...",
+    "filter": "Filter",
+    "category": "Category",
+    "status": "Status",
+    "form": {
+      "title": "Create Data Source",
+      "connection": "Connection Settings",
+      "testConnection": "Test Connection",
+      "connectionSuccess": "Connection successful",
+      "connectionFailed": "Connection failed",
+      "fileSettings": "File Settings",
+      "schedule": "Schedule Settings",
+      "validation": "Validation Rules",
+      "notifications": "Notification Settings"
+    },
+    "fields": {
+      "name": "Data Source Name",
+      "supplierName": "Supplier Name",
+      "filePath": "File Path",
+      "pollingRate": "Polling Rate",
+      "jsonSchema": "JSON Schema",
+      "category": "Category",
+      "description": "Description",
+      "isActive": "Active",
+      "createdAt": "Created Date",
+      "updatedAt": "Updated Date"
+    },
+    "categories": {
+      "financial": "Financial",
+      "customers": "Customers",
+      "inventory": "Inventory",
+      "sales": "Sales",
+      "operations": "Operations",
+      "other": "Other"
+    },
+    "statuses": {
+      "active": "Active",
+      "inactive": "Inactive",
+      "error": "Error",
+      "processing": "Processing"
+    },
+    "pollingRates": {
+      "minutes15": "15 Minutes",
+      "minutes30": "30 Minutes",
+      "hour1": "1 Hour",
+      "hours2": "2 Hours",
+      "hours6": "6 Hours",
+      "hours12": "12 Hours",
+      "daily": "Daily"
+    }
+  },
+  "validation": {
+    "title": "Validation Results",
+    "subtitle": "View validation results and errors",
+    "invalidRecords": "Invalid Records",
+    "validationErrors": "Validation Errors",
+    "fields": {
+      "fileName": "File Name",
+      "dataSource": "Data Source",
+      "totalRecords": "Total Records",
+      "validRecords": "Valid Records",
+      "invalidRecords": "Invalid Records",
+      "errorRate": "Error Rate",
+      "processedAt": "Processed Date",
+      "processingTime": "Processing Time",
+      "correlationId": "Correlation ID"
+    },
+    "errorTypes": {
+      "schemaValidation": "Schema Validation",
+      "dataType": "Data Type Error",
+      "required": "Required Field",
+      "format": "Format Error",
+      "range": "Range Error"
+    },
+    "details": {
+      "viewDetails": "View Details",
+      "originalRecord": "Original Record",
+      "validationErrors": "Validation Errors",
+      "errorMessage": "Error Message"
+    }
+  },
+  "monitoring": {
+    "title": "System Monitoring",
+    "subtitle": "Track system performance and health",
+    "systemHealth": "System Health",
+    "services": "Services",
+    "metrics": "Metrics",
+    "alerts": "Alerts",
+    "logs": "Logs"
+  },
+  "schema": {
+    "title": "Schema Management",
+    "subtitle": "Manage schemas for data validation",
+    "create": "Create New Schema",
+    "edit": "Edit Schema",
+    "delete": "Delete Schema",
+    "duplicate": "Duplicate Schema",
+    "publish": "Publish Schema",
+    "templates": "Templates",
+    "visual": "Visual Editor",
+    "json": "JSON Editor",
+    "validation": "Validation Testing",
+    "properties": "Properties",
+    "required": "Required Fields",
+    "builder": {
+      "title": "Schema Builder",
+      "subtitle": "Build JSON Schema 2020-12 using visual editor or code editor",
+      "addField": "Add New Field",
+      "editField": "Edit Field",
+      "deleteField": "Delete Field",
+      "noFields": "No fields yet. Click Add New Field to start",
+      "fieldName": "Field Name",
+      "displayName": "Display Name",
+      "fieldType": "Field Type",
+      "fieldDescription": "Field Description",
+      "validationSettings": "Validation Settings",
+      "defaultValue": "Default Value",
+      "examples": "Examples",
+      "copyJson": "Copy JSON Schema",
+      "jsonCopied": "JSON Schema copied to clipboard",
+      "validateData": "Validate Data",
+      "validationSuccess": "Data is valid and passes all validation rules"
+    },
+    "validation": {
+      "minLength": "Minimum Length",
+      "maxLength": "Maximum Length",
+      "pattern": "Regex Pattern",
+      "format": "Format",
+      "enum": "Allowed Values",
+      "minimum": "Minimum Value",
+      "maximum": "Maximum Value",
+      "multipleOf": "Multiple Of",
+      "minItems": "Minimum Items",
+      "maxItems": "Maximum Items",
+      "uniqueItems": "Unique Items"
+    },
+    "fields": {
+      "name": "Schema Name",
+      "displayName": "Display Name",
+      "description": "Description",
+      "dataSource": "Data Source",
+      "version": "Version",
+      "status": "Status",
+      "fieldsCount": "Fields Count",
+      "usageCount": "In Use",
+      "createdAt": "Created Date",
+      "updatedAt": "Updated Date",
+      "publishedAt": "Published Date",
+      "tags": "Tags"
+    },
+    "status": {
+      "draft": "Draft",
+      "active": "Active",
+      "inactive": "Inactive",
+      "archived": "Archived"
+    },
+    "dataTypes": {
+      "string": "String",
+      "number": "Number",
+      "integer": "Integer",
+      "boolean": "Boolean",
+      "array": "Array",
+      "object": "Object",
+      "date": "Date",
+      "null": "null"
+    },
+    "messages": {
+      "createSuccess": "Schema created successfully",
+      "updateSuccess": "Schema updated successfully",
+      "deleteSuccess": "Schema deleted successfully",
+      "publishSuccess": "Schema published successfully",
+      "duplicateSuccess": "Schema duplicated successfully",
+      "schemaInUse": "Cannot delete schema in use",
+      "confirmDelete": "Are you sure you want to delete this schema?",
+      "createBasic": "Create Basic Schema",
+      "createDescription": "Define basic schema details. You can add fields and validations in the visual editor."
+    }
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "update": "Update",
+    "search": "Search",
+    "filter": "Filter",
+    "clear": "Clear",
+    "refresh": "Refresh",
+    "loading": "Loading...",
+    "noData": "No Data",
+    "error": "Error",
+    "success": "Success",
+    "warning": "Warning",
+    "info": "Info",
+    "yes": "Yes",
+    "no": "No",
+    "close": "Close",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "page": "Page",
+    "of": "of",
+    "records": "Records",
+    "total": "Total",
+    "actions": "Actions",
+    "status": "Status",
+    "date": "Date",
+    "time": "Time",
+    "duration": "Duration"
+  },
+  "errors": {
+    "generic": "A system error occurred",
+    "networkError": "Network error",
+    "notFound": "Data not found",
+    "unauthorized": "Unauthorized to perform this action",
+    "validationFailed": "Validation failed",
+    "serverError": "Server error",
+    "timeout": "Operation timeout",
+    "invalidData": "Invalid data",
+    "duplicateName": "This name already exists",
+    "required": "This field is required",
+    "invalidFormat": "Invalid format",
+    "invalidEmail": "Invalid email address",
+    "invalidUrl": "Invalid URL",
+    "minLength": "Minimum length required",
+    "maxLength": "Maximum length exceeded"
+  },
+  "messages": {
+    "dataSourceCreated": "Data source created successfully",
+    "dataSourceUpdated": "Data source updated successfully",
+    "dataSourceDeleted": "Data source deleted successfully",
+    "operationCompleted": "Operation completed successfully",
+    "confirmDelete": "Are you sure you want to delete this item?",
+    "unsavedChanges": "You have unsaved changes, are you sure you want to leave?"
+  },
+  "realtime": {
+    "connected": "Connected",
+    "disconnected": "Disconnected",
+    "connecting": "Connecting...",
+    "reconnecting": "Reconnecting...",
+    "liveUpdates": "Live Updates",
+    "lastUpdate": "Last Update"
+  }
+}

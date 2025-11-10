@@ -1,0 +1,12 @@
+{
+  "name": "מערכת ניהול משלוחים - דואר ישראל",
+  "supplierName": "חברת דואר ישראל בע\"מ",
+  "category": "לוגיסטיקה ותחבורה",
+  "connectionString": "Server=logistics-main.israelpost.co.il;Database=ShipmentTracking;User Id=logistics_user;Password=DeliveryTrack456;",
+  "description": "מעקב אחר משלוחים ומכתבים בכל רחבי הארץ - מערכת ניהול לוגיסטיקה מרכזית",
+  "fileFormat": "SQL",
+  "validationRules": "[\"מספר משלוח חייב להיות ייחודי ובאורך 13 ספרות\",\"כתובת יעד חייבת לכלול מיקוד תקין\",\"משקל משלוח חייב להיות חיובי ובגרמים\",\"סטטוס משלוח חייב להיות מהרשימה המאושרת\"]",
+  "isActive": true,
+  "retentionDays": 3650,
+  "metadata": "{\"dataOwner\":\"מחלקת מערכות מידע - דואר ישראל\",\"complianceLevel\":\"גבוה\",\"dataClassification\":\"פנימי\",\"retentionPeriodYears\":10}"
+}

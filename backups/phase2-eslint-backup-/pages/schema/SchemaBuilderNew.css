@@ -1,0 +1,160 @@
+/* Schema Builder Container */
+.schema-builder-container {
+  width: 100%;
+  height: 100%;
+  min-height: 600px;
+  direction: ltr !important;
+}
+
+/* JSONJoy Builder CSS Custom Properties - Official Colors from json.ophir.dev */
+.jsonjoy {
+  /* Official jsonjoy-builder colors - matching https://json.ophir.dev */
+  --jsonjoy-background: #f8fafc;
+  --jsonjoy-foreground: #020817;
+  --jsonjoy-card: #fff;
+  --jsonjoy-card-foreground: #020817;
+  --jsonjoy-popover: #fff;
+  --jsonjoy-popover-foreground: #020817;
+  --jsonjoy-primary: #0080ff;
+  --jsonjoy-primary-foreground: #f8fafc;
+  --jsonjoy-secondary: #f1f5f9;
+  --jsonjoy-secondary-foreground: #0f172a;
+  --jsonjoy-muted: #f1f5f9;
+  --jsonjoy-muted-foreground: #64748b;
+  --jsonjoy-accent: #f1f5f9;
+  --jsonjoy-accent-foreground: #0f172a;
+  --jsonjoy-destructive: #ef4444;
+  --jsonjoy-destructive-foreground: #f8fafc;
+  --jsonjoy-border: #e2e8f0;
+  --jsonjoy-input: #e2e8f0;
+  --jsonjoy-ring: #020817;
+  --jsonjoy-radius: .8rem;
+  --jsonjoy-font-sans: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Fix Monaco Editor content area collapse issue */
+.jsonjoy .monaco-editor,
+.jsonjoy .monaco-editor .overflow-guard,
+.jsonjoy .monaco-editor .monaco-scrollable-element {
+  width: 100% !important;
+  height: 100% !important;
+  direction: ltr !important;
+}
+
+.jsonjoy .monaco-editor .lines-content {
+  width: 100% !important;
+  direction: ltr !important;
+}
+
+.jsonjoy .monaco-editor .view-lines {
+  width: 100% !important;
+  direction: ltr !important;
+}
+
+.jsonjoy .monaco-editor .view-line {
+  direction: ltr !important;
+}
+
+/* Monaco Syntax Highlighting - Green keys, Blue values */
+.jsonjoy .monaco-editor .mtk6 {
+  color: #22863a !important; /* Green for JSON keys */
+}
+
+.jsonjoy .monaco-editor .mtk1,
+.jsonjoy .monaco-editor .mtk11 {
+  color: #0366d6 !important; /* Blue for string values */
+}
+
+.jsonjoy .monaco-editor .mtk8 {
+  color: #005cc5 !important; /* Blue for numbers */
+}
+
+/* Visual Indentation for Nested Properties - Based on Actual DOM Structure */
+
+/* Nested field rows - Level 1 nesting */
+.jsonjoy .json-field-row .json-field-row {
+  margin-left: 24px !important;
+  padding-left: 16px !important;
+  border-left: 3px solid #e2e8f0 !important;
+  position: relative;
+}
+
+/* Level 2 nesting */
+.jsonjoy .json-field-row .json-field-row .json-field-row {
+  margin-left: 24px !important;
+  padding-left: 16px !important;
+  border-left: 3px solid #cbd5e1 !important;
+}
+
+/* Level 3 nesting */
+.jsonjoy .json-field-row .json-field-row .json-field-row .json-field-row {
+  margin-left: 24px !important;
+  padding-left: 16px !important;
+  border-left: 3px solid #94a3b8 !important;
+}
+
+/* Nested field containers */
+.jsonjoy .space-y-2 .space-y-2 {
+  margin-left: 20px !important;
+  padding-left: 12px !important;
+  border-left: 2px solid #e2e8f0 !important;
+}
+
+.jsonjoy .space-y-2 .space-y-2 .space-y-2 {
+  border-left-color: #cbd5e1 !important;
+}
+
+/* Add subtle background for nested items */
+.jsonjoy .json-field-row .json-field-row::before {
+  content: '';
+  position: absolute;
+  left: -16px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(to bottom, #e2e8f0, transparent);
+}
+
+/* Enhance field row appearance */
+.jsonjoy .json-field-row {
+  transition: all 0.2s ease;
+  padding: 8px 12px;
+}
+
+.jsonjoy .json-field-row:hover {
+  background-color: rgba(241, 245, 249, 0.5);
+}
+
+/* Style the expand/collapse chevron buttons */
+.jsonjoy button[aria-label="Expand"],
+.jsonjoy button[aria-label="Collapse"] {
+  transition: transform 0.2s ease;
+}
+
+.jsonjoy button[aria-label="Expand"]:hover,
+.jsonjoy button[aria-label="Collapse"]:hover {
+  transform: scale(1.1);
+  background-color: #f1f5f9;
+  border-radius: 4px;
+}
+
+/* Nested object/array indicators */
+.jsonjoy .rounded-lg.border {
+  transition: all 0.2s ease;
+}
+
+/* Add depth coloring */
+.jsonjoy > div > div > .space-y-2 > div {
+  /* Root level */
+  background-color: #ffffff;
+}
+
+.jsonjoy .json-field-row + .space-y-2 > div {
+  /* Nested level 1 */
+  background-color: #fafbfc;
+}
+
+.jsonjoy .json-field-row .json-field-row + .space-y-2 > div {
+  /* Nested level 2 */
+  background-color: #f5f7f9;
+}

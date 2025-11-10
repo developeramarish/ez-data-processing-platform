@@ -1,0 +1,35 @@
+2025-10-29T11:57:45.4454728Z: Initialized Scheduler Signaller of type: Quartz.Core.SchedulerSignalerImpl - 
+2025-10-29T11:57:49.5772711Z: Quartz Scheduler created - 
+2025-10-29T11:57:49.5780067Z: JobFactory set to: Quartz.Simpl.MicrosoftDependencyInjectionJobFactory - 
+2025-10-29T11:57:49.5785470Z: RAMJobStore initialized. - 
+2025-10-29T11:57:49.5791187Z: Quartz Scheduler 3.8.0.0 - 'DataProcessing-Scheduler' with instanceId 'DEV-PC' initialized - 
+2025-10-29T11:57:49.5796981Z: Using thread pool 'Quartz.Simpl.DefaultThreadPool', size: 10 - 
+2025-10-29T11:57:49.5802476Z: Using job store 'Quartz.Simpl.RAMJobStore', supports persistence: False, clustered: False - 
+2025-10-29T11:57:49.5810770Z: Adding 0 jobs, 0 triggers. - 
+2025-10-29T11:57:49.5817118Z: Hosting failed to start - Failed to bind to address http://127.0.0.1:5000: address already in use.
+2025-10-29T12:01:21.5253558Z: Bus started: {HostAddress} - 
+2025-10-29T12:01:25.6498578Z: Initialized Scheduler Signaller of type: Quartz.Core.SchedulerSignalerImpl - 
+2025-10-29T12:01:25.6510408Z: Quartz Scheduler created - 
+2025-10-29T12:01:25.6518546Z: JobFactory set to: Quartz.Simpl.MicrosoftDependencyInjectionJobFactory - 
+2025-10-29T12:01:25.6531766Z: RAMJobStore initialized. - 
+2025-10-29T12:01:25.6539698Z: Quartz Scheduler 3.8.0.0 - 'DataProcessing-Scheduler' with instanceId 'DEV-PC' initialized - 
+2025-10-29T12:01:25.6553031Z: Using thread pool 'Quartz.Simpl.DefaultThreadPool', size: 10 - 
+2025-10-29T12:01:25.6564825Z: Using job store 'Quartz.Simpl.RAMJobStore', supports persistence: False, clustered: False - 
+2025-10-29T12:01:25.6572680Z: Adding 1 jobs, 0 triggers. - 
+2025-10-29T12:01:25.6577682Z: Adding job: DEFAULT.data-source-polling-job - 
+2025-10-29T12:01:25.6582469Z: Hosting failed to start - A new job defined without any triggers must be durable: DEFAULT.data-source-polling-job
+2025-10-29T12:01:25.6586808Z: Bus stopped: {HostAddress} - 
+2025-10-29T12:02:24.6539990Z: Bus started: {HostAddress} - 
+2025-10-29T12:02:30.7882106Z: Initialized Scheduler Signaller of type: Quartz.Core.SchedulerSignalerImpl - 
+2025-10-29T12:02:30.7894976Z: Quartz Scheduler created - 
+2025-10-29T12:02:30.7903345Z: JobFactory set to: Quartz.Simpl.MicrosoftDependencyInjectionJobFactory - 
+2025-10-29T12:02:30.7909102Z: RAMJobStore initialized. - 
+2025-10-29T12:02:30.7916240Z: Quartz Scheduler 3.8.0.0 - 'DataProcessing-Scheduler' with instanceId 'DEV-PC' initialized - 
+2025-10-29T12:02:30.7921237Z: Using thread pool 'Quartz.Simpl.DefaultThreadPool', size: 10 - 
+2025-10-29T12:02:30.7927288Z: Using job store 'Quartz.Simpl.RAMJobStore', supports persistence: False, clustered: False - 
+2025-10-29T12:02:30.7932780Z: Adding 0 jobs, 0 triggers. - 
+2025-10-29T12:02:30.7936888Z: Now listening on: {address} - 
+2025-10-29T12:02:30.7941370Z: Application started. Press Ctrl+C to shut down. - 
+2025-10-29T12:02:30.7949743Z: Scheduler DataProcessing-Scheduler_$_DEV-PC started. - 
+2025-10-29T12:02:30.7955696Z: Hosting environment: {EnvName} - 
+2025-10-29T12:02:30.7960063Z: Content root path: {ContentRoot} - 

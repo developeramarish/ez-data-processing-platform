@@ -1,0 +1,6 @@
+@DataProcessing.FilesReceiver_HostAddress = http://localhost:5219
+
+GET {{DataProcessing.FilesReceiver_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

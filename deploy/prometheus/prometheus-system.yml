@@ -1,0 +1,97 @@
+# System Prometheus Configuration
+# Monitors infrastructure and system-level metrics
+# Port: 9090
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'dataprocessing'
+    environment: 'development'
+    prometheus_type: 'system'
+
+# Enable remote write receiver for OpenTelemetry Collector
+remote_write:
+  - url: http://localhost:9090/api/v1/write
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+# Load rules once and periodically evaluate them
+rule_files:
+  - "alerts/system-alerts.yml"
+
+# Scrape configurations
+scrape_configs:
+  # OpenTelemetry Collector metrics
+  - job_name: 'otel-collector'
+    static_configs:
+      - targets: ['otel-collector:8888']
+        labels:
+          service: 'otel-collector'
+
+  # Prometheus self-monitoring
+  - job_name: 'prometheus-system'
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          service: 'prometheus-system'
+
+  # DataSourceManagement Service
+  - job_name: 'datasource-management'
+    static_configs:
+      - targets: ['datasource-management:8080']
+        labels:
+          service: 'datasource-management'
+          service_type: 'api'
+
+  # ValidationService
+  - job_name: 'validation-service'
+    static_configs:
+      - targets: ['validation-service:8080']
+        labels:
+          service: 'validation-service'
+          service_type: 'worker'
+
+  # SchedulingService
+  - job_name: 'scheduling-service'
+    static_configs:
+      - targets: ['scheduling-service:8080']
+        labels:
+          service: 'scheduling-service'
+          service_type: 'scheduler'
+
+  # FilesReceiverService
+  - job_name: 'files-receiver'
+    static_configs:
+      - targets: ['files-receiver:8080']
+        labels:
+          service: 'files-receiver'
+          service_type: 'worker'
+
+  # ChatService
+  - job_name: 'chat-service'
+    static_configs:
+      - targets: ['chat-service:8080']
+        labels:
+          service: 'chat-service'
+          service_type: 'api'
+
+  # MongoDB Exporter
+  - job_name: 'mongodb'
+    static_configs:
+      - targets: ['mongodb-exporter:9216']
+        labels:
+          service: 'mongodb'
+          service_type: 'database'
+
+  # Kafka Exporter
+  - job_name: 'kafka'
+    static_configs:
+      - targets: ['kafka-exporter:9308']
+        labels:
+          service: 'kafka'
+          service_type: 'message-broker'

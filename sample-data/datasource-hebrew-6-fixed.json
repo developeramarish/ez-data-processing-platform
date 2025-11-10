@@ -1,0 +1,12 @@
+{
+  "name": "מערכת הזמנות - פיצה האט ישראל",
+  "supplierName": "פיצה האט ישראל בע\"מ",
+  "category": "מסעדנות ומזון",
+  "connectionString": "mongodb://orders:pizza2024@orders-db.pizzahut.co.il:27017/OrdersDB",
+  "description": "נתוני הזמנות מקוונות ובטלפון מכל סניפי הרשת בישראל",
+  "fileFormat": "MongoDB",
+  "validationRules": "[\"מספר הזמנה חייב להיות ייחודי\",\"סכום הזמנה חייב להיות חיובי\",\"כתובת משלוח חייבת להיות במדינת ישראל\",\"מספר טלפון חייב להיות בפורמט ישראלי\"]",
+  "isActive": true,
+  "retentionDays": 2555,
+  "metadata": "{\"dataOwner\":\"מנהל מערכות מידע - פיצה האט\",\"complianceLevel\":\"בינוני\",\"dataClassification\":\"פנימי\",\"retentionPeriodYears\":7}"
+}

@@ -1,0 +1,62 @@
+[
+  {
+    "name": "files_processed_count",
+    "displayName": "ספירת קבצים מעובדים",
+    "description": "ספירת קבצים שעובדו לכל מחזור polling (כל מקורות הנתונים)",
+    "category": "performance",
+    "scope": "global",
+    "dataSourceId": null,
+    "dataSourceName": null,
+    "formula": "COUNT(*) WHERE status=\"processed\"",
+    "fieldPath": null,
+    "labels": ["data_source", "status"],
+    "retention": "30d",
+    "status": 1,
+    "createdBy": "System"
+  },
+  {
+    "name": "processing_duration_avg",
+    "displayName": "ממוצע זמן עיבוד",
+    "description": "זמן ממוצע שנדרש לעיבוד קבצים (כל מקורות הנתונים)",
+    "category": "performance",
+    "scope": "global",
+    "dataSourceId": null,
+    "dataSourceName": null,
+    "formula": "AVG(processing_time_seconds)",
+    "fieldPath": null,
+    "labels": ["data_source"],
+    "retention": "7d",
+    "status": 1,
+    "createdBy": "System"
+  },
+  {
+    "name": "transaction_amount_total",
+    "displayName": "סכום עסקאות כולל",
+    "description": "סכום כולל של עסקאות מעובדות",
+    "category": "financial",
+    "scope": "datasource-specific",
+    "dataSourceId": "ds001",
+    "dataSourceName": "בנק לאומי - עסקאות",
+    "formula": "SUM(amount) WHERE status=\"completed\"",
+    "fieldPath": "$.amount",
+    "labels": ["payment_method"],
+    "retention": "30d",
+    "status": 1,
+    "createdBy": "System"
+  },
+  {
+    "name": "validation_error_rate",
+    "displayName": "שיעור שגיאות אימות",
+    "description": "אחוז רשומות עם שגיאות אימות",
+    "category": "quality",
+    "scope": "datasource-specific",
+    "dataSourceId": "ds002",
+    "dataSourceName": "מערכת CRM - לקוחות",
+    "formula": "(COUNT(*) WHERE has_errors=true / COUNT(*)) * 100",
+    "fieldPath": null,
+    "labels": ["error_type"],
+    "retention": "7d",
+    "status": 1,
+    "createdBy": "System"
+  }
+]

@@ -1,0 +1,6 @@
+@DataProcessing.Chat_HostAddress = http://localhost:5230
+
+GET {{DataProcessing.Chat_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

@@ -1,0 +1,112 @@
+# Default values for dataprocessing-service
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# Service configuration
+service:
+  name: "" # Will be set by parent chart or command line
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+
+# Image configuration
+image:
+  repository: dataprocessing
+  tag: latest
+  pullPolicy: IfNotPresent
+
+# Replica configuration
+replicaCount: 2
+
+# Resource limits and requests
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+  requests:
+    cpu: 500m
+    memory: 512Mi
+
+# Auto-scaling configuration
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+# Health check configuration
+healthcheck:
+  readiness:
+    path: /health/ready
+    port: 8080
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  liveness:
+    path: /health/live
+    port: 8080
+    initialDelaySeconds: 60
+    periodSeconds: 30
+    timeoutSeconds: 10
+    failureThreshold: 3
+  startup:
+    path: /health/startup
+    port: 8080
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 30
+
+# Environment configuration
+env:
+  aspnetcore:
+    environment: Production
+    urls: "http://+:8080"
+  
+# External service connections
+externalServices:
+  mongodb:
+    secretName: mongodb-secret
+    connectionStringKey: connection-string
+  kafka:
+    secretName: kafka-secret
+    connectionStringKey: connection-string
+  jaeger:
+    endpoint: "http://jaeger-collector:14268/api/traces"
+
+# Monitoring configuration
+monitoring:
+  prometheus:
+    enabled: true
+    scrape: true
+    port: 8080
+    path: /metrics
+
+# Security configuration
+security:
+  runAsNonRoot: true
+  allowPrivilegeEscalation: false
+
+# Pod configuration
+pod:
+  terminationGracePeriodSeconds: 30
+  restartPolicy: Always
+
+# Namespace
+namespace: dataprocessing
+
+# Labels
+labels:
+  component: microservice
+  version: v1
+
+# Node selection (optional)
+nodeSelector: {}
+
+# Tolerations (optional)
+tolerations: []
+
+# Affinity rules (optional)
+affinity: {}

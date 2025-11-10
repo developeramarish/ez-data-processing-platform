@@ -1,0 +1,91 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: filesreceiver-service
+  namespace: dataprocessing
+  labels:
+    app: filesreceiver
+    component: file-ingestion
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: filesreceiver
+  template:
+    metadata:
+      labels:
+        app: filesreceiver
+        component: file-ingestion
+    spec:
+      containers:
+      - name: filesreceiver
+        image: dataprocessing/filesreceiver:latest
+        ports:
+        - containerPort: 5005
+          name: http
+        - containerPort: 9090
+          name: metrics
+        
+        env:
+        - name: ASPNETCORE_ENVIRONMENT
+          value: "Production"
+        - name: MongoDB__ConnectionString
+          valueFrom:
+            secretKeyRef:
+              name: mongodb-credentials
+              key: connection-string
+        
+        # CRITICAL: K8s LIFECYCLE PRESTOP HOOK
+        # Releases all locks held by THIS specific pod before termination
+        lifecycle:
+          preStop:
+            exec:
+              command:
+              - /bin/sh
+              - -c
+              - |
+                curl -X POST http://localhost:5005/api/lifecycle/shutdown || true
+                sleep 2
+        
+        livenessProbe:
+          httpGet:
+            path: /health/live
+            port: 5005
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        
+        readinessProbe:
+          httpGet:
+            path: /health/ready
+            port: 5005
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+      
+      # Allow 30 seconds for PreStop hook to complete
+      terminationGracePeriodSeconds: 30
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: filesreceiver-service
+  namespace: dataprocessing
+spec:
+  type: ClusterIP
+  ports:
+  - port: 5005
+    targetPort: 5005
+    name: http
+  - port: 9090
+    targetPort: 9090
+    name: metrics
+  selector:
+    app: filesreceiver

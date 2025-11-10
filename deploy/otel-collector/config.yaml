@@ -1,0 +1,181 @@
+# OpenTelemetry Collector Configuration
+# Central telemetry hub for EZ Data Processing Platform
+# Routes metrics to dual Prometheus instances and logs to Elasticsearch
+
+receivers:
+  # OTLP receiver for all services
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+        cors:
+          allowed_origins:
+            - "http://*"
+            - "https://*"
+
+processors:
+  # Batch processor for efficiency
+  batch:
+    timeout: 10s
+    send_batch_size: 1024
+    send_batch_max_size: 2048
+
+  # Memory limiter to prevent OOM
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 512
+    spike_limit_mib: 128
+
+  # Filter for system metrics (infrastructure)
+  filter/system_metrics:
+    metrics:
+      include:
+        match_type: regexp
+        metric_names:
+          - '^http_.*'
+          - '^process_.*'
+          - '^dotnet_.*'
+          - '^runtime_.*'
+          - '^aspnetcore_.*'
+          - '^kestrel_.*'
+          - '^system_.*'
+
+  # Filter for business metrics (KPIs)
+  filter/business_metrics:
+    metrics:
+      include:
+        match_type: regexp
+        metric_names:
+          - '^business_.*'
+
+  # Add resource attributes
+  resource:
+    attributes:
+      - key: environment
+        value: ${env:ENVIRONMENT}
+        action: upsert
+      - key: cluster
+        value: dataprocessing
+        action: insert
+      - key: region
+        value: israel
+        action: insert
+
+  # Add Hebrew timezone info
+  attributes/timezone:
+    actions:
+      - key: timezone
+        value: "Asia/Jerusalem"
+        action: insert
+
+exporters:
+  # System Prometheus (Infrastructure metrics)
+  prometheusremotewrite/system:
+    endpoint: http://prometheus-system:9090/api/v1/write
+    tls:
+      insecure: true
+    resource_to_telemetry_conversion:
+      enabled: true
+    timeout: 30s
+    retry_on_failure:
+      enabled: true
+      initial_interval: 5s
+      max_interval: 30s
+      max_elapsed_time: 300s
+
+  # Business Prometheus (Business KPIs)
+  prometheusremotewrite/business:
+    endpoint: http://prometheus-business:9091/api/v1/write
+    tls:
+      insecure: true
+    resource_to_telemetry_conversion:
+      enabled: true
+    timeout: 30s
+    retry_on_failure:
+      enabled: true
+      initial_interval: 5s
+      max_interval: 30s
+      max_elapsed_time: 300s
+
+  # Elasticsearch for logs
+  elasticsearch:
+    endpoints:
+      - http://elasticsearch:9200
+    logs_index: dataprocessing-logs
+    traces_index: dataprocessing-traces
+    timeout: 30s
+    mapping:
+      mode: ecs
+
+  # Jaeger for distributed tracing via gRPC
+  otlp/jaeger:
+    endpoint: jaeger:14250
+    tls:
+      insecure: true
+
+  # Debug exporter for development
+  debug:
+    verbosity: detailed
+    sampling_initial: 5
+    sampling_thereafter: 200
+
+service:
+  pipelines:
+    # System metrics pipeline
+    metrics/system:
+      receivers: [otlp]
+      processors: 
+        - memory_limiter
+        - filter/system_metrics
+        - resource
+        - attributes/timezone
+        - batch
+      exporters: [prometheusremotewrite/system]
+
+    # Business metrics pipeline
+    metrics/business:
+      receivers: [otlp]
+      processors:
+        - memory_limiter
+        - filter/business_metrics
+        - resource
+        - attributes/timezone
+        - batch
+      exporters: [prometheusremotewrite/business]
+
+    # Logs pipeline
+    logs:
+      receivers: [otlp]
+      processors:
+        - memory_limiter
+        - resource
+        - attributes/timezone
+        - batch
+      exporters: [elasticsearch]
+
+    # Traces pipeline
+    traces:
+      receivers: [otlp]
+      processors:
+        - memory_limiter
+        - resource
+        - batch
+      exporters: [otlp/jaeger, elasticsearch]
+
+  # Telemetry for the collector itself
+  telemetry:
+    logs:
+      level: info
+    metrics:
+      level: detailed
+
+  # Extensions for health checks and pprof
+  extensions: [health_check, pprof]
+
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+  pprof:
+    endpoint: 0.0.0.0:1777

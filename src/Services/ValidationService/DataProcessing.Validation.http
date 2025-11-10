@@ -1,0 +1,6 @@
+@DataProcessing.Validation_HostAddress = http://localhost:5038
+
+GET {{DataProcessing.Validation_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

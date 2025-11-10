@@ -1,0 +1,46 @@
+[
+  {
+    "customer_id": "12345678",
+    "account_number": "1001234567",
+    "customer_name": "יוסי כהן",
+    "account_type": "חסכון",
+    "balance": 15000.50,
+    "branch_code": "123",
+    "branch_name": "בנק הפועלים - תל אביב",
+    "last_transaction_date": "2024-01-15",
+    "account_status": "פעיל"
+  },
+  {
+    "customer_id": "87654321",
+    "account_number": "1009876543",
+    "customer_name": "מירי לוי",
+    "account_type": "עובר ושב",
+    "balance": 8750.25,
+    "branch_code": "456",
+    "branch_name": "בנק הפועלים - חיפה",
+    "last_transaction_date": "2024-01-14",
+    "account_status": "פעיל"
+  },
+  {
+    "customer_id": "11111111",
+    "account_number": "1001111111",
+    "customer_name": "דוד אברהם",
+    "account_type": "חסכון",
+    "balance": 25000.00,
+    "branch_code": "789",
+    "branch_name": "בנק הפועלים - ירושלים",
+    "last_transaction_date": "2024-01-16",
+    "account_status": "פעיל"
+  },
+  {
+    "customer_id": "22222222",
+    "account_number": "1002222222",
+    "customer_name": "שרה מזרחי",
+    "account_type": "עובר ושב",
+    "balance": 12500.75,
+    "branch_code": "321",
+    "branch_name": "בנק הפועלים - באר שבע",
+    "last_transaction_date": "2024-01-13",
+    "account_status": "פעיל"
+  }
+]

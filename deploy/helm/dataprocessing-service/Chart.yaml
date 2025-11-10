@@ -1,0 +1,25 @@
+apiVersion: v2
+name: dataprocessing-service
+description: A Helm chart for Data Processing Platform microservices
+version: 0.1.0
+appVersion: "1.0.0"
+type: application
+
+keywords:
+  - microservices
+  - data-processing
+  - dotnet
+  - kafka
+  - mongodb
+
+maintainers:
+  - name: Data Processing Platform Team
+    email: team@dataprocessing.platform
+
+sources:
+  - https://github.com/dataprocessing/platform
+
+dependencies: []
+
+annotations:
+  category: Application

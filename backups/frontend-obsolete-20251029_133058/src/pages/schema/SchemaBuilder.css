@@ -1,0 +1,46 @@
+/* SchemaBuilder - JSON Editor Styling */
+
+/* Force left-to-right (LTR) direction for JSON editors */
+.json-editor-container {
+  direction: ltr !important;
+  text-align: left !important;
+}
+
+.json-editor-container * {
+  direction: ltr !important;
+}
+
+/* Override RTL for vanilla-jsoneditor */
+.jse-theme-dark {
+  direction: ltr !important;
+}
+
+.jse-text-mode,
+.jse-tree-mode {
+  direction: ltr !important;
+  text-align: left !important;
+}
+
+/* Ensure code content is left-aligned */
+.jse-contents,
+.jse-text-mode .cm-content,
+.jse-text-mode .cm-line {
+  direction: ltr !important;
+  text-align: left !important;
+}
+
+/* HIDE TABLE MODE - vanilla-jsoneditor doesn't support disabling modes */
+/* Hide the table mode option from the mode selector dropdown */
+.jse-mode-button-option[data-value="table"],
+button[title="Table"],
+.jse-menu button[data-mode="table"],
+.jse-button-group button:nth-child(3):has-text("Table"),
+select option[value="table"] {
+  display: none !important;
+}
+
+/* Alternative: Hide any mode option that contains "table" text */
+.jse-mode-picker option:nth-child(3),
+.jse-modes button:last-child {
+  display: none !important;
+}

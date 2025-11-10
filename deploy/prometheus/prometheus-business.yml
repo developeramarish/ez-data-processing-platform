@@ -1,0 +1,51 @@
+# Business Prometheus Configuration
+# Monitors business KPIs and metrics
+# Port: 9091
+
+global:
+  scrape_interval: 1m
+  evaluation_interval: 1m
+  external_labels:
+    cluster: 'dataprocessing'
+    environment: 'development'
+    prometheus_type: 'business'
+
+# Enable remote write receiver for OpenTelemetry Collector
+remote_write:
+  - url: http://localhost:9091/api/v1/write
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+# Load rules once and periodically evaluate them
+rule_files:
+  - "alerts/business-alerts.yml"
+
+# Scrape configurations
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus-business'
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          service: 'prometheus-business'
+
+  # MetricsCollector Service (user-configured metrics)
+  - job_name: 'metrics-collector'
+    scrape_interval: 1m
+    static_configs:
+      - targets: ['metrics-collector:8080']
+        labels:
+          service: 'metrics-collector'
+          metric_type: 'business'
+
+  # MetricsConfiguration Service
+  - job_name: 'metrics-configuration'
+    static_configs:
+      - targets: ['metrics-configuration:8080']
+        labels:
+          service: 'metrics-configuration'
+          metric_type: 'business'

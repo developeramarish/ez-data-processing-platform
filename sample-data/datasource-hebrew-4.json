@@ -1,0 +1,10 @@
+{
+  "name": "מלאי רכבים - אוטופלוס",
+  "supplierName": "אוטופלוס סוכנות לביטוח בע״מ",
+  "category": "נתוני רכב",
+  "description": "קובץ עדכון מלאי רכבים חדשים ויד שנייה מאוטופלוס",
+  "connectionString": "/data/automotive/autoplus/inventory.xml",
+  "isActive": true,
+  "fileFormat": "XML",
+  "retentionDays": 180
+}

@@ -1,0 +1,53 @@
+2025-10-30T07:29:49.8124584Z: Bus started: {HostAddress} - 
+2025-10-30T07:29:49.8148102Z: Now listening on: {address} - 
+2025-10-30T07:29:55.9098107Z: Application started. Press Ctrl+C to shut down. - 
+2025-10-30T07:29:55.9102325Z: Hosting environment: {EnvName} - 
+2025-10-30T07:29:55.9109032Z: Content root path: {ContentRoot} - 
+2025-10-30T09:43:03.1279963Z: Bus started: {HostAddress} - 
+2025-10-30T09:43:03.1298312Z: Now listening on: {address} - 
+2025-10-30T09:43:09.2218990Z: Application started. Press Ctrl+C to shut down. - 
+2025-10-30T09:43:09.2228102Z: Hosting environment: {EnvName} - 
+2025-10-30T09:43:09.2252139Z: Content root path: {ContentRoot} - 
+2025-10-30T09:45:41.8816340Z: Failed to determine the https port for redirect. - 
+2025-10-30T09:45:41.8831313Z: HTTP Request started: {Method} {Path} [CorrelationId: {CorrelationId}] - 
+2025-10-30T09:45:41.8838535Z: GET /api/v1/invalid-records - Page: {Page}, Size: {PageSize}, DataSource: {DataSourceId}, CorrelationId: {CorrelationId} - 
+2025-10-30T09:45:41.8850693Z: HTTP Request completed: {Method} {Path} {StatusCode} [CorrelationId: {CorrelationId}] - 
+2025-10-30T09:45:41.8860616Z: HTTP Request started: {Method} {Path} [CorrelationId: {CorrelationId}] - 
+2025-10-30T09:45:41.8870113Z: GET /api/v1/invalid-records - Page: {Page}, Size: {PageSize}, DataSource: {DataSourceId}, CorrelationId: {CorrelationId} - 
+2025-10-30T09:45:41.8880762Z: HTTP Request completed: {Method} {Path} {StatusCode} [CorrelationId: {CorrelationId}] - 
+2025-10-30T09:49:24.8151284Z: HTTP Request started: {Method} {Path} [CorrelationId: {CorrelationId}] - 
+2025-10-30T09:49:24.8165792Z: GET /api/v1/invalid-records - Page: {Page}, Size: {PageSize}, DataSource: {DataSourceId}, CorrelationId: {CorrelationId} - 
+2025-10-30T09:49:24.8181579Z: HTTP Request completed: {Method} {Path} {StatusCode} [CorrelationId: {CorrelationId}] - 
+2025-10-30T09:49:24.8190179Z: HTTP Request started: {Method} {Path} [CorrelationId: {CorrelationId}] - 
+2025-10-30T09:49:24.8206078Z: GET /api/v1/invalid-records - Page: {Page}, Size: {PageSize}, DataSource: {DataSourceId}, CorrelationId: {CorrelationId} - 
+2025-10-30T09:49:24.8214478Z: HTTP Request completed: {Method} {Path} {StatusCode} [CorrelationId: {CorrelationId}] - 
+2025-10-30T09:50:13.0508651Z: HTTP Request started: {Method} {Path} [CorrelationId: {CorrelationId}] - 
+2025-10-30T09:50:13.0521389Z: GET /api/v1/invalid-records - Page: {Page}, Size: {PageSize}, DataSource: {DataSourceId}, CorrelationId: {CorrelationId} - 
+2025-10-30T09:50:13.0529278Z: HTTP Request completed: {Method} {Path} {StatusCode} [CorrelationId: {CorrelationId}] - 
+2025-10-30T09:50:13.0540173Z: HTTP Request started: {Method} {Path} [CorrelationId: {CorrelationId}] - 
+2025-10-30T09:50:13.0547960Z: GET /api/v1/invalid-records - Page: {Page}, Size: {PageSize}, DataSource: {DataSourceId}, CorrelationId: {CorrelationId} - 
+2025-10-30T09:50:13.0556049Z: HTTP Request completed: {Method} {Path} {StatusCode} [CorrelationId: {CorrelationId}] - 
+2025-10-30T09:50:19.1729051Z: HTTP Request started: {Method} {Path} [CorrelationId: {CorrelationId}] - 
+2025-10-30T09:50:19.1742067Z: GET /api/v1/invalid-records - Page: {Page}, Size: {PageSize}, DataSource: {DataSourceId}, CorrelationId: {CorrelationId} - 
+2025-10-30T09:50:19.1751945Z: HTTP Request completed: {Method} {Path} {StatusCode} [CorrelationId: {CorrelationId}] - 
+2025-10-30T09:50:19.1766505Z: HTTP Request started: {Method} {Path} [CorrelationId: {CorrelationId}] - 
+2025-10-30T09:50:19.1781160Z: GET /api/v1/invalid-records - Page: {Page}, Size: {PageSize}, DataSource: {DataSourceId}, CorrelationId: {CorrelationId} - 
+2025-10-30T09:50:19.1795766Z: HTTP Request completed: {Method} {Path} {StatusCode} [CorrelationId: {CorrelationId}] - 
+2025-10-30T09:51:09.4927509Z: HTTP Request started: {Method} {Path} [CorrelationId: {CorrelationId}] - 
+2025-10-30T09:51:09.4939248Z: GET /api/v1/invalid-records - Page: {Page}, Size: {PageSize}, DataSource: {DataSourceId}, CorrelationId: {CorrelationId} - 
+2025-10-30T09:51:09.4954550Z: HTTP Request completed: {Method} {Path} {StatusCode} [CorrelationId: {CorrelationId}] - 
+2025-10-30T09:51:09.4972479Z: HTTP Request started: {Method} {Path} [CorrelationId: {CorrelationId}] - 
+2025-10-30T09:51:09.4982276Z: GET /api/v1/invalid-records - Page: {Page}, Size: {PageSize}, DataSource: {DataSourceId}, CorrelationId: {CorrelationId} - 
+2025-10-30T09:51:09.4992733Z: HTTP Request completed: {Method} {Path} {StatusCode} [CorrelationId: {CorrelationId}] - 
+2025-10-30T09:51:21.6370128Z: HTTP Request started: {Method} {Path} [CorrelationId: {CorrelationId}] - 
+2025-10-30T09:51:21.6379174Z: GET /api/v1/invalid-records - Page: {Page}, Size: {PageSize}, DataSource: {DataSourceId}, CorrelationId: {CorrelationId} - 
+2025-10-30T09:51:21.6386350Z: HTTP Request completed: {Method} {Path} {StatusCode} [CorrelationId: {CorrelationId}] - 
+2025-10-30T09:51:21.6392369Z: HTTP Request started: {Method} {Path} [CorrelationId: {CorrelationId}] - 
+2025-10-30T09:51:21.6399423Z: GET /api/v1/invalid-records - Page: {Page}, Size: {PageSize}, DataSource: {DataSourceId}, CorrelationId: {CorrelationId} - 
+2025-10-30T09:51:21.6404192Z: HTTP Request completed: {Method} {Path} {StatusCode} [CorrelationId: {CorrelationId}] - 
+2025-10-30T09:55:36.6282367Z: HTTP Request started: {Method} {Path} [CorrelationId: {CorrelationId}] - 
+2025-10-30T09:55:36.6291396Z: GET /api/v1/invalid-records - Page: {Page}, Size: {PageSize}, DataSource: {DataSourceId}, CorrelationId: {CorrelationId} - 
+2025-10-30T09:55:36.6297003Z: HTTP Request completed: {Method} {Path} {StatusCode} [CorrelationId: {CorrelationId}] - 
+2025-10-30T09:55:36.6302558Z: HTTP Request started: {Method} {Path} [CorrelationId: {CorrelationId}] - 
+2025-10-30T09:55:36.6308559Z: GET /api/v1/invalid-records - Page: {Page}, Size: {PageSize}, DataSource: {DataSourceId}, CorrelationId: {CorrelationId} - 
+2025-10-30T09:55:36.6313172Z: HTTP Request completed: {Method} {Path} {StatusCode} [CorrelationId: {CorrelationId}] - 
