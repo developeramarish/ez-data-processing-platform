@@ -1,6 +1,0 @@
-2025-10-29T12:06:19.3724205Z: Configured endpoint {Endpoint}, Consumer: {ConsumerType} - 
-2025-10-29T12:06:25.5152064Z: Bus started: {HostAddress} - 
-2025-10-29T12:06:25.5160655Z: Now listening on: {address} - 
-2025-10-29T12:06:25.5166729Z: Application started. Press Ctrl+C to shut down. - 
-2025-10-29T12:06:25.5174868Z: Hosting environment: {EnvName} - 
-2025-10-29T12:06:25.5182789Z: Content root path: {ContentRoot} - 
