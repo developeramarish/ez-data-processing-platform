@@ -160,6 +160,47 @@ services:
     networks:
       - ezplatform-network
 
+  # Hazelcast 5.6.0 - Distributed In-Memory Cache
+  # Purpose: Store file content outside RabbitMQ messages (unlimited file size)
+  # Access: hazelcast:5701 (internal), localhost:5701 (host)
+  # Memory: 2GB heap (4GB container limit)
+  # TTL: 1 hour (configured in client applications)
+  hazelcast:
+    image: hazelcast/hazelcast:5.6.0
+    container_name: ezplatform-hazelcast
+    hostname: hazelcast
+    restart: unless-stopped
+    ports:
+      - "5701:5701"  # Hazelcast cluster port
+    environment:
+      # JVM Memory Configuration
+      - JAVA_OPTS=-Xms2g -Xmx2g -XX:+UseG1GC -XX:MaxGCPauseMillis=200
+      # Cluster Configuration
+      - HZ_CLUSTERNAME=data-processing-cluster
+      # Network Configuration (Single-Node Docker)
+      - HZ_NETWORK_JOIN_MULTICAST_ENABLED=false
+      - HZ_NETWORK_JOIN_KUBERNETES_ENABLED=false
+      # Management Center Disabled (Open Source)
+      - HZ_MANAGEMENTCENTER_ENABLED=false
+      # Logging
+      - LOGGING_LEVEL=INFO
+    networks:
+      - ezplatform-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5701/hazelcast/health/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: '1.0'
+        reservations:
+          memory: 2G
+          cpus: '0.5'
+
   # Grafana - Unified Query and Visualization Layer
   grafana:
     image: grafana/grafana:latest

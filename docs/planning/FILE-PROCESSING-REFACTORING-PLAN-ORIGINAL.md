@@ -68,32 +68,75 @@ Refactor FilesReceiverService into three scalable, stateless microservices with 
 
 ## 📦 PHASE 1: INFRASTRUCTURE SETUP
 
-### 1.1 Hazelcast Cluster Deployment
+**NOTE:** Phase 1 (Task 11) focuses on Docker Compose deployment for development only.
+Kubernetes deployment is deferred to Phase 11 (Task 28) for production.
 
-**Location:** `deploy/kubernetes/hazelcast-cluster.yaml`
+### 1.1 Hazelcast Deployment - Development (Task 11) ✅ COMPLETED
 
-**Configuration:**
-- 3-node StatefulSet for high availability
-- 8GB memory per node (4GB JVM heap)
-- Kubernetes service discovery
-- TTL: 1 hour for cached content
-- Health checks (readiness/liveness probes)
+**Status:** ✅ Deployed and Verified (November 12, 2025)
 
-**Development:** Add to `docker-compose.development.yml`
+**Location:** `docker-compose.development.yml` + `deploy/docker/`
 
+**Configuration (Docker Compose - Development):**
+- **Version:** 5.6.0 (latest stable)
+- **Mode:** Single-node (sufficient for development)
+- **Memory:** 2GB heap (4GB container limit)
+- **Container Name:** ezplatform-hazelcast
+- **Port:** 5701 (mapped to host)
+- **Health Check:** `/hazelcast/health/ready`
+- **TTL:** 1 hour (configured in client applications)
+- **Network:** ezplatform-network
+
+**Verification Results:**
+- ✅ Container running: `ezplatform-hazelcast`
+- ✅ Health status: `healthy`
+- ✅ Version confirmed: Hazelcast Platform 5.6.0
+- ✅ Port 5701 accessible
+- ✅ Cluster name: `data-processing-cluster`
+
+**Documentation Created:**
+- `deploy/docker/README-HAZELCAST.md` - Usage guide
+- `deploy/docker/HAZELCAST-VERSION-GUIDE.md` - Version compatibility
+
+**Implementation in docker-compose.development.yml:**
 ```yaml
 hazelcast:
-  image: hazelcast/hazelcast:5.3
-  container_name: hazelcast
+  image: hazelcast/hazelcast:5.6.0  # ⬅️ Updated to 5.6.0
+  container_name: ezplatform-hazelcast
+  hostname: hazelcast
   ports:
     - "5701:5701"
   environment:
-    - JAVA_OPTS=-Xms2g -Xmx2g
+    - JAVA_OPTS=-Xms2g -Xmx2g -XX:+UseG1GC -XX:MaxGCPauseMillis=200
+    - HZ_CLUSTERNAME=data-processing-cluster
+    - HZ_NETWORK_JOIN_MULTICAST_ENABLED=false
+    - HZ_NETWORK_JOIN_KUBERNETES_ENABLED=false
+  networks:
+    - ezplatform-network
+  healthcheck:
+    test: ["CMD", "curl", "-f", "http://localhost:5701/hazelcast/health/ready"]
+    interval: 10s
+    timeout: 5s
+    retries: 5
+    start_period: 30s
 ```
 
-### 1.2 Update docker-compose.development.yml
+### 1.2 Hazelcast Deployment - Production (Task 28)
 
-Add Hazelcast service alongside existing RabbitMQ, MongoDB, Prometheus, etc.
+**Status:** ⏳ Pending (Phase 11)
+
+**Location:** `deploy/kubernetes/hazelcast-deployment.yaml` (to be created)
+
+**Configuration (Kubernetes - Production):**
+- **Version:** 5.6.0 (must match development version)
+- **Mode:** Multi-node cluster (3 replicas) or single-node
+- **Memory:** 8GB per node (4GB JVM heap) for multi-node, 4GB for single-node
+- **Deployment Type:** StatefulSet (multi-node) or Deployment (single-node)
+- **Service Discovery:** Kubernetes API
+- **Health Checks:** Readiness/liveness probes
+- **RBAC:** ClusterRole for service discovery
+
+**See Task 28 for Kubernetes implementation details.**
 
 ---
 
