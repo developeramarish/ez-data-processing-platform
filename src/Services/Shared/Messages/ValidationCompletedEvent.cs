@@ -54,6 +54,12 @@ public class ValidationCompletedEvent : IDataProcessingMessage
     public string ValidationResultId { get; set; } = string.Empty;
 
     /// <summary>
+    /// Hazelcast cache key for valid records
+    /// Used to reference the cached valid records in Hazelcast distributed cache
+    /// </summary>
+    public string HazelcastValidRecordsKey { get; set; } = string.Empty;
+
+    /// <summary>
     /// Total number of records found in the file
     /// </summary>
     [Required]
