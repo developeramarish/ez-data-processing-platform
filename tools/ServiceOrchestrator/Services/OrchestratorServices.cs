@@ -84,9 +84,10 @@ public class ProcessManager
                 // Capture output asynchronously to prevent blocking
                 _ = Task.Run(async () =>
                 {
-                    while (!process.StandardOutput.EndOfStream)
+                    while (true)
                     {
                         var line = await process.StandardOutput.ReadLineAsync();
+                        if (line is null) break; // End of stream
                         if (!string.IsNullOrEmpty(line))
                         {
                             Console.WriteLine($"[{config.Name}] {line}");
@@ -96,9 +97,10 @@ public class ProcessManager
                 
                 _ = Task.Run(async () =>
                 {
-                    while (!process.StandardError.EndOfStream)
+                    while (true)
                     {
                         var line = await process.StandardError.ReadLineAsync();
+                        if (line is null) break; // End of stream
                         if (!string.IsNullOrEmpty(line))
                         {
                             Console.WriteLine($"[{config.Name}] ERROR: {line}");
