@@ -1,12 +1,12 @@
-using DataProcessing.FileDiscovery.Workers;
+using DataProcessing.FileDiscovery.Consumers;
 using DataProcessing.Shared.Configuration;
 using DataProcessing.Shared.Connectors;
 using DataProcessing.Shared.Middleware;
 using DataProcessing.Shared.Monitoring;
 using MongoDB.Entities;
-using Quartz;
 using Prometheus;
 using MassTransit;
+using System.Diagnostics;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -21,7 +21,11 @@ builder.Services.AddDataProcessingLogging(
     builder.Environment, 
     "DataProcessing.FileDiscovery");
 
+// Configure OpenTelemetry
 var serviceName = "DataProcessing.FileDiscovery";
+var activitySource = new ActivitySource(serviceName);
+builder.Services.AddSingleton(activitySource);
+builder.Services.AddDataProcessingOpenTelemetry(builder.Configuration, serviceName);
 
 // Configure MongoDB
 var connectionString = builder.Configuration.GetConnectionString("MongoDB") 
@@ -31,6 +35,12 @@ await DB.InitAsync("DataProcessingFileDiscovery", connectionString);
 // Configure MassTransit with RabbitMQ
 builder.Services.AddMassTransit(x =>
 {
+    // Register FilePollingEvent consumer
+    x.AddConsumer<FilePollingEventConsumer>(cfg =>
+    {
+        cfg.UseConcurrentMessageLimit(5); // Process 5 datasources concurrently
+    });
+    
     x.UsingRabbitMq((context, cfg) =>
     {
         var rabbitMqHost = builder.Configuration.GetValue<string>("RabbitMQ:Host") ?? "localhost";
@@ -57,28 +67,6 @@ builder.Services.AddScoped<IDataSourceConnector>(provider =>
     // Factory pattern - will be selected based on datasource type
     return provider.GetRequiredService<LocalFileConnector>();
 });
-
-// Configure Quartz.NET for file discovery scheduling
-builder.Services.AddQuartz(q =>
-{
-    q.UseInMemoryStore();
-    q.SchedulerName = "FileDiscovery-Scheduler";
-    q.SchedulerId = Environment.MachineName;
-    q.MaxBatchSize = 20;
-    
-    // Register the file discovery job
-    var jobKey = new JobKey("FileDiscoveryJob");
-    q.AddJob<FileDiscoveryWorker>(opts => opts.WithIdentity(jobKey));
-    
-    // Schedule to run every 30 seconds (will check all datasources)
-    q.AddTrigger(opts => opts
-        .ForJob(jobKey)
-        .WithIdentity("FileDiscoveryTrigger")
-        .WithCronSchedule("0/30 * * * * ?") // Every 30 seconds
-        .StartNow());
-});
-
-builder.Services.AddQuartzHostedService(q => q.WaitForJobsToComplete = true);
 
 // Configure health checks
 builder.Services.AddDataProcessingHealthChecks(builder.Configuration, serviceName);
