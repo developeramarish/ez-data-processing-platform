@@ -122,6 +122,12 @@ public class DataProcessingDataSource : DataProcessingBaseEntity
     public string? Description { get; set; }
 
     /// <summary>
+    /// Output configuration with support for multiple destinations
+    /// Supports Kafka topics, local folders, SFTP, and HTTP API outputs
+    /// </summary>
+    public OutputConfiguration Output { get; set; } = new();
+
+    /// <summary>
     /// Indicates if files from this datasource are currently being processed
     /// Used for distributed locking to prevent concurrent processing
     /// </summary>
