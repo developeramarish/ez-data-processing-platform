@@ -1,6 +1,7 @@
 using DataProcessing.Shared.Connectors;
 using DataProcessing.Shared.Entities;
 using DataProcessing.Shared.Messages;
+using DataProcessing.Shared.Utilities;
 using MassTransit;
 using MongoDB.Entities;
 
@@ -15,15 +16,18 @@ public class FilePollingEventConsumer : IConsumer<FilePollingEvent>
     private readonly ILogger<FilePollingEventConsumer> _logger;
     private readonly IPublishEndpoint _publishEndpoint;
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly IConfiguration _configuration;
 
     public FilePollingEventConsumer(
         ILogger<FilePollingEventConsumer> logger,
         IPublishEndpoint publishEndpoint,
-        IServiceScopeFactory scopeFactory)
+        IServiceScopeFactory scopeFactory,
+        IConfiguration configuration)
     {
         _logger = logger;
         _publishEndpoint = publishEndpoint;
         _scopeFactory = scopeFactory;
+        _configuration = configuration;
     }
 
     public async Task Consume(ConsumeContext<FilePollingEvent> context)
@@ -93,6 +97,7 @@ public class FilePollingEventConsumer : IConsumer<FilePollingEvent>
 
     /// <summary>
     /// Discovers files from a datasource using the appropriate connector
+    /// Implements deduplication to prevent processing the same file multiple times
     /// </summary>
     private async Task<List<FileMetadata>> DiscoverFilesAsync(
         DataProcessingDataSource datasource,
@@ -104,19 +109,58 @@ public class FilePollingEventConsumer : IConsumer<FilePollingEvent>
         // Future: Implement factory to select FTP, SFTP, etc. based on datasource.FilePath
         var connector = scope.ServiceProvider.GetRequiredService<LocalFileConnector>();
 
+        // Get deduplication TTL from configuration (default: 24 hours)
+        var ttlHours = _configuration.GetValue("FileDiscovery:DeduplicationTTLHours", 24);
+        var ttl = TimeSpan.FromHours(ttlHours);
+
         try
         {
             // List files matching the pattern
             var filePaths = await connector.ListFilesAsync(datasource, datasource.FilePattern);
 
-            // Get metadata for each file
-            var fileMetadataList = new List<FileMetadata>();
+            _logger.LogDebug(
+                "[{CorrelationId}] Connector found {FileCount} file(s) from {Path}",
+                correlationId, filePaths.Count, datasource.FilePath);
+
+            // Get metadata for each file and apply deduplication
+            var newFiles = new List<FileMetadata>();
+            var duplicateCount = 0;
+
             foreach (var filePath in filePaths)
             {
                 try
                 {
                     var metadata = await connector.GetFileMetadataAsync(datasource, filePath);
-                    fileMetadataList.Add(metadata);
+
+                    // Calculate file hash for deduplication
+                    var fileHash = FileHashCalculator.CalculateHash(metadata);
+
+                    // Check if file already processed (not expired)
+                    if (datasource.IsFileAlreadyProcessed(fileHash))
+                    {
+                        _logger.LogDebug(
+                            "[{CorrelationId}] Skipping already processed file: {FileName} (hash: {Hash})",
+                            correlationId, metadata.FileName, fileHash.Substring(0, 8) + "...");
+                        duplicateCount++;
+                        continue;
+                    }
+
+                    // Add to processed hashes with TTL
+                    datasource.AddProcessedFileHash(
+                        fileHash,
+                        metadata.FileName,
+                        metadata.FilePath,
+                        metadata.FileSizeBytes,
+                        metadata.LastModifiedUtc,
+                        ttl,
+                        correlationId);
+
+                    newFiles.Add(metadata);
+
+                    _logger.LogDebug(
+                        "[{CorrelationId}] File queued for processing: {FileName} (hash: {Hash}, expires: {Expires})",
+                        correlationId, metadata.FileName, fileHash.Substring(0, 8) + "...",
+                        DateTime.UtcNow.Add(ttl).ToString("yyyy-MM-dd HH:mm:ss"));
                 }
                 catch (Exception ex)
                 {
@@ -126,11 +170,23 @@ public class FilePollingEventConsumer : IConsumer<FilePollingEvent>
                 }
             }
 
-            _logger.LogDebug(
-                "[{CorrelationId}] Connector discovered {FileCount} files from {Path}",
-                correlationId, fileMetadataList.Count, datasource.FilePath);
+            // Cleanup expired hashes
+            var cleanedCount = datasource.CleanupExpiredFileHashes();
+            if (cleanedCount > 0)
+            {
+                _logger.LogInformation(
+                    "[{CorrelationId}] Cleaned up {Count} expired file hash(es) for datasource {DataSourceId}",
+                    correlationId, cleanedCount, datasource.ID);
+            }
 
-            return fileMetadataList;
+            // Save datasource with updated hashes
+            await datasource.SaveAsync();
+
+            _logger.LogInformation(
+                "[{CorrelationId}] Deduplication results: {NewFiles} new file(s), {Duplicates} duplicate(s) skipped, {ActiveHashes} active hash(es) tracked",
+                correlationId, newFiles.Count, duplicateCount, datasource.GetActiveFileHashCount());
+
+            return newFiles;
         }
         catch (Exception ex)
         {

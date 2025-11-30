@@ -162,6 +162,13 @@ public class DataProcessingDataSource : DataProcessingBaseEntity
     public DateTime? ProcessingCompletedAt { get; set; }
 
     /// <summary>
+    /// Tracks processed file hashes to prevent duplicate processing
+    /// Hash format: SHA256(filePath|fileSize|lastModified)
+    /// Includes TTL for automatic cleanup
+    /// </summary>
+    public List<ProcessedFileHash> ProcessedFileHashes { get; set; } = new();
+
+    /// <summary>
     /// Updates statistics after processing files
     /// </summary>
     public void UpdateProcessingStats(long filesProcessed, long errorRecords)
@@ -215,5 +222,58 @@ public class DataProcessingDataSource : DataProcessingBaseEntity
         ProcessingPodId = null;
         ProcessingHostname = null;
         MarkAsModified();
+    }
+
+    /// <summary>
+    /// Checks if a file has already been processed based on its hash
+    /// </summary>
+    public bool IsFileAlreadyProcessed(string fileHash)
+    {
+        return ProcessedFileHashes.Any(h =>
+            h.Hash == fileHash && !h.IsExpired);
+    }
+
+    /// <summary>
+    /// Adds a file hash to the processed list with TTL
+    /// </summary>
+    public void AddProcessedFileHash(
+        string hash,
+        string fileName,
+        string filePath,
+        long fileSizeBytes,
+        DateTime lastModifiedUtc,
+        TimeSpan ttl,
+        string? correlationId = null)
+    {
+        ProcessedFileHashes.Add(ProcessedFileHash.Create(
+            hash, fileName, filePath, fileSizeBytes, lastModifiedUtc, ttl, correlationId));
+
+        MarkAsModified();
+    }
+
+    /// <summary>
+    /// Removes expired file hashes from the tracking list
+    /// Should be called periodically to prevent unbounded growth
+    /// </summary>
+    public int CleanupExpiredFileHashes()
+    {
+        var initialCount = ProcessedFileHashes.Count;
+        ProcessedFileHashes.RemoveAll(h => h.IsExpired);
+        var removedCount = initialCount - ProcessedFileHashes.Count;
+
+        if (removedCount > 0)
+        {
+            MarkAsModified();
+        }
+
+        return removedCount;
+    }
+
+    /// <summary>
+    /// Gets the count of currently tracked (non-expired) file hashes
+    /// </summary>
+    public int GetActiveFileHashCount()
+    {
+        return ProcessedFileHashes.Count(h => !h.IsExpired);
     }
 }
