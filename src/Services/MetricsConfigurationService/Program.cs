@@ -47,17 +47,51 @@ builder.Services.AddScoped<IAlertEvaluationService, AlertEvaluationService>();
 // Register background metrics collection service
 builder.Services.AddHostedService<MetricsCollectionBackgroundService>();
 
-// Configure MassTransit with in-memory bus for Request/Response pattern
+// Configure MassTransit with conditional transport (in-memory for dev, Kafka for prod)
+var useKafka = builder.Configuration.GetValue<bool>("MassTransit:UseKafka", false);
+
 builder.Services.AddMassTransit(x =>
 {
     // Register consumer for GetMetricsConfigurationRequest
     x.AddConsumer<GetMetricsConfigurationConsumer>();
 
-    // Use in-memory bus for testing/development
-    x.UsingInMemory((context, cfg) =>
+    if (useKafka)
     {
-        cfg.ConfigureEndpoints(context);
-    });
+        // Use Kafka for production cross-process communication
+        x.UsingInMemory((context, cfg) =>
+        {
+            cfg.ConfigureEndpoints(context);
+        });
+
+        x.AddRider(rider =>
+        {
+            var kafkaServer = builder.Configuration.GetValue<string>("MassTransit:Kafka:Server")
+                ?? "localhost:9092";
+
+            rider.AddConsumer<GetMetricsConfigurationConsumer>();
+
+            rider.UsingKafka((context, kafka) =>
+            {
+                kafka.Host(kafkaServer);
+
+                kafka.TopicEndpoint<DataProcessing.Shared.Messages.GetMetricsConfigurationRequest>(
+                    "metrics-configuration-requests",
+                    "metrics-service-group",
+                    e =>
+                    {
+                        e.ConfigureConsumer<GetMetricsConfigurationConsumer>(context);
+                    });
+            });
+        });
+    }
+    else
+    {
+        // Use in-memory bus for development/testing
+        x.UsingInMemory((context, cfg) =>
+        {
+            cfg.ConfigureEndpoints(context);
+        });
+    }
 });
 
 var app = builder.Build();

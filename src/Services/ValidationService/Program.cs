@@ -57,7 +57,9 @@ builder.Services.AddSingleton<IHazelcastClient>(sp =>
     return HazelcastClientFactory.StartNewClientAsync(options).GetAwaiter().GetResult();
 });
 
-// Configure MassTransit with in-memory bus only (for testing - Kafka not required per .clinerules)
+// Configure MassTransit with conditional transport (in-memory for dev, Kafka for prod)
+var useKafka = builder.Configuration.GetValue<bool>("MassTransit:UseKafka", false);
+
 builder.Services.AddMassTransit(x =>
 {
     x.AddConsumer<ValidationRequestEventConsumer>();
@@ -65,16 +67,48 @@ builder.Services.AddMassTransit(x =>
     // Register request client for querying MetricsConfigurationService
     x.AddRequestClient<GetMetricsConfigurationRequest>();
 
-    // Use in-memory bus for testing/development
-    x.UsingInMemory((context, cfg) =>
+    if (useKafka)
     {
-        cfg.ConfigureEndpoints(context);
-    });
+        // Use Kafka for production cross-process communication
+        x.UsingInMemory((context, cfg) =>
+        {
+            cfg.ConfigureEndpoints(context);
+        });
+
+        x.AddRider(rider =>
+        {
+            var kafkaServer = builder.Configuration.GetValue<string>("MassTransit:Kafka:Server")
+                ?? "localhost:9092";
+
+            rider.AddConsumer<ValidationRequestEventConsumer>();
+
+            rider.UsingKafka((context, kafka) =>
+            {
+                kafka.Host(kafkaServer);
+
+                kafka.TopicEndpoint<ValidationRequestEvent>("validation-requests", "validation-service-group", e =>
+                {
+                    e.ConfigureConsumer<ValidationRequestEventConsumer>(context);
+                });
+            });
+        });
+    }
+    else
+    {
+        // Use in-memory bus for development/testing
+        x.UsingInMemory((context, cfg) =>
+        {
+            cfg.ConfigureEndpoints(context);
+        });
+    }
 });
 
 // Register application services
 builder.Services.AddScoped<IValidationService, ValidationService>();
 builder.Services.AddScoped<DataMetricsCalculator>();
+
+// Register memory cache for metric definitions caching
+builder.Services.AddMemoryCache();
 
 // Configure OpenTelemetry business metrics
 builder.Services.AddSingleton<ValidationMetrics>();

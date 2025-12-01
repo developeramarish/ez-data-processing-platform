@@ -9,6 +9,7 @@ using System.Diagnostics;
 using Hazelcast;
 using Newtonsoft.Json;
 using System.Text;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace DataProcessing.Validation.Consumers;
 
@@ -28,6 +29,7 @@ public class ValidationRequestEventConsumer : DataProcessingConsumerBase<Validat
     private readonly DataMetricsCalculator _metricsCalculator;
     private readonly IConfiguration _configuration;
     private readonly IRequestClient<GetMetricsConfigurationRequest> _metricsRequestClient;
+    private readonly IMemoryCache _metricDefinitionsCache;
 
     public ValidationRequestEventConsumer(
         ILogger<ValidationRequestEventConsumer> logger,
@@ -39,7 +41,8 @@ public class ValidationRequestEventConsumer : DataProcessingConsumerBase<Validat
         ValidationMetrics validationMetrics,
         DataMetricsCalculator metricsCalculator,
         IConfiguration configuration,
-        IRequestClient<GetMetricsConfigurationRequest> metricsRequestClient)
+        IRequestClient<GetMetricsConfigurationRequest> metricsRequestClient,
+        IMemoryCache memoryCache)
         : base(logger)
     {
         _validationService = validationService;
@@ -51,6 +54,7 @@ public class ValidationRequestEventConsumer : DataProcessingConsumerBase<Validat
         _metricsCalculator = metricsCalculator;
         _configuration = configuration;
         _metricsRequestClient = metricsRequestClient;
+        _metricDefinitionsCache = memoryCache;
     }
 
     protected override async Task ProcessMessage(ConsumeContext<ValidationRequestEvent> context)
@@ -276,6 +280,13 @@ public class ValidationRequestEventConsumer : DataProcessingConsumerBase<Validat
                     correlationId, metricName, value, metricDef.Unit);
             }
 
+            // Evaluate alert thresholds
+            await EvaluateAlertThresholdsAsync(
+                calculatedMetrics,
+                metricDefinitions,
+                dataSourceId,
+                correlationId);
+
             // Calculate category-based metrics if enabled
             if (_configuration.GetValue<bool>("MetricConfiguration:Enabled", true))
             {
@@ -336,17 +347,139 @@ public class ValidationRequestEventConsumer : DataProcessingConsumerBase<Validat
     }
 
     /// <summary>
-    /// Retrieves metric definitions from MetricsConfigurationService via MassTransit Request/Response
-    /// Queries both global metrics (apply to all datasources) and datasource-specific metrics
+    /// Evaluates alert thresholds for calculated metrics
     /// </summary>
-    private async Task<List<MetricDefinition>> GetMetricDefinitionsAsync(
+    private async Task EvaluateAlertThresholdsAsync(
+        Dictionary<string, double> calculatedMetrics,
+        List<MetricDefinition> metricDefinitions,
         string dataSourceId,
         string correlationId)
     {
         try
         {
+            foreach (var metricDef in metricDefinitions.Where(m => m.AlertRules?.Any() == true))
+            {
+                if (!calculatedMetrics.TryGetValue(metricDef.MetricName, out var metricValue))
+                    continue;
+
+                foreach (var alertRule in metricDef.AlertRules!.Where(a => a.IsEnabled))
+                {
+                    try
+                    {
+                        var isTriggered = EvaluateAlertExpression(alertRule.Expression, metricValue);
+
+                        if (isTriggered)
+                        {
+                            var logLevel = alertRule.Severity.ToLowerInvariant() switch
+                            {
+                                "critical" => LogLevel.Error,
+                                "warning" => LogLevel.Warning,
+                                _ => LogLevel.Information
+                            };
+
+                            Logger.Log(logLevel,
+                                "[{CorrelationId}] ALERT TRIGGERED: {AlertName} - {Description} | Metric: {MetricName}={Value} {Unit} | Expression: {Expression} | Severity: {Severity} | DataSource: {DataSourceId}",
+                                correlationId, alertRule.Name, alertRule.Description, metricDef.MetricName,
+                                metricValue, metricDef.Unit, alertRule.Expression, alertRule.Severity, dataSourceId);
+
+                            // TODO: Publish AlertTriggeredEvent for downstream processing
+                            // await _publishEndpoint.Publish(new AlertTriggeredEvent { ... });
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.LogWarning(ex,
+                            "[{CorrelationId}] Failed to evaluate alert '{AlertName}' with expression '{Expression}'",
+                            correlationId, alertRule.Name, alertRule.Expression);
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex,
+                "[{CorrelationId}] Failed to evaluate alert thresholds (non-fatal)",
+                correlationId);
+        }
+
+        await Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Evaluates a simple alert expression (e.g., "value > 1000", "value &lt; 100")
+    /// Supports: &gt;, &lt;, &gt;=, &lt;=, ==, !=
+    /// </summary>
+    private bool EvaluateAlertExpression(string expression, double metricValue)
+    {
+        // Replace "value" placeholder with actual metric value
+        var normalizedExpression = expression.Replace("value", metricValue.ToString(System.Globalization.CultureInfo.InvariantCulture));
+
+        // Parse simple comparison expressions
+        if (expression.Contains(">="))
+        {
+            var parts = expression.Split(">=");
+            var threshold = double.Parse(parts[1].Trim(), System.Globalization.CultureInfo.InvariantCulture);
+            return metricValue >= threshold;
+        }
+        else if (expression.Contains("<="))
+        {
+            var parts = expression.Split("<=");
+            var threshold = double.Parse(parts[1].Trim(), System.Globalization.CultureInfo.InvariantCulture);
+            return metricValue <= threshold;
+        }
+        else if (expression.Contains("=="))
+        {
+            var parts = expression.Split("==");
+            var threshold = double.Parse(parts[1].Trim(), System.Globalization.CultureInfo.InvariantCulture);
+            return Math.Abs(metricValue - threshold) < 0.0001;  // Float comparison with tolerance
+        }
+        else if (expression.Contains("!="))
+        {
+            var parts = expression.Split("!=");
+            var threshold = double.Parse(parts[1].Trim(), System.Globalization.CultureInfo.InvariantCulture);
+            return Math.Abs(metricValue - threshold) >= 0.0001;
+        }
+        else if (expression.Contains(">"))
+        {
+            var parts = expression.Split(">");
+            var threshold = double.Parse(parts[1].Trim(), System.Globalization.CultureInfo.InvariantCulture);
+            return metricValue > threshold;
+        }
+        else if (expression.Contains("<"))
+        {
+            var parts = expression.Split("<");
+            var threshold = double.Parse(parts[1].Trim(), System.Globalization.CultureInfo.InvariantCulture);
+            return metricValue < threshold;
+        }
+
+        throw new ArgumentException($"Unsupported alert expression format: {expression}");
+    }
+
+    /// <summary>
+    /// Retrieves metric definitions from MetricsConfigurationService via MassTransit Request/Response
+    /// Queries both global metrics (apply to all datasources) and datasource-specific metrics
+    /// Uses IMemoryCache with sliding expiration to reduce database queries
+    /// </summary>
+    private async Task<List<MetricDefinition>> GetMetricDefinitionsAsync(
+        string dataSourceId,
+        string correlationId)
+    {
+        // Check cache first
+        var cacheKey = $"metrics:definitions:{dataSourceId}";
+
+        if (_metricDefinitionsCache.TryGetValue(cacheKey, out List<MetricDefinition>? cachedMetrics))
+        {
             Logger.LogDebug(
-                "[{CorrelationId}] Requesting metric configurations from MetricsConfigurationService for DataSourceId: {DataSourceId}",
+                "[{CorrelationId}] Retrieved {Count} metric configurations from cache for DataSourceId: {DataSourceId}",
+                correlationId, cachedMetrics!.Count, dataSourceId);
+
+            return cachedMetrics;
+        }
+
+        try
+        {
+            Logger.LogDebug(
+                "[{CorrelationId}] Cache miss - Requesting metric configurations from MetricsConfigurationService for DataSourceId: {DataSourceId}",
                 correlationId, dataSourceId);
 
             // Send request to MetricsConfigurationService via MassTransit
@@ -382,14 +515,38 @@ public class ValidationRequestEventConsumer : DataProcessingConsumerBase<Validat
                 metrics.Count(m => m.Scope == "datasource-specific"));
 
             // Convert DTOs to MetricDefinition
-            return metrics.Select(m => new MetricDefinition
+            var metricDefinitions = metrics.Select(m => new MetricDefinition
             {
                 MetricName = m.Name,
                 JsonPath = m.FieldPath,  // ✅ From database, not hardcoded!
                 AggregationType = DetermineAggregationType(m.PrometheusType),
                 Unit = DetermineUnit(m.PrometheusType),
-                Description = m.Description
+                Description = m.Description,
+                AlertRules = m.AlertRules?.Select(a => new DataProcessing.Validation.Services.AlertRuleDto
+                {
+                    Name = a.Name,
+                    Description = a.Description,
+                    Expression = a.Expression,
+                    Severity = a.Severity,
+                    IsEnabled = a.IsEnabled
+                }).ToList()
             }).ToList();
+
+            // Store in cache with sliding expiration
+            var cacheDurationMinutes = _configuration.GetValue("MetricConfiguration:CacheDurationMinutes", 10);
+            var cacheOptions = new MemoryCacheEntryOptions
+            {
+                SlidingExpiration = TimeSpan.FromMinutes(cacheDurationMinutes),
+                Priority = CacheItemPriority.Normal
+            };
+
+            _metricDefinitionsCache.Set(cacheKey, metricDefinitions, cacheOptions);
+
+            Logger.LogDebug(
+                "[{CorrelationId}] Cached {Count} metric configurations for {Duration} minutes (sliding expiration)",
+                correlationId, metricDefinitions.Count, cacheDurationMinutes);
+
+            return metricDefinitions;
         }
         catch (RequestTimeoutException ex)
         {

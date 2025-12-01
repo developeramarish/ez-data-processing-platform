@@ -229,4 +229,21 @@ public class MetricDefinition
     /// Optional description
     /// </summary>
     public string? Description { get; set; }
+
+    /// <summary>
+    /// Alert rules for threshold evaluation
+    /// </summary>
+    public List<AlertRuleDto>? AlertRules { get; set; }
+}
+
+/// <summary>
+/// Alert rule DTO for threshold evaluation
+/// </summary>
+public class AlertRuleDto
+{
+    public string Name { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public string Expression { get; set; } = string.Empty;
+    public string Severity { get; set; } = "warning";
+    public bool IsEnabled { get; set; } = true;
 }
