@@ -82,6 +82,8 @@ const DataSourceDetailsEnhanced: React.FC = () => {
         if (data.Data.AdditionalConfiguration?.ConfigurationSettings) {
           try {
             const config = JSON.parse(data.Data.AdditionalConfiguration.ConfigurationSettings);
+            console.log('Parsed config:', config);
+            console.log('OutputConfig:', config.outputConfig);
             setParsedConfig(config);
           } catch (e) {
             console.warn('Failed to parse configuration:', e);
@@ -161,7 +163,46 @@ const DataSourceDetailsEnhanced: React.FC = () => {
   const schedule = parsedConfig?.schedule || {};
   const validationRules = parsedConfig?.validationRules || {};
   const notificationSettings = parsedConfig?.notificationSettings || {};
-  const outputConfig = parsedConfig?.outputConfig || null;
+
+  // Handle both camelCase and PascalCase (C# may serialize with PascalCase)
+  let outputConfig = parsedConfig?.outputConfig || parsedConfig?.OutputConfig || null;
+
+  // If we have PascalCase properties, convert to camelCase for consistency
+  if (outputConfig && outputConfig.DefaultOutputFormat) {
+    outputConfig = {
+      defaultOutputFormat: outputConfig.DefaultOutputFormat,
+      includeInvalidRecords: outputConfig.IncludeInvalidRecords,
+      destinations: (outputConfig.Destinations || []).map((dest: any) => ({
+        id: dest.Id,
+        name: dest.Name,
+        description: dest.Description,
+        type: dest.Type,
+        enabled: dest.Enabled,
+        outputFormat: dest.OutputFormat,
+        includeInvalidRecords: dest.IncludeInvalidRecords,
+        kafkaConfig: dest.KafkaConfig ? {
+          brokerServer: dest.KafkaConfig.BrokerServer,
+          topic: dest.KafkaConfig.Topic,
+          messageKey: dest.KafkaConfig.MessageKey,
+          headers: dest.KafkaConfig.Headers,
+          partitionKey: dest.KafkaConfig.PartitionKey,
+          securityProtocol: dest.KafkaConfig.SecurityProtocol,
+          saslMechanism: dest.KafkaConfig.SaslMechanism,
+          username: dest.KafkaConfig.Username,
+          password: dest.KafkaConfig.Password
+        } : undefined,
+        folderConfig: dest.FolderConfig ? {
+          path: dest.FolderConfig.Path,
+          fileNamePattern: dest.FolderConfig.FileNamePattern,
+          createSubfolders: dest.FolderConfig.CreateSubfolders,
+          subfolderPattern: dest.FolderConfig.SubfolderPattern,
+          overwriteExisting: dest.FolderConfig.OverwriteExisting
+        } : undefined,
+        sftpConfig: dest.SftpConfig,
+        httpConfig: dest.HttpConfig
+      }))
+    };
+  }
 
   return (
     <div>
@@ -221,12 +262,12 @@ const DataSourceDetailsEnhanced: React.FC = () => {
             <NotificationsDetailsTab notificationSettings={notificationSettings} />
           </TabPane>
 
-          <TabPane tab={<span><ExportOutlined /> פלט</span>} key="output">
-            <OutputDetailsTab outputConfig={outputConfig} />
-          </TabPane>
-
           <TabPane tab={<span><LineChartOutlined /> Metrics</span>} key="metrics">
             <RelatedMetricsTab dataSourceId={id!} />
+          </TabPane>
+
+          <TabPane tab={<span><ExportOutlined /> פלט</span>} key="output">
+            <OutputDetailsTab outputConfig={outputConfig} />
           </TabPane>
         </Tabs>
       </Card>
