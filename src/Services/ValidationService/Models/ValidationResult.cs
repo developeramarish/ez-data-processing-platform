@@ -1,3 +1,5 @@
+using Newtonsoft.Json.Linq;
+
 namespace DataProcessing.Validation.Models;
 
 /// <summary>
@@ -10,4 +12,9 @@ public class ValidationResult
     public int ValidRecords { get; set; }
     public int InvalidRecords { get; set; }
     public DateTime ValidatedAt { get; set; } = DateTime.UtcNow;
+
+    /// <summary>
+    /// List of valid JSON records for business metrics calculation and caching
+    /// </summary>
+    public List<JObject>? ValidRecordsData { get; set; }
 }
