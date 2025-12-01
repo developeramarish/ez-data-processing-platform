@@ -5,8 +5,9 @@
 
 using System.Diagnostics;
 using DataProcessing.Shared.Entities;
+using DataProcessing.Output.Models;
 
-namespace OutputService.Handlers;
+namespace DataProcessing.Output.Handlers;
 
 /// <summary>
 /// Handles output to local file system folders
@@ -75,9 +76,10 @@ public class FolderOutputHandler : IOutputHandler
             
             stopwatch.Stop();
             
-            return OutputResult.CreateSuccess(
+            return OutputResult.Successful(
                 destination.Name,
                 "folder",
+                content.Length,
                 stopwatch.Elapsed);
         }
         catch (Exception ex)
@@ -90,11 +92,10 @@ public class FolderOutputHandler : IOutputHandler
                 destination.Name,
                 destination.FolderConfig?.Path);
             
-            return OutputResult.CreateFailure(
+            return OutputResult.Failure(
                 destination.Name,
                 "folder",
-                ex.Message,
-                stopwatch.Elapsed);
+                ex.Message);
         }
     }
     

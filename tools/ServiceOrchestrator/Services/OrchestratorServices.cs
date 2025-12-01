@@ -19,7 +19,7 @@ public class ProcessManager
     {
         Console.WriteLine("🛑 Stopping all running services...\n");
         
-        var ports = new[] { 5001, 5002, 5003, 5004, 5005, 5006, 5007, 5008, 3000 };
+        var ports = new[] { 5001, 5002, 5003, 5004, 5005, 5006, 5007, 5008, 5009, 3000 };
         
         foreach (var port in ports)
         {
@@ -252,6 +252,7 @@ public class StartupSequencer
             new() { Name = "InvalidRecords", ProjectPath = Path.Combine(baseDir, "src", "Services", "InvalidRecordsService"), Port = 5006, HealthEndpoint = "http://localhost:5006/health" },
             new() { Name = "FileDiscovery", ProjectPath = Path.Combine(baseDir, "src", "Services", "FileDiscoveryService"), Port = 5007, HealthEndpoint = "http://localhost:5007/health" },
             new() { Name = "FileProcessor", ProjectPath = Path.Combine(baseDir, "src", "Services", "FileProcessorService"), Port = 5008, HealthEndpoint = "http://localhost:5008/health" },
+            new() { Name = "Output", ProjectPath = Path.Combine(baseDir, "src", "Services", "OutputService"), Port = 5009, HealthEndpoint = "http://localhost:5009/health" },
             new() { Name = "Frontend", ProjectPath = Path.Combine(baseDir, "src", "Frontend"), Port = 3000, HealthEndpoint = "http://localhost:3000", IsFrontend = true }
         };
     }

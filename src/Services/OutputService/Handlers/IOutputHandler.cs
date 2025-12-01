@@ -4,8 +4,9 @@
 // Date: November 12, 2025
 
 using DataProcessing.Shared.Entities;
+using DataProcessing.Output.Models;
 
-namespace OutputService.Handlers;
+namespace DataProcessing.Output.Handlers;
 
 /// <summary>
 /// Interface for output destination handlers
@@ -19,7 +20,7 @@ public interface IOutputHandler
     /// <param name="destinationType">Type: "kafka", "folder", "sftp", "http"</param>
     /// <returns>True if this handler supports the type</returns>
     bool CanHandle(string destinationType);
-    
+
     /// <summary>
     /// Write content to the specified destination
     /// </summary>
@@ -33,41 +34,4 @@ public interface IOutputHandler
         string content,
         string fileName,
         CancellationToken cancellationToken = default);
-}
-
-/// <summary>
-/// Result of output write operation
-/// </summary>
-public class OutputResult
-{
-    public string DestinationName { get; set; } = string.Empty;
-    public string DestinationType { get; set; } = string.Empty;
-    public bool Success { get; set; }
-    public string? ErrorMessage { get; set; }
-    public Dictionary<string, object> Metadata { get; set; } = new();
-    public DateTime CompletedAt { get; set; } = DateTime.UtcNow;
-    public TimeSpan Duration { get; set; }
-    
-    public static OutputResult CreateSuccess(string name, string type, TimeSpan duration)
-    {
-        return new OutputResult
-        {
-            DestinationName = name,
-            DestinationType = type,
-            Success = true,
-            Duration = duration
-        };
-    }
-    
-    public static OutputResult CreateFailure(string name, string type, string error, TimeSpan duration)
-    {
-        return new OutputResult
-        {
-            DestinationName = name,
-            DestinationType = type,
-            Success = false,
-            ErrorMessage = error,
-            Duration = duration
-        };
-    }
 }

@@ -7,8 +7,9 @@ using System.Diagnostics;
 using System.Text;
 using Confluent.Kafka;
 using DataProcessing.Shared.Entities;
+using DataProcessing.Output.Models;
 
-namespace OutputService.Handlers;
+namespace DataProcessing.Output.Handlers;
 
 /// <summary>
 /// Handles output to Kafka topics
@@ -90,9 +91,10 @@ public class KafkaOutputHandler : IOutputHandler
                     
                     stopwatch.Stop();
                     
-                    return OutputResult.CreateSuccess(
+                    return OutputResult.Successful(
                         destination.Name,
                         "kafka",
+                        message.Value.Length,
                         stopwatch.Elapsed);
                 }
                 catch (ProduceException<string, string> ex) when (attempt < 3)
@@ -121,11 +123,10 @@ public class KafkaOutputHandler : IOutputHandler
                 destination.Name,
                 destination.KafkaConfig?.Topic);
             
-            return OutputResult.CreateFailure(
+            return OutputResult.Failure(
                 destination.Name,
                 "kafka",
-                ex.Message,
-                stopwatch.Elapsed);
+                ex.Message);
         }
     }
     
