@@ -79,4 +79,61 @@ export interface ParsedConfig {
   schedule?: ScheduleConfig;
   validationRules?: ValidationRules;
   notificationSettings?: NotificationSettings;
+  outputConfig?: OutputConfiguration;
+}
+
+// Output Configuration Types (Task-26)
+export interface OutputConfiguration {
+  defaultOutputFormat?: 'original' | 'json' | 'csv' | 'xml';
+  includeInvalidRecords?: boolean;
+  destinations?: OutputDestination[];
+}
+
+export interface OutputDestination {
+  id: string;
+  name: string;
+  description?: string;
+  type: 'kafka' | 'folder' | 'sftp' | 'http';
+  enabled: boolean;
+  outputFormat?: 'original' | 'json' | 'csv' | 'xml' | null;
+  includeInvalidRecords?: boolean | null;
+  kafkaConfig?: KafkaOutputConfig;
+  folderConfig?: FolderOutputConfig;
+  sftpConfig?: SftpOutputConfig;
+  httpConfig?: HttpOutputConfig;
+}
+
+export interface KafkaOutputConfig {
+  brokerServer?: string;
+  topic: string;
+  messageKey?: string;
+  headers?: Record<string, string>;
+  // Authentication
+  securityProtocol?: 'PLAINTEXT' | 'SASL_SSL' | 'SASL_PLAINTEXT';
+  saslMechanism?: 'PLAIN' | 'SCRAM-SHA-256' | 'SCRAM-SHA-512';
+  username?: string;
+  password?: string;
+}
+
+export interface FolderOutputConfig {
+  path: string;
+  fileNamePattern?: string;
+  createSubfolders?: boolean;
+}
+
+export interface SftpOutputConfig {
+  host: string;
+  port: number;
+  username: string;
+  password?: string;
+  path: string;
+  fileNamePattern?: string;
+}
+
+export interface HttpOutputConfig {
+  url: string;
+  method: 'POST' | 'PUT';
+  headers?: Record<string, string>;
+  authType?: 'none' | 'basic' | 'bearer';
+  authToken?: string;
 }

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Typography, Card, Form, Button, Space, Alert, Spin, message, Divider, Tabs } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeftOutlined, SaveOutlined, FileOutlined, ApiOutlined, ClockCircleOutlined, SafetyOutlined, BellOutlined, FileTextOutlined } from '@ant-design/icons';
+import { ArrowLeftOutlined, SaveOutlined, FileOutlined, ApiOutlined, ClockCircleOutlined, SafetyOutlined, BellOutlined, FileTextOutlined, ExportOutlined } from '@ant-design/icons';
 import { type JSONSchema } from 'jsonjoy-builder';
 
 // Import tab components
@@ -13,14 +13,15 @@ import { SchemaTab } from '../../components/datasource/tabs/SchemaTab';
 import { ScheduleTab } from '../../components/datasource/tabs/ScheduleTab';
 import { ValidationTab } from '../../components/datasource/tabs/ValidationTab';
 import { NotificationsTab } from '../../components/datasource/tabs/NotificationsTab';
+import { OutputTab } from '../../components/datasource/tabs/OutputTab';
 import CronHelperDialog from '../../components/datasource/CronHelperDialog';
+import type { OutputConfiguration } from '../../components/datasource/shared/types';
 
 // Import shared utilities
 import { buildConnectionString, frequencyToCron } from '../../components/datasource/shared/helpers';
 import { DEFAULT_FORM_VALUES } from '../../components/datasource/shared/constants';
 
 const { Title, Paragraph } = Typography;
-const { TabPane } = Tabs;
 
 const DataSourceFormEnhanced: React.FC = () => {
   const { t } = useTranslation();
@@ -35,6 +36,11 @@ const DataSourceFormEnhanced: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>('basic');
   const [cronHelperVisible, setCronHelperVisible] = useState<boolean>(false);
   const [jsonSchema, setJsonSchema] = useState<JSONSchema>({});
+  const [outputConfig, setOutputConfig] = useState<OutputConfiguration>({
+    defaultOutputFormat: 'original',
+    includeInvalidRecords: false,
+    destinations: []
+  });
 
   // Watch form fields
   const connectionType = Form.useWatch('connectionType', form);
@@ -122,7 +128,8 @@ const DataSourceFormEnhanced: React.FC = () => {
             onSuccess: values.notifyOnSuccess ?? false,
             onFailure: values.notifyOnFailure ?? true,
             recipients: values.notificationRecipients ? values.notificationRecipients.split(',').map((r: string) => r.trim()) : []
-          }
+          },
+          outputConfig: outputConfig
         }),
         fileFormat: values.fileType,
         retentionDays: values.retentionDays
@@ -181,48 +188,70 @@ const DataSourceFormEnhanced: React.FC = () => {
       <Card>
         <Spin spinning={loading}>
           <Form form={form} layout="vertical" onFinish={handleSubmit} preserve={true} initialValues={DEFAULT_FORM_VALUES}>
-            <Tabs activeKey={activeTab} onChange={setActiveTab} type="card" destroyInactiveTabPane={false}>
-              <TabPane tab={<span><FileOutlined /> מידע בסיסי</span>} key="basic">
-                <BasicInfoTab form={form} t={t} />
-              </TabPane>
-
-              <TabPane tab={<span><ApiOutlined /> הגדרות חיבור</span>} key="connection">
-                <ConnectionTab 
-                  form={form} 
-                  t={t} 
-                  connectionType={connectionType}
-                  testingConnection={testingConnection}
-                  connectionTestResult={connectionTestResult}
-                  onTestConnection={handleTestConnection}
-                />
-              </TabPane>
-
-              <TabPane tab={<span><FileOutlined /> הגדרות קובץ</span>} key="file">
-                <FileSettingsTab form={form} t={t} fileType={fileType} />
-              </TabPane>
-
-              <TabPane tab={<span><FileTextOutlined /> הגדרת Schema</span>} key="schema">
-                <SchemaTab jsonSchema={jsonSchema} onChange={handleSchemaChange} />
-              </TabPane>
-
-              <TabPane tab={<span><ClockCircleOutlined /> תזמון</span>} key="schedule">
-                <ScheduleTab 
-                  form={form} 
-                  t={t} 
-                  scheduleFrequency={scheduleFrequency}
-                  cronExpression={cronExpression}
-                  onOpenCronHelper={() => setCronHelperVisible(true)}
-                />
-              </TabPane>
-
-              <TabPane tab={<span><SafetyOutlined /> כללי אימות</span>} key="validation">
-                <ValidationTab form={form} t={t} />
-              </TabPane>
-
-              <TabPane tab={<span><BellOutlined /> התראות</span>} key="notifications">
-                <NotificationsTab form={form} t={t} />
-              </TabPane>
-            </Tabs>
+            <Tabs
+              activeKey={activeTab}
+              onChange={setActiveTab}
+              type="card"
+              items={[
+                {
+                  key: 'basic',
+                  label: <span><FileOutlined /> מידע בסיסי</span>,
+                  children: <BasicInfoTab form={form} t={t} />
+                },
+                {
+                  key: 'connection',
+                  label: <span><ApiOutlined /> הגדרות חיבור</span>,
+                  children: (
+                    <ConnectionTab
+                      form={form}
+                      t={t}
+                      connectionType={connectionType}
+                      testingConnection={testingConnection}
+                      connectionTestResult={connectionTestResult}
+                      onTestConnection={handleTestConnection}
+                    />
+                  )
+                },
+                {
+                  key: 'file',
+                  label: <span><FileOutlined /> הגדרות קובץ</span>,
+                  children: <FileSettingsTab form={form} t={t} fileType={fileType} />
+                },
+                {
+                  key: 'schema',
+                  label: <span><FileTextOutlined /> הגדרת Schema</span>,
+                  children: <SchemaTab jsonSchema={jsonSchema} onChange={handleSchemaChange} />
+                },
+                {
+                  key: 'schedule',
+                  label: <span><ClockCircleOutlined /> תזמון</span>,
+                  children: (
+                    <ScheduleTab
+                      form={form}
+                      t={t}
+                      scheduleFrequency={scheduleFrequency}
+                      cronExpression={cronExpression}
+                      onOpenCronHelper={() => setCronHelperVisible(true)}
+                    />
+                  )
+                },
+                {
+                  key: 'validation',
+                  label: <span><SafetyOutlined /> כללי אימות</span>,
+                  children: <ValidationTab form={form} t={t} />
+                },
+                {
+                  key: 'notifications',
+                  label: <span><BellOutlined /> התראות</span>,
+                  children: <NotificationsTab form={form} t={t} />
+                },
+                {
+                  key: 'output',
+                  label: <span><ExportOutlined /> פלט</span>,
+                  children: <OutputTab output={outputConfig} onChange={setOutputConfig} />
+                }
+              ]}
+            />
 
             <Divider />
             <Form.Item style={{ marginTop: 24, marginBottom: 0 }}>

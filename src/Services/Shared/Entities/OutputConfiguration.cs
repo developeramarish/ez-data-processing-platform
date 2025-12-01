@@ -45,7 +45,12 @@ public class OutputDestination
     /// User-friendly name (e.g., "Real-Time Analytics", "Daily Archive")
     /// </summary>
     public string Name { get; set; } = string.Empty;
-    
+
+    /// <summary>
+    /// Description or notes about this destination
+    /// </summary>
+    public string? Description { get; set; }
+
     /// <summary>
     /// Destination type: "kafka", "folder", "sftp", "http"
     /// Determines which config object is used
@@ -99,28 +104,64 @@ public class OutputDestination
 public class KafkaOutputConfig
 {
     /// <summary>
+    /// Kafka broker server address (optional)
+    /// If null, uses the default broker from configuration
+    /// Example: "localhost:9092" or "broker1:9092,broker2:9092"
+    /// </summary>
+    public string? BrokerServer { get; set; }
+
+    /// <summary>
     /// Kafka topic name (required)
     /// </summary>
     public string Topic { get; set; } = string.Empty;
-    
+
     /// <summary>
     /// Kafka message key pattern (optional)
     /// Supports placeholders: {filename}, {datasource}, {timestamp}, {recordId}
     /// Example: "{datasource}_{filename}"
     /// </summary>
     public string? MessageKey { get; set; }
-    
+
     /// <summary>
     /// Custom Kafka headers (optional)
     /// Example: { "source": "banking-system", "environment": "production" }
     /// </summary>
     public Dictionary<string, string>? Headers { get; set; }
-    
+
     /// <summary>
     /// Kafka partition key (optional)
     /// If null, Kafka will use default partitioning
     /// </summary>
     public int? PartitionKey { get; set; }
+
+    // Authentication Configuration
+
+    /// <summary>
+    /// Security protocol for Kafka connection
+    /// Values: "PLAINTEXT", "SASL_SSL", "SASL_PLAINTEXT"
+    /// Default: PLAINTEXT (no encryption)
+    /// </summary>
+    public string? SecurityProtocol { get; set; }
+
+    /// <summary>
+    /// SASL mechanism for authentication
+    /// Values: "PLAIN", "SCRAM-SHA-256", "SCRAM-SHA-512"
+    /// Only used when SecurityProtocol is SASL_*
+    /// </summary>
+    public string? SaslMechanism { get; set; }
+
+    /// <summary>
+    /// Username for SASL authentication
+    /// Required when using SASL security protocol
+    /// </summary>
+    public string? Username { get; set; }
+
+    /// <summary>
+    /// Password for SASL authentication
+    /// Required when using SASL security protocol
+    /// Note: Consider encryption at rest for sensitive data
+    /// </summary>
+    public string? Password { get; set; }
 }
 
 /// <summary>

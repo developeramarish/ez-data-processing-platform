@@ -4,11 +4,21 @@
 // Date: November 12, 2025
 
 import React, { useState } from 'react';
-import { Card, Button, Table, Space, Switch, Select, Form, Typography } from 'antd';
+import { Card, Button, Table, Space, Switch, Select, Form, Typography, Alert } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, CloudServerOutlined, FolderOutlined } from '@ant-design/icons';
-import type { OutputConfiguration, OutputDestination } from '../../types/datasource';
+import type { OutputConfiguration, OutputDestination } from '../shared/types';
+import { DestinationEditorModal } from '../modals/DestinationEditorModal';
 
 const { Text } = Typography;
+
+// Simple UUID generator for browser compatibility
+const generateUUID = () => {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+};
 
 interface OutputTabProps {
   output?: OutputConfiguration;
@@ -23,7 +33,7 @@ export const OutputTab: React.FC<OutputTabProps> = ({ output, onChange }) => {
 
   const handleAddDestination = () => {
     setEditingDestination({
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       name: '',
       type: 'kafka',
       enabled: true,
@@ -83,7 +93,16 @@ export const OutputTab: React.FC<OutputTabProps> = ({ output, onChange }) => {
       title: 'שם',
       dataIndex: 'name',
       key: 'name',
-      width: 200
+      width: 150
+    },
+    {
+      title: 'תיאור',
+      dataIndex: 'description',
+      key: 'description',
+      width: 200,
+      render: (description: string | undefined) => (
+        <Text type="secondary">{description || '-'}</Text>
+      )
     },
     {
       title: 'תצורה',
@@ -142,10 +161,21 @@ export const OutputTab: React.FC<OutputTabProps> = ({ output, onChange }) => {
 
   return (
     <Space direction="vertical" style={{ width: '100%' }} size="large">
+      <Alert
+        message="הגדרות פלט ויעדים"
+        description="הגדר כיצד הנתונים המעובדים יישמרו ולאן יועברו. ניתן להגדיר מספר יעדי פלט במקביל."
+        type="info"
+        showIcon
+        style={{ marginBottom: 16 }}
+      />
+
       {/* Global Settings */}
       <Card title="הגדרות ברירת מחדל">
         <Form layout="vertical">
-          <Form.Item label="פורמט פלט ברירת מחדל">
+          <Form.Item
+            label="פורמט פלט ברירת מחדל"
+            tooltip="פורמט ברירת המחדל לכל יעדי הפלט. ניתן לדרוס בכל יעד בנפרד."
+          >
             <Select
               value={output?.defaultOutputFormat || 'original'}
               onChange={(value) => onChange({ ...output, defaultOutputFormat: value })}
@@ -158,7 +188,10 @@ export const OutputTab: React.FC<OutputTabProps> = ({ output, onChange }) => {
             </Select>
           </Form.Item>
 
-          <Form.Item>
+          <Form.Item
+            label="כולל רשומות שגויות"
+            tooltip="האם לכלול רשומות שלא עברו אימות בפלט. ניתן לדרוס בכל יעד בנפרד."
+          >
             <Space>
               <Switch
                 checked={output?.includeInvalidRecords}
@@ -190,11 +223,27 @@ export const OutputTab: React.FC<OutputTabProps> = ({ output, onChange }) => {
             }}
             pagination={false}
           />
+
+          <Alert
+            message="אודות יעדי פלט"
+            description={
+              <ul style={{ margin: 0, paddingRight: 20 }}>
+                <li><strong>Kafka:</strong> שליחת נתונים ל-Message Queue לעיבוד Real-Time</li>
+                <li><strong>Folder:</strong> שמירת קבצים בתיקייה (מקומית או רשת)</li>
+                <li><strong>SFTP/HTTP:</strong> יעדים נוספים יתווספו בגרסאות עתידיות</li>
+                <li><strong>מרובה:</strong> ניתן להגדיר מספר יעדים במקביל עם הגדרות שונות</li>
+                <li><strong>דריסה:</strong> כל יעד יכול לדרוס את הגדרות ברירת המחדל</li>
+              </ul>
+            }
+            type="info"
+            showIcon
+            style={{ marginTop: 16 }}
+          />
         </Space>
       </Card>
 
-      {/* TODO: Add DestinationEditorModal component */}
-      {/* <DestinationEditorModal
+      {/* Destination Editor Modal */}
+      <DestinationEditorModal
         visible={showEditor}
         destination={editingDestination}
         onSave={handleSaveDestination}
@@ -202,7 +251,7 @@ export const OutputTab: React.FC<OutputTabProps> = ({ output, onChange }) => {
           setShowEditor(false);
           setEditingDestination(null);
         }}
-      /> */}
+      />
     </Space>
   );
 };
