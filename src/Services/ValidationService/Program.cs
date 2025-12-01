@@ -1,4 +1,5 @@
 using DataProcessing.Shared.Configuration;
+using DataProcessing.Shared.Messages;
 using DataProcessing.Shared.Middleware;
 using DataProcessing.Shared.Monitoring;
 using DataProcessing.Validation.Consumers;
@@ -60,7 +61,10 @@ builder.Services.AddSingleton<IHazelcastClient>(sp =>
 builder.Services.AddMassTransit(x =>
 {
     x.AddConsumer<ValidationRequestEventConsumer>();
-    
+
+    // Register request client for querying MetricsConfigurationService
+    x.AddRequestClient<GetMetricsConfigurationRequest>();
+
     // Use in-memory bus for testing/development
     x.UsingInMemory((context, cfg) =>
     {

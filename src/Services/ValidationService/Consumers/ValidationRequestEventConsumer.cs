@@ -27,6 +27,7 @@ public class ValidationRequestEventConsumer : DataProcessingConsumerBase<Validat
     private readonly ValidationMetrics _validationMetrics;
     private readonly DataMetricsCalculator _metricsCalculator;
     private readonly IConfiguration _configuration;
+    private readonly IRequestClient<GetMetricsConfigurationRequest> _metricsRequestClient;
 
     public ValidationRequestEventConsumer(
         ILogger<ValidationRequestEventConsumer> logger,
@@ -37,7 +38,8 @@ public class ValidationRequestEventConsumer : DataProcessingConsumerBase<Validat
         IHazelcastClient hazelcastClient,
         ValidationMetrics validationMetrics,
         DataMetricsCalculator metricsCalculator,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IRequestClient<GetMetricsConfigurationRequest> metricsRequestClient)
         : base(logger)
     {
         _validationService = validationService;
@@ -48,6 +50,7 @@ public class ValidationRequestEventConsumer : DataProcessingConsumerBase<Validat
         _validationMetrics = validationMetrics;
         _metricsCalculator = metricsCalculator;
         _configuration = configuration;
+        _metricsRequestClient = metricsRequestClient;
     }
 
     protected override async Task ProcessMessage(ConsumeContext<ValidationRequestEvent> context)
@@ -249,9 +252,8 @@ public class ValidationRequestEventConsumer : DataProcessingConsumerBase<Validat
     {
         try
         {
-            // Get metric definitions (for now, using hardcoded examples)
-            // TODO: Query MetricConfiguration service for actual metric definitions
-            var metricDefinitions = GetDefaultMetricDefinitions();
+            // Get metric definitions from MetricsConfigurationService via MassTransit
+            var metricDefinitions = await GetMetricDefinitionsAsync(dataSourceId, correlationId);
 
             // Calculate metrics
             var calculatedMetrics = _metricsCalculator.CalculateMetrics(
@@ -334,37 +336,106 @@ public class ValidationRequestEventConsumer : DataProcessingConsumerBase<Validat
     }
 
     /// <summary>
-    /// Returns default metric definitions
-    /// TODO: Replace with MetricConfiguration service query
+    /// Retrieves metric definitions from MetricsConfigurationService via MassTransit Request/Response
+    /// Queries both global metrics (apply to all datasources) and datasource-specific metrics
     /// </summary>
-    private List<MetricDefinition> GetDefaultMetricDefinitions()
+    private async Task<List<MetricDefinition>> GetMetricDefinitionsAsync(
+        string dataSourceId,
+        string correlationId)
     {
-        return new List<MetricDefinition>
+        try
         {
-            new MetricDefinition
+            Logger.LogDebug(
+                "[{CorrelationId}] Requesting metric configurations from MetricsConfigurationService for DataSourceId: {DataSourceId}",
+                correlationId, dataSourceId);
+
+            // Send request to MetricsConfigurationService via MassTransit
+            var response = await _metricsRequestClient.GetResponse<GetMetricsConfigurationResponse>(
+                new GetMetricsConfigurationRequest
+                {
+                    CorrelationId = correlationId,
+                    PublishedBy = "ValidationService",
+                    Timestamp = DateTime.UtcNow,
+                    MessageVersion = 1,
+                    DataSourceId = dataSourceId,
+                    IncludeGlobal = true,     // Include global metrics that apply to all datasources
+                    OnlyActive = true         // Only retrieve active metrics (Status = 1)
+                },
+                timeout: RequestTimeout.After(s: 10));
+
+            if (!response.Message.Success)
             {
-                MetricName = "total_price",
-                JsonPath = "$..price",
-                AggregationType = "sum",
-                Unit = "currency",
-                Description = "Sum of all price values"
-            },
-            new MetricDefinition
-            {
-                MetricName = "item_count",
-                JsonPath = "$..items",
-                AggregationType = "count",
-                Unit = "items",
-                Description = "Total number of items"
-            },
-            new MetricDefinition
-            {
-                MetricName = "avg_price",
-                JsonPath = "$..price",
-                AggregationType = "avg",
-                Unit = "currency",
-                Description = "Average price"
+                Logger.LogWarning(
+                    "[{CorrelationId}] Failed to retrieve metrics from MetricsConfigurationService: {ErrorMessage}",
+                    correlationId, response.Message.ErrorMessage);
+
+                return new List<MetricDefinition>();
             }
+
+            var metrics = response.Message.Metrics;
+
+            Logger.LogInformation(
+                "[{CorrelationId}] Retrieved {Count} metric configurations ({GlobalCount} global, {DatasourceCount} datasource-specific)",
+                correlationId,
+                metrics.Count,
+                metrics.Count(m => m.Scope == "global"),
+                metrics.Count(m => m.Scope == "datasource-specific"));
+
+            // Convert DTOs to MetricDefinition
+            return metrics.Select(m => new MetricDefinition
+            {
+                MetricName = m.Name,
+                JsonPath = m.FieldPath,  // ✅ From database, not hardcoded!
+                AggregationType = DetermineAggregationType(m.PrometheusType),
+                Unit = DetermineUnit(m.PrometheusType),
+                Description = m.Description
+            }).ToList();
+        }
+        catch (RequestTimeoutException ex)
+        {
+            Logger.LogError(ex,
+                "[{CorrelationId}] Timeout while requesting metrics from MetricsConfigurationService",
+                correlationId);
+
+            return new List<MetricDefinition>();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex,
+                "[{CorrelationId}] Failed to retrieve metrics from MetricsConfigurationService: {ErrorMessage}",
+                correlationId, ex.Message);
+
+            return new List<MetricDefinition>();
+        }
+    }
+
+    /// <summary>
+    /// Maps Prometheus metric type to aggregation type for DataMetricsCalculator
+    /// </summary>
+    private string DetermineAggregationType(string prometheusType)
+    {
+        return prometheusType.ToLowerInvariant() switch
+        {
+            "counter" => "sum",      // Counters are cumulative, use sum
+            "gauge" => "avg",        // Gauges represent point-in-time values, use average
+            "histogram" => "sum",    // Histograms aggregate observations, use sum
+            "summary" => "avg",      // Summaries calculate quantiles, use average
+            _ => "sum"               // Default to sum
+        };
+    }
+
+    /// <summary>
+    /// Determines unit based on Prometheus metric type
+    /// </summary>
+    private string DetermineUnit(string prometheusType)
+    {
+        return prometheusType.ToLowerInvariant() switch
+        {
+            "counter" => "count",
+            "gauge" => "value",
+            "histogram" => "distribution",
+            "summary" => "quantile",
+            _ => "value"
         };
     }
 }

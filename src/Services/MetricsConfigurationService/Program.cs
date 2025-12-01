@@ -1,3 +1,5 @@
+using MassTransit;
+using MetricsConfigurationService.Consumers;
 using MetricsConfigurationService.Repositories;
 using MetricsConfigurationService.Services.Alerts;
 using MetricsConfigurationService.Services.Collection;
@@ -44,6 +46,19 @@ builder.Services.AddScoped<IAlertEvaluationService, AlertEvaluationService>();
 
 // Register background metrics collection service
 builder.Services.AddHostedService<MetricsCollectionBackgroundService>();
+
+// Configure MassTransit with in-memory bus for Request/Response pattern
+builder.Services.AddMassTransit(x =>
+{
+    // Register consumer for GetMetricsConfigurationRequest
+    x.AddConsumer<GetMetricsConfigurationConsumer>();
+
+    // Use in-memory bus for testing/development
+    x.UsingInMemory((context, cfg) =>
+    {
+        cfg.ConfigureEndpoints(context);
+    });
+});
 
 var app = builder.Build();
 
