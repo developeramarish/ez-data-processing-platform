@@ -10,11 +10,13 @@
 
 ## Executive Summary
 
-Fixed two critical UI issues related to multi-destination output configuration display:
+Fixed four critical UI issues related to multi-destination output configuration display:
 1. **Issue 1**: Multi-destination output data not displaying in DataSource details view mode
-2. **Issue 2**: Output tab completely missing from DataSource details view mode (visible only in edit mode)
+2. **Issue 2**: Output tab completely missing from DataSource details view mode
+3. **Issue 3**: Output tab positioned incorrectly (before Metrics instead of after - inconsistent with edit mode)
+4. **Issue 4**: Multi-destination output data not displaying in DataSource edit mode (same PascalCase issue)
 
-Both issues prevented users from viewing configured output destinations when viewing datasource details, even though the data was correctly stored in MongoDB and visible in edit mode.
+All issues stemmed from PascalCase/camelCase mismatch between C# backend JSON serialization and TypeScript frontend expectations, plus missing component integration and incorrect tab ordering.
 
 ---
 
@@ -45,6 +47,32 @@ DataSourceDetailsEnhanced.tsx only had 8 tabs (Basic Info, Connection, File, Sch
 
 **Code Location:**
 `src/Frontend/src/pages/datasources/DataSourceDetailsEnhanced.tsx:193-225`
+
+### Issue 3: Output Tab Positioned Incorrectly
+
+**Problem:**
+- Output tab was positioned BEFORE Metrics tab in view mode
+- Output tab was positioned AFTER Metrics tab in edit mode
+- Inconsistent user experience between view and edit modes
+
+**Root Cause:**
+Tab order in DataSourceDetailsEnhanced.tsx did not match DataSourceEditEnhanced.tsx tab order.
+
+**Code Location:**
+`src/Frontend/src/pages/datasources/DataSourceDetailsEnhanced.tsx:220-230`
+
+### Issue 4: Output Data Not Displaying in Edit Mode
+
+**Problem:**
+- After fixing view mode, output data displayed correctly there
+- BUT output data still not displaying in edit mode
+- Same PascalCase/camelCase mismatch issue
+
+**Root Cause:**
+DataSourceEditEnhanced.tsx was checking for `configSettings.outputConfig` (camelCase) but C# JSON serialization used `OutputConfig` (PascalCase). No conversion logic was applied.
+
+**Code Location:**
+`src/Frontend/src/pages/datasources/DataSourceEditEnhanced.tsx:166-169`
 
 ---
 
@@ -185,17 +213,41 @@ const outputConfig = parsedConfig?.outputConfig || null;  // NEW
 ## Files Modified
 
 ### Frontend Files
+
 1. **src/Frontend/src/components/datasource/details/AllDetailsTabsExport.tsx**
    - Added OutputConfiguration and OutputDestination type imports
    - Added new icon imports (CloudServerOutlined, FolderOutlined, CheckCircleOutlined, CloseCircleOutlined)
    - Created OutputDetailsTab component (lines 183-329)
    - Displays output configuration in read-only mode
 
-2. **src/Frontend/src/pages/datasources/DataSourceDetailsEnhanced.tsx**
-   - Added OutputDetailsTab import (line 15)
-   - Added ExportOutlined icon import (line 5)
-   - Added outputConfig extraction from parsedConfig (line 164)
-   - Added Output tab to Tabs component (lines 224-226)
+2. **src/Frontend/src/pages/datasources/DataSourceDetailsEnhanced.tsx** (3 commits)
+   - **Initial fix:**
+     - Added OutputDetailsTab import (line 15)
+     - Added ExportOutlined icon import (line 5)
+     - Added outputConfig extraction from parsedConfig (line 164)
+     - Added Output tab to Tabs component (lines 224-226)
+   - **Tab position fix (commit cbf1c3a):**
+     - Moved Output tab AFTER Metrics tab (was before)
+     - Now matches edit mode tab order
+   - **PascalCase handling (commit cbf1c3a):**
+     - Added dual property check: `outputConfig || OutputConfig`
+     - Added automatic PascalCase → camelCase conversion (lines 167-205)
+     - Converts all OutputConfiguration and nested properties
+     - Added console.log debugging (lines 85-86)
+
+3. **src/Frontend/src/pages/datasources/DataSourceEditEnhanced.tsx** (commit 86695b1)
+   - Added PascalCase → camelCase conversion for edit mode
+   - Dual property check: `configSettings.outputConfig || configSettings.OutputConfig`
+   - Converts all OutputConfiguration properties (lines 166-208)
+   - Converts OutputDestination, KafkaConfig, FolderConfig properties
+   - Ensures existing output destinations load correctly in edit mode
+
+### Documentation Files
+
+4. **docs/planning/TASK-27-UI-OUTPUT-FIXES-COMPLETE.md**
+   - Comprehensive documentation of all issues and fixes
+   - Code snippets and implementation details
+   - Testing instructions and expected results
 
 ---
 
@@ -392,26 +444,66 @@ DataSourceDetailsEnhanced (View Mode)
 
 ---
 
+## Git Commits
+
+All fixes were committed and pushed in three sequential commits:
+
+### Commit 1: 4fea635 (Initial Fix)
+**Message:** Task-27: Fix Multi-Destination Output Display in DataSource View Mode
+**Changes:**
+- Created OutputDetailsTab component
+- Added Output tab to DataSourceDetailsEnhanced
+- Added outputConfig extraction
+- Created comprehensive documentation file
+
+### Commit 2: cbf1c3a (Tab Position & PascalCase Fix - View Mode)
+**Message:** Task-27-FIX: Output Tab Position & PascalCase Data Handling
+**Changes:**
+- Moved Output tab to be AFTER Metrics tab (correct position)
+- Added PascalCase → camelCase conversion for view mode
+- Added dual property check and automatic conversion
+- Added console.log debugging
+
+### Commit 3: 86695b1 (PascalCase Fix - Edit Mode)
+**Message:** Task-27-FIX: Add PascalCase Handling to Edit Mode Output Tab
+**Changes:**
+- Applied same PascalCase conversion logic to edit mode
+- Edit mode now displays output destinations correctly
+- Consistent behavior across view and edit modes
+
+---
+
 ## Conclusion
 
-Successfully fixed both UI issues that prevented users from viewing multi-destination output configuration in datasource details view mode. The Output tab is now consistently available across all three modes (create, edit, view) with appropriate read-only display in view mode.
+Successfully fixed **four critical UI issues** that prevented users from viewing and editing multi-destination output configuration:
+1. Output tab missing in view mode
+2. Output data not displaying in view mode (PascalCase issue)
+3. Output tab positioned incorrectly (before Metrics instead of after)
+4. Output data not displaying in edit mode (PascalCase issue)
+
+The Output tab is now consistently available across all three modes (create, edit, view) with proper data display and correct positioning.
 
 **Key Achievements:**
 - ✅ OutputDetailsTab component created with comprehensive display features
-- ✅ DataSourceDetailsEnhanced updated to extract and display outputConfig
-- ✅ Output tab now visible in view mode between Notifications and Metrics
+- ✅ DataSourceDetailsEnhanced updated with PascalCase handling and correct tab position
+- ✅ DataSourceEditEnhanced updated with PascalCase handling
+- ✅ Output tab positioned correctly (last tab, after Metrics) in both view and edit modes
 - ✅ Consistent user experience across create/edit/view modes
-- ✅ Full multi-destination configuration visible to users
+- ✅ Full multi-destination configuration visible and editable
 - ✅ Frontend compiled successfully with no errors
+- ✅ All changes committed and pushed (3 commits)
 
 **Impact:**
 - Users can now view configured output destinations without entering edit mode
-- Multi-destination setup is transparent and visible
+- Users can edit existing output destinations in edit mode
+- Multi-destination setup is transparent and visible in all modes
 - Consistent UI/UX across all datasource management pages
+- Tab positioning matches across all modes
+- Robust handling of C# PascalCase JSON serialization
 - Improved user confidence in system configuration
 
 ---
 
 **Status:** ✅ COMPLETE
-**Approval Status:** ⏳ Pending User Approval
-**Next Steps:** User manual testing at http://localhost:3000/datasources
+**Approval Status:** ✅ APPROVED (User confirmed "yes now it is correct")
+**Deployment:** Ready for production
