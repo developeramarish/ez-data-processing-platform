@@ -163,9 +163,48 @@ const DataSourceEditEnhanced: React.FC = () => {
           notificationRecipients: notificationSettings.recipients?.join(', ') || '',
         });
 
-        // Initialize output config if it exists
-        if (configSettings.outputConfig) {
-          setOutputConfig(configSettings.outputConfig);
+        // Initialize output config if it exists (handle both camelCase and PascalCase)
+        let outputConfigData = configSettings.outputConfig || configSettings.OutputConfig;
+
+        // If we have PascalCase properties, convert to camelCase
+        if (outputConfigData && outputConfigData.DefaultOutputFormat) {
+          outputConfigData = {
+            defaultOutputFormat: outputConfigData.DefaultOutputFormat,
+            includeInvalidRecords: outputConfigData.IncludeInvalidRecords,
+            destinations: (outputConfigData.Destinations || []).map((dest: any) => ({
+              id: dest.Id,
+              name: dest.Name,
+              description: dest.Description,
+              type: dest.Type,
+              enabled: dest.Enabled,
+              outputFormat: dest.OutputFormat,
+              includeInvalidRecords: dest.IncludeInvalidRecords,
+              kafkaConfig: dest.KafkaConfig ? {
+                brokerServer: dest.KafkaConfig.BrokerServer,
+                topic: dest.KafkaConfig.Topic,
+                messageKey: dest.KafkaConfig.MessageKey,
+                headers: dest.KafkaConfig.Headers,
+                partitionKey: dest.KafkaConfig.PartitionKey,
+                securityProtocol: dest.KafkaConfig.SecurityProtocol,
+                saslMechanism: dest.KafkaConfig.SaslMechanism,
+                username: dest.KafkaConfig.Username,
+                password: dest.KafkaConfig.Password
+              } : undefined,
+              folderConfig: dest.FolderConfig ? {
+                path: dest.FolderConfig.Path,
+                fileNamePattern: dest.FolderConfig.FileNamePattern,
+                createSubfolders: dest.FolderConfig.CreateSubfolders,
+                subfolderPattern: dest.FolderConfig.SubfolderPattern,
+                overwriteExisting: dest.FolderConfig.OverwriteExisting
+              } : undefined,
+              sftpConfig: dest.SftpConfig,
+              httpConfig: dest.HttpConfig
+            }))
+          };
+        }
+
+        if (outputConfigData) {
+          setOutputConfig(outputConfigData);
         }
       } else {
         throw new Error(data.Error?.Message || 'Failed to fetch data source');
