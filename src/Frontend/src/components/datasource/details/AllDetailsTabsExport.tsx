@@ -3,10 +3,10 @@
 // could be extracted to individual files later if needed
 
 import React from 'react';
-import { Descriptions, Tag, Typography, Alert, Space } from 'antd';
-import { DataSource } from '../shared/types';
+import { Descriptions, Tag, Typography, Alert, Space, Table, Card } from 'antd';
+import { DataSource, OutputConfiguration, OutputDestination } from '../shared/types';
 import { humanizeCron, getDelimiterLabel } from '../shared/helpers';
-import { ClockCircleOutlined } from '@ant-design/icons';
+import { ClockCircleOutlined, CloudServerOutlined, FolderOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
 
 const { Text } = Typography;
 
@@ -179,3 +179,151 @@ export const NotificationsDetailsTab: React.FC<{ notificationSettings: any }> = 
     </Descriptions.Item>
   </Descriptions>
 );
+
+// Output Details Tab
+export const OutputDetailsTab: React.FC<{ outputConfig: OutputConfiguration | null }> = ({ outputConfig }) => {
+  if (!outputConfig || !outputConfig.destinations || outputConfig.destinations.length === 0) {
+    return (
+      <Alert
+        message="אין הגדרות פלט"
+        description="לא הוגדרו יעדי פלט למקור נתונים זה. ניתן להוסיף יעדי פלט בעריכת מקור הנתונים."
+        type="info"
+        showIcon
+      />
+    );
+  }
+
+  const columns = [
+    {
+      title: 'סוג',
+      dataIndex: 'type',
+      key: 'type',
+      width: 120,
+      render: (type: string) => (
+        <Space>
+          {type === 'kafka' && <CloudServerOutlined style={{ color: '#1890ff' }} />}
+          {type === 'folder' && <FolderOutlined style={{ color: '#faad14' }} />}
+          <Text>{type.toUpperCase()}</Text>
+        </Space>
+      )
+    },
+    {
+      title: 'שם',
+      dataIndex: 'name',
+      key: 'name',
+      width: 150
+    },
+    {
+      title: 'תיאור',
+      dataIndex: 'description',
+      key: 'description',
+      width: 200,
+      render: (description: string | undefined) => (
+        <Text type="secondary">{description || '-'}</Text>
+      )
+    },
+    {
+      title: 'תצורה',
+      key: 'config',
+      render: (_: any, dest: OutputDestination) => {
+        if (dest.type === 'kafka' && dest.kafkaConfig) {
+          return (
+            <Space direction="vertical" size="small">
+              <Text type="secondary">Topic: <Text code>{dest.kafkaConfig.topic}</Text></Text>
+              {dest.kafkaConfig.brokerServer && (
+                <Text type="secondary">Broker: <Text code>{dest.kafkaConfig.brokerServer}</Text></Text>
+              )}
+            </Space>
+          );
+        } else if (dest.type === 'folder' && dest.folderConfig) {
+          return (
+            <Space direction="vertical" size="small">
+              <Text type="secondary">Path: <Text code>{dest.folderConfig.path}</Text></Text>
+              {dest.folderConfig.createSubfolders && dest.folderConfig.subfolderPattern && (
+                <Text type="secondary">Subfolders: <Text code>{dest.folderConfig.subfolderPattern}</Text></Text>
+              )}
+            </Space>
+          );
+        }
+        return <Text type="secondary">לא מוגדר</Text>;
+      }
+    },
+    {
+      title: 'פורמט',
+      dataIndex: 'outputFormat',
+      key: 'outputFormat',
+      width: 100,
+      render: (format: string | null | undefined) => (
+        <Tag>{format || outputConfig.defaultOutputFormat || 'original'}</Tag>
+      )
+    },
+    {
+      title: 'כולל שגויות',
+      dataIndex: 'includeInvalidRecords',
+      key: 'includeInvalidRecords',
+      width: 120,
+      render: (include: boolean | null | undefined, dest: OutputDestination) => {
+        const value = include !== null && include !== undefined ? include : outputConfig.includeInvalidRecords;
+        return (
+          <Tag color={value ? 'orange' : 'green'} icon={value ? <CheckCircleOutlined /> : <CloseCircleOutlined />}>
+            {value ? 'כן' : 'לא'}
+          </Tag>
+        );
+      }
+    },
+    {
+      title: 'סטטוס',
+      dataIndex: 'enabled',
+      key: 'enabled',
+      width: 100,
+      render: (enabled: boolean) => (
+        <Tag color={enabled ? 'green' : 'red'}>
+          {enabled ? 'מופעל' : 'מושבת'}
+        </Tag>
+      )
+    }
+  ];
+
+  return (
+    <Space direction="vertical" style={{ width: '100%' }} size="large">
+      {/* Global Settings */}
+      <Card title="הגדרות ברירת מחדל" size="small">
+        <Descriptions column={2} bordered>
+          <Descriptions.Item label="פורמט פלט ברירת מחדל">
+            <Tag color="blue">{outputConfig.defaultOutputFormat || 'original'}</Tag>
+          </Descriptions.Item>
+          <Descriptions.Item label="כולל רשומות שגויות">
+            <Tag color={outputConfig.includeInvalidRecords ? 'orange' : 'green'}>
+              {outputConfig.includeInvalidRecords ? 'כן' : 'לא'}
+            </Tag>
+          </Descriptions.Item>
+        </Descriptions>
+      </Card>
+
+      {/* Destinations Table */}
+      <Card title={`יעדי פלט (${outputConfig.destinations.length})`} size="small">
+        <Table
+          dataSource={outputConfig.destinations}
+          columns={columns}
+          rowKey="id"
+          pagination={false}
+          size="small"
+        />
+      </Card>
+
+      <Alert
+        message="אודות יעדי פלט"
+        description={
+          <ul style={{ margin: 0, paddingRight: 20 }}>
+            <li><strong>Kafka:</strong> שליחת נתונים ל-Message Queue לעיבוד Real-Time</li>
+            <li><strong>Folder:</strong> שמירת קבצים בתיקייה (מקומית או רשת)</li>
+            <li><strong>מרובה:</strong> כל קובץ יישלח לכל היעדים המופעלים במקביל</li>
+            <li><strong>דריסה:</strong> כל יעד יכול לדרוס את הגדרות ברירת המחדל (פורמט, כולל שגויות)</li>
+          </ul>
+        }
+        type="info"
+        showIcon
+      />
+    </Space>
+  );
+};

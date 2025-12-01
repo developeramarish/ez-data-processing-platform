@@ -2,16 +2,17 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Card, Typography, Space, Button, Alert, Spin, Tabs, Row, Col, Statistic } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeftOutlined, EditOutlined, FileOutlined, ApiOutlined, ClockCircleOutlined, SafetyOutlined, BellOutlined, InfoCircleOutlined, FileTextOutlined, LineChartOutlined } from '@ant-design/icons';
+import { ArrowLeftOutlined, EditOutlined, FileOutlined, ApiOutlined, ClockCircleOutlined, SafetyOutlined, BellOutlined, InfoCircleOutlined, FileTextOutlined, LineChartOutlined, ExportOutlined } from '@ant-design/icons';
 
 // Import detail tab components
-import { 
-  BasicInfoDetailsTab, 
-  ConnectionDetailsTab, 
-  FileDetailsTab, 
+import {
+  BasicInfoDetailsTab,
+  ConnectionDetailsTab,
+  FileDetailsTab,
   ScheduleDetailsTab,
   ValidationDetailsTab,
-  NotificationsDetailsTab
+  NotificationsDetailsTab,
+  OutputDetailsTab
 } from '../../components/datasource/details/AllDetailsTabsExport';
 import { SchemaDetailsTab } from '../../components/datasource/details/SchemaDetailsTab';
 import { RelatedMetricsTab } from '../../components/datasource/details/RelatedMetricsTab';
@@ -160,6 +161,7 @@ const DataSourceDetailsEnhanced: React.FC = () => {
   const schedule = parsedConfig?.schedule || {};
   const validationRules = parsedConfig?.validationRules || {};
   const notificationSettings = parsedConfig?.notificationSettings || {};
+  const outputConfig = parsedConfig?.outputConfig || null;
 
   return (
     <div>
@@ -217,6 +219,10 @@ const DataSourceDetailsEnhanced: React.FC = () => {
 
           <TabPane tab={<span><BellOutlined /> התראות</span>} key="notifications">
             <NotificationsDetailsTab notificationSettings={notificationSettings} />
+          </TabPane>
+
+          <TabPane tab={<span><ExportOutlined /> פלט</span>} key="output">
+            <OutputDetailsTab outputConfig={outputConfig} />
           </TabPane>
 
           <TabPane tab={<span><LineChartOutlined /> Metrics</span>} key="metrics">
