@@ -3,6 +3,7 @@ using MetricsConfigurationService.Models;
 using MongoDB.Bson;
 using MongoDB.Entities;
 using DemoDataGenerator.Models;
+using DemoDataGenerator.Templates;
 using Newtonsoft.Json;
 
 namespace DemoDataGenerator.Generators;
@@ -146,7 +147,8 @@ public class DataSourceGenerator
                     onSuccess = false,
                     onFailure = true,
                     recipients = new[] { "admin@example.com" }
-                }
+                },
+                outputConfig = GenerateOutputConfiguration(DemoConfig.DataSourceNames[i], filePattern, i)
             };
             
             var datasource = new DataProcessingDataSource
@@ -181,6 +183,22 @@ public class DataSourceGenerator
         
         Console.WriteLine($"  ✅ Generated {datasources.Count} datasources\n");
         return datasources;
+    }
+
+    /// <summary>
+    /// Generate varied output configurations for different datasources
+    /// </summary>
+    private static OutputConfiguration GenerateOutputConfiguration(string datasourceName, string filePattern, int index)
+    {
+        var fileType = filePattern.TrimStart('*', '.').ToUpper();
+
+        // Use different scenarios for variety
+        return index switch
+        {
+            0 or 5 or 10 or 15 => OutputConfigurationTemplate.Scenarios.BankingCompliance(datasourceName), // 4 destinations
+            1 or 6 or 11 or 16 => OutputConfigurationTemplate.Scenarios.Simple(datasourceName),           // 2 destinations
+            _ => OutputConfigurationTemplate.Generate(datasourceName, fileType)                           // 2-3 destinations (standard)
+        };
     }
 }
 

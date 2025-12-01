@@ -18,14 +18,15 @@ public class ProcessManager
     public async Task StopAllServicesAsync()
     {
         Console.WriteLine("🛑 Stopping all running services...\n");
-        
-        var ports = new[] { 5001, 5002, 5003, 5004, 5005, 5006, 5007, 5008, 5009, 3000 };
-        
+
+        // Removed port 5005 (FilesReceiverService - deprecated, replaced by FileDiscoveryService/FileProcessorService/OutputService)
+        var ports = new[] { 5001, 5002, 5003, 5004, 5006, 5007, 5008, 5009, 3000 };
+
         foreach (var port in ports)
         {
             await StopProcessOnPortAsync(port);
         }
-        
+
         Console.WriteLine("✅ All services stopped\n");
     }
     
@@ -248,7 +249,7 @@ public class StartupSequencer
             new() { Name = "MetricsConfiguration", ProjectPath = Path.Combine(baseDir, "src", "Services", "MetricsConfigurationService"), Port = 5002, HealthEndpoint = "http://localhost:5002/health" },
             new() { Name = "Validation", ProjectPath = Path.Combine(baseDir, "src", "Services", "ValidationService"), Port = 5003, HealthEndpoint = "http://localhost:5003/health" },
             new() { Name = "Scheduling", ProjectPath = Path.Combine(baseDir, "src", "Services", "SchedulingService"), Port = 5004, HealthEndpoint = "http://localhost:5004/health" },
-            new() { Name = "FilesReceiver", ProjectPath = Path.Combine(baseDir, "src", "Services", "FilesReceiverService"), Port = 5005, HealthEndpoint = "http://localhost:5005/health" },
+            // FilesReceiverService (port 5005) removed - replaced by FileDiscoveryService, FileProcessorService, and OutputService
             new() { Name = "InvalidRecords", ProjectPath = Path.Combine(baseDir, "src", "Services", "InvalidRecordsService"), Port = 5006, HealthEndpoint = "http://localhost:5006/health" },
             new() { Name = "FileDiscovery", ProjectPath = Path.Combine(baseDir, "src", "Services", "FileDiscoveryService"), Port = 5007, HealthEndpoint = "http://localhost:5007/health" },
             new() { Name = "FileProcessor", ProjectPath = Path.Combine(baseDir, "src", "Services", "FileProcessorService"), Port = 5008, HealthEndpoint = "http://localhost:5008/health" },
