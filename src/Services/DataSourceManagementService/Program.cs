@@ -67,12 +67,16 @@ services.AddScoped<IDataSourceRepository, DataSourceRepository>();
 services.AddScoped<IDataSourceService, DataSourceService>();
 
 // Register schema management services
-services.AddScoped<DataProcessing.DataSourceManagement.Repositories.Schema.ISchemaRepository, 
+services.AddScoped<DataProcessing.DataSourceManagement.Repositories.Schema.ISchemaRepository,
     DataProcessing.DataSourceManagement.Repositories.Schema.SchemaRepository>();
-services.AddScoped<DataProcessing.DataSourceManagement.Services.Schema.ISchemaService, 
+services.AddScoped<DataProcessing.DataSourceManagement.Services.Schema.ISchemaService,
     DataProcessing.DataSourceManagement.Services.Schema.SchemaService>();
-services.AddScoped<DataProcessing.DataSourceManagement.Services.Schema.ISchemaValidationService, 
+services.AddScoped<DataProcessing.DataSourceManagement.Services.Schema.ISchemaValidationService,
     DataProcessing.DataSourceManagement.Services.Schema.SchemaValidationService>();
+
+// Register connection testing service (Week 1: Connection Testing)
+services.AddScoped<DataProcessing.DataSourceManagement.Services.ConnectionTest.IConnectionTestService,
+    DataProcessing.DataSourceManagement.Services.ConnectionTest.ConnectionTestService>();
 
 // Add CORS
 services.AddCors(options =>
