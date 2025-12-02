@@ -119,7 +119,7 @@ services:
 
   # Elasticsearch - Logs and Traces Storage
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.17.0
     container_name: ezplatform-elasticsearch
     restart: always
     environment:

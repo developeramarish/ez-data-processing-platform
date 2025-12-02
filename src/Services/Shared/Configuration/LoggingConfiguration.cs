@@ -1,3 +1,8 @@
+using Elastic.Channels;
+using Elastic.Ingest.Elasticsearch;
+using Elastic.Ingest.Elasticsearch.DataStreams;
+using Elastic.Serilog.Sinks;
+using Elastic.Transport;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -5,10 +10,7 @@ using Microsoft.Extensions.Logging;
 using Serilog;
 using Serilog.Core;
 using Serilog.Events;
-using Serilog.Formatting;
-using Serilog.Sinks.Elasticsearch;
 using System.Reflection;
-using System.Text.Json;
 
 namespace DataProcessing.Shared.Configuration;
 
@@ -84,35 +86,23 @@ public static class LoggingConfiguration
                 outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] [{SourceContext}] {Message:lj} {Properties:j}{NewLine}{Exception}");
         }
 
-        // Add Elasticsearch logging
-        var elasticsearchOptions = new ElasticsearchSinkOptions(new Uri(elasticsearchUri))
+        // Add Elasticsearch logging using Elastic.Serilog.Sinks (official Elastic sink)
+        loggerConfiguration.WriteTo.Elasticsearch(new[] { new Uri(elasticsearchUri) }, opts =>
         {
-            IndexFormat = $"dataprocessing-{serviceName.ToLowerInvariant()}-logs-{{0:yyyy.MM.dd}}",
-            AutoRegisterTemplate = true,
-            AutoRegisterTemplateVersion = AutoRegisterTemplateVersion.ESv7,
-            TypeName = null, // For Elasticsearch 7.x compatibility
-            BatchAction = ElasticOpType.Index,
-            MinimumLogEventLevel = serilogLevel,
-            EmitEventFailure = EmitEventFailureHandling.WriteToSelfLog |
-                              EmitEventFailureHandling.WriteToFailureSink |
-                              EmitEventFailureHandling.RaiseCallback,
-            FailureCallback = e => 
+            opts.DataStream = new DataStreamName("logs", $"dataprocessing-{serviceName.ToLowerInvariant()}");
+            opts.BootstrapMethod = BootstrapMethod.Failure;
+            opts.MinimumLevel = serilogLevel;
+            opts.ConfigureChannel = channelOpts =>
             {
-                // Log to file sink as alternative
-                System.IO.File.AppendAllText("logs/elasticsearch-failures.txt", 
-                    $"{DateTime.UtcNow:O}: {e.MessageTemplate} - {e.Exception?.Message}{Environment.NewLine}");
-            },
-            
-            // Custom fields for better searching and analysis
-            CustomFormatter = new ElasticsearchJsonFormatter(),
-            
-            // Connection settings
-            ConnectionTimeout = TimeSpan.FromSeconds(30),
-            NumberOfShards = 1,
-            NumberOfReplicas = 0
-        };
-
-        loggerConfiguration.WriteTo.Elasticsearch(elasticsearchOptions);
+                channelOpts.BufferOptions = new BufferOptions
+                {
+                    ExportMaxConcurrency = 10
+                };
+            };
+        }, transport =>
+        {
+            transport.RequestTimeout(TimeSpan.FromSeconds(30));
+        });
 
         // Configure request/response logging for web applications
         loggerConfiguration.Enrich.With<RequestResponseEnricher>();
@@ -217,69 +207,6 @@ public class RequestResponseEnricher : ILogEventEnricher
             logEvent.AddPropertyIfAbsent(propertyFactory.CreateProperty("RequestMethod", httpContext.Request.Method));
             logEvent.AddPropertyIfAbsent(propertyFactory.CreateProperty("StatusCode", httpContext.Response.StatusCode));
         }
-    }
-}
-
-/// <summary>
-/// Custom JSON formatter for Elasticsearch with structured fields
-/// </summary>
-public class ElasticsearchJsonFormatter : ITextFormatter
-{
-    public void Format(LogEvent logEvent, TextWriter output)
-    {
-        var json = new
-        {
-            timestamp = logEvent.Timestamp.ToString("O"),
-            level = logEvent.Level.ToString(),
-            messageTemplate = logEvent.MessageTemplate.Text,
-            message = logEvent.RenderMessage(),
-            exception = logEvent.Exception?.ToString(),
-            properties = logEvent.Properties.ToDictionary(
-                p => p.Key,
-                p => RenderPropertyValue(p.Value)),
-            fields = new
-            {
-                service = logEvent.Properties.TryGetValue("Service", out var service) 
-                    ? service.ToString()?.Trim('"') : null,
-                environment = logEvent.Properties.TryGetValue("Environment", out var env) 
-                    ? env.ToString()?.Trim('"') : null,
-                correlationId = logEvent.Properties.TryGetValue("CorrelationId", out var corrId) 
-                    ? corrId.ToString()?.Trim('"') : null,
-                machineName = logEvent.Properties.TryGetValue("MachineName", out var machine) 
-                    ? machine.ToString()?.Trim('"') : null,
-                threadId = logEvent.Properties.TryGetValue("ThreadId", out var thread) 
-                    ? thread.ToString()?.Trim('"') : null
-            }
-        };
-
-        output.Write(System.Text.Json.JsonSerializer.Serialize(json, new System.Text.Json.JsonSerializerOptions
-        {
-            WriteIndented = false,
-            DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
-        }));
-        output.WriteLine();
-    }
-
-    private static object? RenderPropertyValue(LogEventPropertyValue propertyValue)
-    {
-        if (propertyValue is ScalarValue scalar)
-        {
-            return scalar.Value;
-        }
-        
-        if (propertyValue is SequenceValue sequence)
-        {
-            return sequence.Elements.Select(RenderPropertyValue).ToArray();
-        }
-        
-        if (propertyValue is StructureValue structure)
-        {
-            return structure.Properties.ToDictionary(
-                p => p.Name,
-                p => RenderPropertyValue(p.Value));
-        }
-        
-        return propertyValue.ToString()?.Trim('"');
     }
 }
 
