@@ -37,6 +37,11 @@ import type {
   KafkaOutputConfig,
   FolderOutputConfig
 } from '../shared/types';
+import {
+  testKafkaConnection,
+  testFolderConnection,
+  testSftpConnection
+} from '../../../api/connection-test-api-client';
 
 const { Text, Paragraph } = Typography;
 const { TextArea } = Input;
@@ -175,24 +180,68 @@ export const DestinationEditorModal: React.FC<DestinationEditorModalProps> = ({
         // Validate Kafka connection fields
         await form.validateFields(['kafkaTopic']);
 
-        // Simulate connection test
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        // Call real Kafka connection testing API
+        const result = await testKafkaConnection({
+          brokerServer: values.kafkaBrokerServer || 'localhost:9092',
+          topic: values.kafkaTopic || '',
+          username: values.kafkaUsername,
+          password: values.kafkaPassword,
+          timeoutSeconds: 30
+        });
 
-        setConnectionTestResult('success');
-        message.success('חיבור ל-Kafka הצליח');
+        if (result.success) {
+          setConnectionTestResult('success');
+          const latency = result.details?.latencyMs ? ` (${result.details.latencyMs}ms)` : '';
+          message.success(`חיבור ל-Kafka הצליח${latency}`);
+        } else {
+          setConnectionTestResult('failed');
+          message.error(`חיבור ל-Kafka נכשל: ${result.errorDetails || result.message}`);
+        }
       } else if (values.type === 'folder') {
         // Validate folder path
         await form.validateFields(['folderPath']);
 
-        // Simulate connection test
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        // Call real Folder validation API
+        const result = await testFolderConnection({
+          path: values.folderPath || '',
+          checkWritePermissions: true,
+          checkDiskSpace: true
+        });
 
-        setConnectionTestResult('success');
-        message.success('נתיב התיקייה תקין');
+        if (result.success) {
+          setConnectionTestResult('success');
+          const diskSpace = result.details?.diskSpaceGB ? ` (${result.details.diskSpaceGB}GB available)` : '';
+          message.success(`נתיב התיקייה תקין${diskSpace}`);
+        } else {
+          setConnectionTestResult('failed');
+          message.error(`אימות נתיב נכשל: ${result.errorDetails || result.message}`);
+        }
+      } else if (values.type === 'sftp') {
+        // Validate SFTP connection fields
+        await form.validateFields(['sftpHost', 'sftpPort', 'sftpUsername', 'sftpRemotePath']);
+
+        // Call real SFTP connection testing API
+        const result = await testSftpConnection({
+          host: values.sftpHost || '',
+          port: values.sftpPort || 22,
+          username: values.sftpUsername || '',
+          password: values.sftpPassword,
+          sshKey: values.sftpSshKey,
+          remotePath: values.sftpRemotePath || '/',
+          timeoutSeconds: 30
+        });
+
+        if (result.success) {
+          setConnectionTestResult('success');
+          message.success('חיבור SFTP הצליח');
+        } else {
+          setConnectionTestResult('failed');
+          message.error(`חיבור SFTP נכשל: ${result.errorDetails || result.message}`);
+        }
       }
-    } catch (err) {
+    } catch (err: any) {
       setConnectionTestResult('failed');
-      message.error('בדיקת החיבור נכשלה');
+      message.error(err.message || 'בדיקת החיבור נכשלה');
     } finally {
       setTestingConnection(false);
     }
