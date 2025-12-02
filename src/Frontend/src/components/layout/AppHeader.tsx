@@ -32,71 +32,85 @@ const AppHeader: React.FC<AppHeaderProps> = ({ collapsed = false, onCollapse }) 
 
   const MenuIcon = collapsed ? MenuUnfoldOutlined : MenuFoldOutlined;
 
-  return (
-    <Header className="app-header">
-      <div style={{ display: 'flex', alignItems: 'center' }}>
-        {onCollapse && (
-          <>
-            <Button
-              type="text"
-              icon={<MenuIcon />}
-              onClick={onCollapse}
-              style={{
-                fontSize: '16px',
-                width: 48,
-                height: 48,
-                marginRight: isRTL ? 0 : 16,
-                marginLeft: isRTL ? 16 : 0,
-              }}
-            />
-            <Divider type="vertical" style={{ height: '32px' }} />
-          </>
-        )}
-        
-        <div className="logo">
-          <Text strong style={{ fontSize: '20px', color: '#1890ff' }}>
-            {t('app.title')}
-          </Text>
-        </div>
-      </div>
-
-      <div className="header-actions">
-        <Space size="middle">
-          {/* Language Toggle */}
-          <Space>
-            <GlobalOutlined style={{ color: '#8c8c8c' }} />
-            <Switch
-              checkedChildren="עב"
-              unCheckedChildren="EN"
-              checked={isRTL}
-              onChange={toggleLanguage}
-              size="small"
-            />
-          </Space>
-
-          {/* Notifications */}
+  const titleSection = (
+    <div style={{
+      display: 'flex',
+      alignItems: 'center',
+      flex: 1,
+      justifyContent: 'center'
+    }}>
+      {onCollapse && (
+        <>
           <Button
             type="text"
-            icon={<BellOutlined />}
+            icon={<MenuIcon />}
+            onClick={onCollapse}
             style={{
               fontSize: '16px',
-              width: 40,
-              height: 40,
+              width: 48,
+              height: 48,
+              marginRight: isRTL ? 0 : 16,
+              marginLeft: isRTL ? 16 : 0,
+              position: 'absolute',
+              [isRTL ? 'right' : 'left']: 0
             }}
           />
+          <Divider type="vertical" style={{ height: '32px', position: 'absolute', [isRTL ? 'right' : 'left']: 48 }} />
+        </>
+      )}
 
-          {/* User Profile */}
-          <Button
-            type="text"
-            icon={<UserOutlined />}
-            style={{
-              fontSize: '16px',
-              width: 40,
-              height: 40,
-            }}
+      <div className="logo">
+        <Text strong style={{ fontSize: '20px', color: '#1890ff' }}>
+          {t('app.title')}
+        </Text>
+      </div>
+    </div>
+  );
+
+  const actionsSection = (
+    <div className="header-actions">
+      <Space size="middle">
+        {/* Language Toggle */}
+        <Space>
+          <GlobalOutlined style={{ color: '#8c8c8c' }} />
+          <Switch
+            checkedChildren="עב"
+            unCheckedChildren="EN"
+            checked={isRTL}
+            onChange={toggleLanguage}
+            size="small"
           />
         </Space>
-      </div>
+
+        {/* Notifications */}
+        <Button
+          type="text"
+          icon={<BellOutlined />}
+          style={{
+            fontSize: '16px',
+            width: 40,
+            height: 40,
+          }}
+        />
+
+        {/* User Profile */}
+        <Button
+          type="text"
+          icon={<UserOutlined />}
+          style={{
+            fontSize: '16px',
+            width: 40,
+            height: 40,
+          }}
+        />
+      </Space>
+    </div>
+  );
+
+  return (
+    <Header className="app-header">
+      {titleSection}
+      {actionsSection}
     </Header>
   );
 };

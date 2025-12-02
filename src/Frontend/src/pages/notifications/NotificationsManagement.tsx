@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Card, Button, Form, Input, Select, Tag, Space, Typography, Row, Col, Tabs, Switch } from 'antd';
 import {
-  BellOutlined,
   PlusOutlined,
   EditOutlined,
 } from '@ant-design/icons';
@@ -102,12 +101,16 @@ const NotificationsManagement: React.FC = () => {
   return (
     <div className="notifications-page">
       <div className="page-header">
-        <Title level={2}>
-          <BellOutlined /> כללי התרעות
-        </Title>
-        <Button type="primary" icon={<PlusOutlined />}>
-          צור כלל התרעה
-        </Button>
+        <div>
+          <Title level={2} style={{ margin: 0 }}>
+            כללי התרעות
+          </Title>
+        </div>
+        <Space>
+          <Button type="primary" icon={<PlusOutlined />}>
+            צור כלל התרעה
+          </Button>
+        </Space>
       </div>
 
       <Tabs activeKey={activeTab} onChange={setActiveTab}>
@@ -218,17 +221,6 @@ const NotificationsManagement: React.FC = () => {
           </Card>
         </TabPane>
       </Tabs>
-
-      <style>{`
-        .notifications-page .page-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 24px;
-          padding-bottom: 16px;
-          border-bottom: 2px solid #e9ecef;
-        }
-      `}</style>
     </div>
   );
 };

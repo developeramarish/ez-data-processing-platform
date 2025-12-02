@@ -8,7 +8,7 @@ import {
   AlertOutlined,
 } from '@ant-design/icons';
 
-const { Title, Text } = Typography;
+const { Title } = Typography;
 const { TextArea } = Input;
 
 interface Message {
@@ -108,9 +108,11 @@ const AIAssistant: React.FC = () => {
   return (
     <div className="ai-assistant-page">
       <div className="page-header">
-        <Title level={2} style={{ margin: 0 }}>
-          <RobotOutlined /> עוזר AI - תובנות נתונים
-        </Title>
+        <div>
+          <Title level={2} style={{ margin: 0 }}>
+            עוזר AI - תובנות נתונים
+          </Title>
+        </div>
       </div>
 
       {/* Chat Interface - Mockup Style */}

@@ -967,18 +967,6 @@ const SchemaManagementEnhanced: React.FC = () => {
       </Modal>
 
       <style>{`
-        .page-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 24px;
-          padding-bottom: 16px;
-          border-bottom: 2px solid #e9ecef;
-        }
-        .page-subtitle {
-          margin: 8px 0 0 0;
-          color: #6c757d;
-        }
         .highlighted-row {
           animation: highlightFade 3s ease-in-out;
           background-color: #e6f7ff !important;

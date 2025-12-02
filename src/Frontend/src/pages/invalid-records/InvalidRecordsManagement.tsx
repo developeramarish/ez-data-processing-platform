@@ -189,11 +189,13 @@ const InvalidRecordsManagement: React.FC = () => {
   return (
     <div className="invalid-records-page">
       <div className="page-header">
-        <Title level={2}>
-          <ExclamationCircleOutlined /> ניהול רשומות לא תקינות
-        </Title>
+        <div>
+          <Title level={2} style={{ margin: 0 }}>
+            ניהול רשומות לא תקינות
+          </Title>
+        </div>
         <Space>
-          <Button 
+          <Button
             icon={<ExportOutlined />}
             onClick={handleExport}
             disabled={totalCount === 0}
@@ -290,17 +292,6 @@ const InvalidRecordsManagement: React.FC = () => {
           </div>
         )}
       </Spin>
-
-      <style>{`
-        .invalid-records-page .page-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 24px;
-          padding-bottom: 16px;
-          border-bottom: 2px solid #e9ecef;
-        }
-      `}</style>
     </div>
   );
 };

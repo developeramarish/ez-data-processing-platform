@@ -61,12 +61,23 @@ body {
   flex-direction: row-reverse;
 }
 
+/* Target the parent div that contains the logo */
+.rtl .app-header > div:first-child {
+  flex: 1;
+  justify-content: flex-end;
+}
+
 .app-header .logo {
   display: flex;
   align-items: center;
   font-size: 18px;
   font-weight: 600;
   color: #1890ff;
+}
+
+.rtl .app-header .logo {
+  justify-content: flex-end;
+  text-align: right;
 }
 
 .app-header .header-actions {
@@ -128,7 +139,26 @@ body {
 }
 
 .rtl .page-header {
-  flex-direction: row-reverse;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 16px;
+}
+
+.rtl .page-header > div {
+  margin-left: auto;
+  margin-right: 0;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.rtl .page-header > div:first-child {
+  text-align: right;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.rtl .page-header .ant-space {
+  justify-content: flex-end;
 }
 
 .page-header h1 {
