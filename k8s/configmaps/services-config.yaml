@@ -1,0 +1,28 @@
+# Services Configuration - ConfigMap
+# Week 2: Day 2
+# Central configuration for all services
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: services-config
+  namespace: ez-platform
+data:
+  # MongoDB Configuration
+  mongodb-connection: "mongodb://mongodb-0.mongodb:27017,mongodb-1.mongodb:27017,mongodb-2.mongodb:27017/ezplatform?replicaSet=rs0"
+
+  # Kafka Configuration
+  kafka-server: "kafka-0.kafka:9092,kafka-1.kafka:9092,kafka-2.kafka:9092"
+
+  # Hazelcast Configuration
+  hazelcast-server: "hazelcast-0.hazelcast:5701,hazelcast-1.hazelcast:5701,hazelcast-2.hazelcast:5701"
+
+  # Prometheus Configuration
+  prometheus-endpoint: "http://prometheus:9090"
+  prometheus-pushgateway: "http://prometheus:9091"
+
+  # OpenTelemetry Configuration
+  otlp-endpoint: "http://otel-collector:4317"
+
+  # Elasticsearch Configuration
+  elasticsearch-endpoint: "http://elasticsearch:9200"

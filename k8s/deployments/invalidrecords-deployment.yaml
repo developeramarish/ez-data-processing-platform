@@ -1,0 +1,64 @@
+# InvalidRecordsService - Kubernetes Deployment
+# Week 2: Day 2
+# Replicas: 2 (API service, moderate scaling)
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: invalidrecords
+  namespace: ez-platform
+  labels:
+    app: invalidrecords
+    component: api
+    tier: backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: invalidrecords
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: invalidrecords
+        component: api
+        tier: backend
+    spec:
+      containers:
+      - name: invalidrecords
+        image: ez-platform/invalidrecords:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 5006
+          name: http
+        env:
+        - name: ASPNETCORE_ENVIRONMENT
+          value: "Production"
+        - name: ASPNETCORE_URLS
+          value: "http://+:5006"
+        - name: ConnectionStrings__MongoDB
+          valueFrom:
+            configMapKeyRef:
+              name: services-config
+              key: mongodb-connection
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "1Gi"
+          limits:
+            cpu: "2000m"
+            memory: "3Gi"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 5006
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 5006
+          initialDelaySeconds: 15
+          periodSeconds: 5
+      restartPolicy: Always

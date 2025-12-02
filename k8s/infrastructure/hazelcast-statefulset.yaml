@@ -1,0 +1,91 @@
+# Hazelcast - StatefulSet
+# Week 2: Day 4
+# 3-node distributed cache cluster (8GB memory each)
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: hazelcast
+  namespace: ez-platform
+  labels:
+    app: hazelcast
+spec:
+  ports:
+  - port: 5701
+    targetPort: 5701
+    name: hazelcast
+  clusterIP: None  # Headless service
+  selector:
+    app: hazelcast
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: hazelcast
+  namespace: ez-platform
+spec:
+  serviceName: hazelcast
+  replicas: 3
+  selector:
+    matchLabels:
+      app: hazelcast
+  template:
+    metadata:
+      labels:
+        app: hazelcast
+        component: cache
+    spec:
+      containers:
+      - name: hazelcast
+        image: hazelcast/hazelcast:5.5.1
+        ports:
+        - containerPort: 5701
+          name: hazelcast
+        env:
+        - name: JAVA_OPTS
+          value: "-Xms8g -Xmx8g -Dhazelcast.config=/config/hazelcast.yaml"
+        - name: HZ_CLUSTERNAME
+          value: "data-processing-cluster"
+        - name: HZ_NETWORK_JOIN_KUBERNETES_ENABLED
+          value: "true"
+        - name: HZ_NETWORK_JOIN_KUBERNETES_NAMESPACE
+          value: "ez-platform"
+        - name: HZ_NETWORK_JOIN_KUBERNETES_SERVICE_NAME
+          value: "hazelcast"
+        resources:
+          requests:
+            cpu: "1000m"
+            memory: "8Gi"
+          limits:
+            cpu: "2000m"
+            memory: "10Gi"
+        volumeMounts:
+        - name: hazelcast-data
+          mountPath: /data
+        - name: hazelcast-config
+          mountPath: /config
+        livenessProbe:
+          httpGet:
+            path: /hazelcast/health/node-state
+            port: 5701
+          initialDelaySeconds: 60
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /hazelcast/health/ready
+            port: 5701
+          initialDelaySeconds: 30
+          periodSeconds: 5
+      volumes:
+      - name: hazelcast-config
+        configMap:
+          name: hazelcast-config
+  volumeClaimTemplates:
+  - metadata:
+      name: hazelcast-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 5Gi
