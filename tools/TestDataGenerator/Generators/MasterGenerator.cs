@@ -182,21 +182,11 @@ public class MasterGenerator
         totalRecords += 150;
         filesGenerated++;
 
-        // Excel
-        var excelGenerator = new ExcelFileGenerator();
-        excelGenerator.Generate(new TestFileConfig
-        {
-            ScenarioId = "E2E-003",
-            FileName = "transactions-150.xlsx",
-            FilePath = Path.Combine(scenarioPath, "transactions-150.xlsx"),
-            RecordCount = 150,
-            ValidRecords = 150,
-            InvalidRecords = 0,
-            Template = CustomerTransactionTemplate.CreateValid()
-        });
-        Console.WriteLine($"  ✅ Generated: transactions-150.xlsx (150 records)");
-        totalRecords += 150;
-        filesGenerated++;
+        // Excel - Temporarily disabled (EPPlus 8.x license configuration issue)
+        // Will be enabled after license configuration resolved
+        // var excelGenerator = new ExcelFileGenerator();
+        // excelGenerator.Generate(...);
+        Console.WriteLine($"  ⚠️  Skipped: transactions-150.xlsx (EPPlus license config - will fix in Week 2)");
 
         // JSON
         var jsonGenerator = new JsonFileGenerator();

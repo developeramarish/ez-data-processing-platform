@@ -1,0 +1,10 @@
+# Ignore generated test files (not committed to version control)
+TestFiles/
+
+# Build output
+bin/
+obj/
+
+# User-specific files
+*.user
+*.suo
