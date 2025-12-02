@@ -1,0 +1,202 @@
+# EZ Platform - Helm Chart Values
+# Default configuration for production deployment
+
+global:
+  namespace: ez-platform
+  imageRegistry: docker.io
+  imagePullPolicy: Always
+
+# Microservices Configuration
+services:
+  filediscovery:
+    enabled: true
+    replicas: 2
+    image:
+      repository: ez-platform/filediscovery
+      tag: latest
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: 2000m
+        memory: 4Gi
+
+  fileprocessor:
+    enabled: true
+    replicas: 5
+    image:
+      repository: ez-platform/fileprocessor
+      tag: latest
+    resources:
+      requests:
+        cpu: 1000m
+        memory: 2Gi
+      limits:
+        cpu: 4000m
+        memory: 8Gi
+
+  validation:
+    enabled: true
+    replicas: 3
+    image:
+      repository: ez-platform/validation
+      tag: latest
+    resources:
+      requests:
+        cpu: 1000m
+        memory: 2Gi
+      limits:
+        cpu: 3000m
+        memory: 6Gi
+
+  output:
+    enabled: true
+    replicas: 3
+    image:
+      repository: ez-platform/output
+      tag: latest
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: 2000m
+        memory: 4Gi
+
+  datasourceManagement:
+    enabled: true
+    replicas: 2
+    image:
+      repository: ez-platform/datasource-management
+      tag: latest
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: 2000m
+        memory: 3Gi
+
+  metricsConfiguration:
+    enabled: true
+    replicas: 2
+    image:
+      repository: ez-platform/metrics-configuration
+      tag: latest
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: 2000m
+        memory: 3Gi
+
+  invalidrecords:
+    enabled: true
+    replicas: 2
+    image:
+      repository: ez-platform/invalidrecords
+      tag: latest
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: 2000m
+        memory: 3Gi
+
+  scheduling:
+    enabled: true
+    replicas: 1
+    image:
+      repository: ez-platform/scheduling
+      tag: latest
+    resources:
+      requests:
+        cpu: 250m
+        memory: 512Mi
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+
+  frontend:
+    enabled: true
+    replicas: 2
+    image:
+      repository: ez-platform/frontend
+      tag: latest
+    service:
+      type: LoadBalancer
+      port: 80
+    resources:
+      requests:
+        cpu: 250m
+        memory: 512Mi
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+
+# Infrastructure Configuration
+mongodb:
+  enabled: true
+  replicas: 3
+  image: mongo:8.0
+  storage: 20Gi
+  storageClass: standard
+  resources:
+    requests:
+      cpu: 1000m
+      memory: 2Gi
+    limits:
+      cpu: 2000m
+      memory: 4Gi
+
+kafka:
+  enabled: true
+  replicas: 3
+  image: confluentinc/cp-kafka:7.5.0
+  storage: 10Gi
+  storageClass: standard
+  zookeeper:
+    enabled: true
+    storage: 5Gi
+  resources:
+    requests:
+      cpu: 1000m
+      memory: 2Gi
+    limits:
+      cpu: 2000m
+      memory: 4Gi
+
+hazelcast:
+  enabled: true
+  replicas: 3
+  image: hazelcast/hazelcast:5.5.1
+  clusterName: data-processing-cluster
+  memory: 8Gi
+  storage: 5Gi
+  storageClass: standard
+  resources:
+    requests:
+      cpu: 1000m
+      memory: 8Gi
+    limits:
+      cpu: 2000m
+      memory: 10Gi
+
+# Storage Configuration
+storage:
+  dataInput:
+    enabled: true
+    size: 50Gi
+    storageClass: standard
+  dataOutput:
+    enabled: true
+    size: 100Gi
+    storageClass: standard
+
+# Configuration
+config:
+  environment: production
+  logLevel: Information
