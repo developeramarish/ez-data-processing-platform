@@ -30,8 +30,7 @@ builder.Services.AddSingleton(activitySource);
 builder.Services.AddDataProcessingOpenTelemetry(builder.Configuration, serviceName);
 
 // Configure MongoDB
-var connectionString = builder.Configuration.GetConnectionString("MongoDB") 
-    ?? throw new InvalidOperationException("MongoDB connection string is required");
+var connectionString = builder.Configuration.GetConnectionString("MongoDB") ?? "localhost";
 await DB.InitAsync("DataProcessingFileProcessor", connectionString);
 
 // Configure Hazelcast Client

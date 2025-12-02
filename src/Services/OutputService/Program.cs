@@ -14,6 +14,7 @@ using Confluent.Kafka;
 using DataProcessing.Output.Consumers;
 using DataProcessing.Output.Handlers;
 using DataProcessing.Output.Services;
+using DataProcessing.Shared.Configuration;
 using DataProcessing.Shared.Converters;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -28,14 +29,7 @@ Log.Logger = new LoggerConfiguration()
 builder.Host.UseSerilog();
 
 // Configure MongoDB
-var mongoConnectionString = builder.Configuration.GetConnectionString("MongoDB")
-    ?? "mongodb://localhost:27017";
-
-if (!mongoConnectionString.StartsWith("mongodb://"))
-{
-    mongoConnectionString = $"mongodb://{mongoConnectionString}:27017";
-}
-
+var mongoConnectionString = builder.Configuration.GetConnectionString("MongoDB") ?? "localhost";
 await DB.InitAsync("ezplatform", mongoConnectionString);
 
 Log.Information("Connected to MongoDB: {ConnectionString}", mongoConnectionString);
@@ -176,19 +170,14 @@ builder.Services.AddOpenTelemetry()
 
 Log.Information("OpenTelemetry configured with OTLP endpoint: {Endpoint}", otlpEndpoint);
 
-// Add Health Checks
-builder.Services.AddHealthChecks()
-    .AddCheck("self", () => Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Healthy())
-    .AddMongoDb(
-        mongodbConnectionString: mongoConnectionString,
-        name: "mongodb",
-        timeout: TimeSpan.FromSeconds(3));
+// Configure health checks using shared configuration
+builder.Services.AddDataProcessingHealthChecks(builder.Configuration, "DataProcessing.Output");
 
 // Build application
 var app = builder.Build();
 
 // Configure HTTP request pipeline
-app.MapHealthChecks("/health");
+app.UseDataProcessingHealthChecks();
 app.MapGet("/", () => "OutputService - Running");
 
 // Log startup information

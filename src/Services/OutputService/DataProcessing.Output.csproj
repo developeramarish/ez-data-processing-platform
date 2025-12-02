@@ -8,43 +8,39 @@
 
   <ItemGroup>
     <!-- MassTransit for messaging -->
-    <PackageReference Include="MassTransit" Version="8.2.0" />
-    <PackageReference Include="MassTransit.Kafka" Version="8.2.0" />
+    <PackageReference Include="MassTransit" />
+    <PackageReference Include="MassTransit.Kafka" />
 
     <!-- Kafka client for KafkaOutputHandler -->
-    <PackageReference Include="Confluent.Kafka" Version="2.5.3" />
+    <PackageReference Include="Confluent.Kafka" />
 
     <!-- Hazelcast for distributed caching -->
-    <PackageReference Include="Hazelcast.Net" Version="5.5.1" />
+    <PackageReference Include="Hazelcast.Net" />
 
     <!-- MongoDB for data access -->
-    <PackageReference Include="MongoDB.Entities" Version="24.1.0" />
+    <PackageReference Include="MongoDB.Entities" />
 
     <!-- Health checks -->
-    <PackageReference Include="AspNetCore.HealthChecks.MongoDb" Version="8.0.1" />
-
-    <!-- OpenTelemetry -->
-    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.8.1" />
-    <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.8.1" />
-    <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.8.1" />
-    <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" Version="1.8.0" />
+    <PackageReference Include="AspNetCore.HealthChecks.MongoDb" />
 
     <!-- Logging -->
-    <PackageReference Include="Serilog.AspNetCore" Version="8.0.2" />
-    <PackageReference Include="Serilog.Sinks.Console" Version="5.0.1" />
+    <PackageReference Include="Serilog.AspNetCore" />
+    <PackageReference Include="Serilog.Sinks.Console" />
 
     <!-- gRPC for OpenTelemetry -->
-    <PackageReference Include="Grpc.Net.Client" Version="2.62.0" />
+    <PackageReference Include="Grpc.Net.Client" />
 
     <!-- CSV processing -->
-    <PackageReference Include="CsvHelper" Version="33.1.0" />
+    <PackageReference Include="CsvHelper" />
 
     <!-- Excel processing -->
-    <PackageReference Include="EPPlus" Version="8.2.1" />
+    <PackageReference Include="EPPlus" />
+
+    <!-- JSON processing -->
+    <PackageReference Include="Newtonsoft.Json" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <ProjectReference Include="..\Shared\DataProcessing.Shared.csproj" />
   </ItemGroup>
 

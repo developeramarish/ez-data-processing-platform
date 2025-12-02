@@ -28,8 +28,8 @@ builder.Services.AddSingleton(activitySource);
 builder.Services.AddDataProcessingOpenTelemetry(builder.Configuration, serviceName);
 
 // Configure MongoDB
-var connectionString = builder.Configuration.GetConnectionString("MongoDB") 
-    ?? throw new InvalidOperationException("MongoDB connection string is required");
+var connectionString = builder.Configuration.GetConnectionString("MongoDB") ?? "localhost";
+Console.WriteLine($"[DEBUG] FileDiscovery MongoDB ConnectionString from config: '{connectionString}'");
 await DB.InitAsync("DataProcessingFileDiscovery", connectionString);
 
 // Configure MassTransit with RabbitMQ
