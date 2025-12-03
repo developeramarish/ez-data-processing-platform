@@ -13,13 +13,22 @@ Console.WriteLine("════════════════════�
 bool incrementalMode = args.Contains("--incremental");
 string mode = incrementalMode ? "INCREMENTAL" : "FULL RESET";
 
+// Parse MongoDB connection string (support both Docker Compose and K8s)
+string mongoConnection = "localhost"; // Default for Docker Compose
+var mongoArg = args.FirstOrDefault(a => a.StartsWith("--mongodb-connection="));
+if (mongoArg != null)
+{
+    mongoConnection = mongoArg.Split('=')[1];
+}
+
 Console.WriteLine($"Mode: {mode}");
+Console.WriteLine($"MongoDB: {mongoConnection}");
 Console.WriteLine($"Seed: {DemoConfig.RandomSeed} (deterministic)\n");
 
 try
 {
-    // Initialize MongoDB connection
-    await DB.InitAsync("ezplatform", "localhost");
+    // Initialize MongoDB connection (configurable for Docker Compose or K8s)
+    await DB.InitAsync("ezplatform", mongoConnection);
     Console.WriteLine("✓ Connected to MongoDB\n");
     
     // Initialize random with fixed seed for determinism
