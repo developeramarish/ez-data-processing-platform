@@ -4,8 +4,10 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
-# Copy central package management file
+# Copy .NET configuration files
 COPY ["Directory.Packages.props", "./"]
+COPY ["Directory.Build.props", "./"]
+COPY ["global.json", "./"]
 
 # Copy project files
 COPY ["src/Services/FileDiscoveryService/DataProcessing.FileDiscovery.csproj", "FileDiscoveryService/"]
