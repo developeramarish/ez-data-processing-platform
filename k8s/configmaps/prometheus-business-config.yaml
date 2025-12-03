@@ -1,10 +1,10 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: prometheus-system-config
+  name: prometheus-business-config
   namespace: ez-platform
   labels:
-    metrics-type: system
+    metrics-type: business
 data:
   prometheus.yml: |
     global:

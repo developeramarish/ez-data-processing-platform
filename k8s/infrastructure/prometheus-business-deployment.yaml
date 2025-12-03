@@ -1,46 +1,46 @@
-# Prometheus System - Kubernetes Deployment
-# Infrastructure and system metrics collection
+# Prometheus Business - Kubernetes Deployment
+# Application and business metrics collection
 
 apiVersion: v1
 kind: Service
 metadata:
-  name: prometheus-system
+  name: prometheus-business
   namespace: ez-platform
   labels:
-    app: prometheus-system
-    metrics-type: system
+    app: prometheus-business
+    metrics-type: business
 spec:
   type: ClusterIP
   ports:
-  - port: 9090
+  - port: 9091
     targetPort: 9090
     name: http
   selector:
-    app: prometheus-system
+    app: prometheus-business
 
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: prometheus-system
+  name: prometheus-business
   namespace: ez-platform
   labels:
-    app: prometheus-system
-    metrics-type: system
+    app: prometheus-business
+    metrics-type: business
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: prometheus-system
+      app: prometheus-business
   template:
     metadata:
       labels:
-        app: prometheus-system
+        app: prometheus-business
         component: monitoring
-        metrics-type: system
+        metrics-type: business
     spec:
       containers:
-      - name: prometheus-system
+      - name: prometheus-business
         image: prom/prometheus:latest
         ports:
         - containerPort: 9090
@@ -64,16 +64,16 @@ spec:
       volumes:
       - name: prometheus-data
         persistentVolumeClaim:
-          claimName: prometheus-system-data-pvc
+          claimName: prometheus-business-data-pvc
       - name: prometheus-config
         configMap:
-          name: prometheus-system-config
+          name: prometheus-business-config
 
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: prometheus-system-data-pvc
+  name: prometheus-business-data-pvc
   namespace: ez-platform
 spec:
   accessModes:

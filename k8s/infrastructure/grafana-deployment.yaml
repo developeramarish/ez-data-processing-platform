@@ -1,13 +1,13 @@
-# Grafana - Kubernetes Deployment
-# Visualization and dashboards
+# EZ Platform Grafana - Kubernetes Deployment
+# Unified visualization and dashboards for system and business metrics
 
 apiVersion: v1
 kind: Service
 metadata:
-  name: grafana
+  name: ezplatform-grafana
   namespace: ez-platform
   labels:
-    app: grafana
+    app: ezplatform-grafana
 spec:
   type: LoadBalancer
   ports:
@@ -15,29 +15,29 @@ spec:
     targetPort: 3000
     name: http
   selector:
-    app: grafana
+    app: ezplatform-grafana
 
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: grafana
+  name: ezplatform-grafana
   namespace: ez-platform
   labels:
-    app: grafana
+    app: ezplatform-grafana
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: grafana
+      app: ezplatform-grafana
   template:
     metadata:
       labels:
-        app: grafana
+        app: ezplatform-grafana
         component: monitoring
     spec:
       containers:
-      - name: grafana
+      - name: ezplatform-grafana
         image: grafana/grafana:latest
         ports:
         - containerPort: 3000
@@ -60,13 +60,13 @@ spec:
       volumes:
       - name: grafana-data
         persistentVolumeClaim:
-          claimName: grafana-data-pvc
+          claimName: ezplatform-grafana-data-pvc
 
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: grafana-data-pvc
+  name: ezplatform-grafana-data-pvc
   namespace: ez-platform
 spec:
   accessModes:
