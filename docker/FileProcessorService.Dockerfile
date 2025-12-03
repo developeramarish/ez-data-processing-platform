@@ -16,14 +16,11 @@ COPY ["src/Services/FileProcessorService/", "FileProcessorService/"]
 COPY ["src/Services/Shared/", "Shared/"]
 
 WORKDIR "/src/FileProcessorService"
-RUN dotnet build "DataProcessing.FileProcessor.csproj" -c Release -o /app/build
-
-FROM build AS publish
 RUN dotnet publish "DataProcessing.FileProcessor.csproj" -c Release -o /app/publish
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0
 WORKDIR /app
-COPY --from=publish /app/publish .
+COPY --from=build /app/publish .
 
 EXPOSE 5008
 

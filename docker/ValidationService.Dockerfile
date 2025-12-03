@@ -13,12 +13,11 @@ COPY ["src/Services/ValidationService/", "ValidationService/"]
 COPY ["src/Services/Shared/", "Shared/"]
 
 WORKDIR "/src/ValidationService"
-RUN dotnet build "DataProcessing.Validation.csproj" -c Release -o /app/build
 RUN dotnet publish "DataProcessing.Validation.csproj" -c Release -o /app/publish
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0
 WORKDIR /app
-COPY --from=publish /app/publish .
+COPY --from=build /app/publish .
 EXPOSE 5003
 HEALTHCHECK --interval=30s --timeout=3s CMD curl -f http://localhost:5003/health || exit 1
 ENTRYPOINT ["dotnet", "DataProcessing.Validation.dll"]

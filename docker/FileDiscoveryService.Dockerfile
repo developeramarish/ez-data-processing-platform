@@ -20,18 +20,14 @@ RUN dotnet restore "FileDiscoveryService/DataProcessing.FileDiscovery.csproj"
 COPY ["src/Services/FileDiscoveryService/", "FileDiscoveryService/"]
 COPY ["src/Services/Shared/", "Shared/"]
 
-# Build
+# Build and publish
 WORKDIR "/src/FileDiscoveryService"
-RUN dotnet build "DataProcessing.FileDiscovery.csproj" -c Release -o /app/build
-
-# Publish
-FROM build AS publish
 RUN dotnet publish "DataProcessing.FileDiscovery.csproj" -c Release -o /app/publish
 
 # Runtime image
 FROM mcr.microsoft.com/dotnet/aspnet:10.0
 WORKDIR /app
-COPY --from=publish /app/publish .
+COPY --from=build /app/publish .
 
 # Expose port
 EXPOSE 5007
