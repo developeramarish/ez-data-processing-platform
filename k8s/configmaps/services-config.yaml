@@ -8,11 +8,11 @@ metadata:
   name: services-config
   namespace: ez-platform
 data:
-  # MongoDB Configuration
-  mongodb-connection: "mongodb://mongodb-0.mongodb:27017,mongodb-1.mongodb:27017,mongodb-2.mongodb:27017/ezplatform?replicaSet=rs0"
+  # MongoDB Configuration (single node for MVP)
+  mongodb-connection: "mongodb://mongodb-0.mongodb.ez-platform.svc.cluster.local:27017/ezplatform"
 
-  # Kafka Configuration
-  kafka-server: "kafka-0.kafka:9092,kafka-1.kafka:9092,kafka-2.kafka:9092"
+  # Kafka Configuration (single node for MVP)
+  kafka-server: "kafka-0.kafka.ez-platform.svc.cluster.local:9092"
 
   # Hazelcast Configuration
   hazelcast-server: "hazelcast-0.hazelcast:5701,hazelcast-1.hazelcast:5701,hazelcast-2.hazelcast:5701"
