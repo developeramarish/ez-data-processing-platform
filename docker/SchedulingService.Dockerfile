@@ -2,6 +2,7 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
+COPY ["Directory.Packages.props", "./"]
 COPY ["src/Services/SchedulingService/DataProcessing.Scheduling.csproj", "SchedulingService/"]
 COPY ["src/Services/Shared/DataProcessing.Shared.csproj", "Shared/"]
 RUN dotnet restore "SchedulingService/DataProcessing.Scheduling.csproj"

@@ -7,8 +7,8 @@ WORKDIR /app
 # Copy package files
 COPY src/Frontend/package*.json ./
 
-# Install dependencies
-RUN npm install
+# Install dependencies (use --legacy-peer-deps for React 19)
+RUN npm install --legacy-peer-deps
 
 # Copy source code
 COPY src/Frontend/ ./
