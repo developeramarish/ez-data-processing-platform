@@ -39,6 +39,7 @@ public static class LoggingConfiguration
         var logLevel = configuration.GetValue<string>("Logging:LogLevel:Default") ?? "Information";
         var enableFileLogging = configuration.GetValue<bool>("Logging:EnableFileLogging", true);
         var enableConsoleLogging = configuration.GetValue<bool>("Logging:EnableConsoleLogging", true);
+        var enableElasticsearchLogging = configuration.GetValue<bool>("Logging:EnableElasticsearchLogging", false);
         
         // Parse log level
         if (!Enum.TryParse<LogEventLevel>(logLevel, true, out var serilogLevel))
@@ -87,22 +88,25 @@ public static class LoggingConfiguration
         }
 
         // Add Elasticsearch logging using Elastic.Serilog.Sinks (official Elastic sink)
-        loggerConfiguration.WriteTo.Elasticsearch(new[] { new Uri(elasticsearchUri) }, opts =>
+        if (enableElasticsearchLogging)
         {
-            opts.DataStream = new DataStreamName("logs", $"dataprocessing-{serviceName.ToLowerInvariant()}");
-            opts.BootstrapMethod = BootstrapMethod.Failure;
-            opts.MinimumLevel = serilogLevel;
-            opts.ConfigureChannel = channelOpts =>
+            loggerConfiguration.WriteTo.Elasticsearch(new[] { new Uri(elasticsearchUri) }, opts =>
             {
-                channelOpts.BufferOptions = new BufferOptions
+                opts.DataStream = new DataStreamName("logs", $"dataprocessing-{serviceName.ToLowerInvariant()}");
+                opts.BootstrapMethod = BootstrapMethod.Failure;
+                opts.MinimumLevel = serilogLevel;
+                opts.ConfigureChannel = channelOpts =>
                 {
-                    ExportMaxConcurrency = 10
+                    channelOpts.BufferOptions = new BufferOptions
+                    {
+                        ExportMaxConcurrency = 10
+                    };
                 };
-            };
-        }, transport =>
-        {
-            transport.RequestTimeout(TimeSpan.FromSeconds(30));
-        });
+            }, transport =>
+            {
+                transport.RequestTimeout(TimeSpan.FromSeconds(30));
+            });
+        }
 
         // Configure request/response logging for web applications
         loggerConfiguration.Enrich.With<RequestResponseEnricher>();

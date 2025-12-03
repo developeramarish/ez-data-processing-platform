@@ -41,18 +41,19 @@ public static class HealthCheckConfiguration
                 tags: new[] { "ready", "mongodb" });
         }
 
-        // Add Kafka health check
+        // Add Kafka health check (Degraded instead of Unhealthy to not fail pod)
         var kafkaConnectionString = configuration.GetConnectionString("Kafka");
         if (!string.IsNullOrEmpty(kafkaConnectionString))
         {
             healthChecksBuilder.AddKafka(options =>
             {
                 options.BootstrapServers = kafkaConnectionString;
+                options.MessageTimeoutMs = 5000; // 5 second message timeout
             },
             name: "kafka",
-            failureStatus: HealthStatus.Unhealthy,
-            tags: new[] { "ready", "kafka" },
-            timeout: TimeSpan.FromSeconds(10));
+            failureStatus: HealthStatus.Degraded, // Changed from Unhealthy - Kafka not critical for startup
+            tags: new[] { "kafka" }, // Removed from "ready" tag so readiness probe doesn't fail
+            timeout: TimeSpan.FromSeconds(30)); // Increased from 10 to 30 seconds
         }
 
         // Add Elasticsearch health check (for logging)

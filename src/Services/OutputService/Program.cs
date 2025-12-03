@@ -58,7 +58,7 @@ var kafkaServer = builder.Configuration.GetConnectionString("Kafka") ?? "localho
 var producerConfig = new ProducerConfig
 {
     BootstrapServers = kafkaServer,
-    Acks = Acks.Leader,
+    Acks = Acks.All,  // Required when EnableIdempotence = true
     MessageTimeoutMs = 30000,
     RequestTimeoutMs = 30000,
     EnableIdempotence = true,

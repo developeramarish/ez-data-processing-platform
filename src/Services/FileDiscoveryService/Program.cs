@@ -32,7 +32,7 @@ var connectionString = builder.Configuration.GetConnectionString("MongoDB") ?? "
 Console.WriteLine($"[DEBUG] FileDiscovery MongoDB ConnectionString from config: '{connectionString}'");
 await DB.InitAsync("DataProcessingFileDiscovery", connectionString);
 
-// Configure MassTransit with RabbitMQ
+// Configure MassTransit with InMemory transport (MVP - Kafka migration pending)
 builder.Services.AddMassTransit(x =>
 {
     // Register FilePollingEvent consumer
@@ -40,20 +40,9 @@ builder.Services.AddMassTransit(x =>
     {
         cfg.UseConcurrentMessageLimit(5); // Process 5 datasources concurrently
     });
-    
-    x.UsingRabbitMq((context, cfg) =>
+
+    x.UsingInMemory((context, cfg) =>
     {
-        var rabbitMqHost = builder.Configuration.GetValue<string>("RabbitMQ:Host") ?? "localhost";
-        var rabbitMqPort = builder.Configuration.GetValue<ushort>("RabbitMQ:Port", 5672);
-        var rabbitMqUser = builder.Configuration.GetValue<string>("RabbitMQ:Username") ?? "guest";
-        var rabbitMqPassword = builder.Configuration.GetValue<string>("RabbitMQ:Password") ?? "guest";
-
-        cfg.Host(rabbitMqHost, rabbitMqPort, "/", h =>
-        {
-            h.Username(rabbitMqUser);
-            h.Password(rabbitMqPassword);
-        });
-
         cfg.ConfigureEndpoints(context);
     });
 });
