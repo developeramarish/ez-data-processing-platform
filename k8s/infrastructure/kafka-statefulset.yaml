@@ -44,15 +44,19 @@ spec:
           name: kafka
         - containerPort: 9093
           name: kafka-internal
+        command:
+        - sh
+        - -c
+        - |
+          # Extract broker ID from hostname (kafka-0 -> 0, kafka-1 -> 1, etc.)
+          export KAFKA_BROKER_ID=${HOSTNAME##*-}
+          # Set advertised listeners with full hostname
+          export KAFKA_ADVERTISED_LISTENERS="PLAINTEXT://$(hostname -f):9092"
+          # Start Kafka with generated config
+          /etc/confluent/docker/run
         env:
-        - name: KAFKA_BROKER_ID
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.name
         - name: KAFKA_ZOOKEEPER_CONNECT
           value: "zookeeper:2181"
-        - name: KAFKA_ADVERTISED_LISTENERS
-          value: "PLAINTEXT://$(POD_NAME).kafka:9092"
         - name: KAFKA_LISTENER_SECURITY_PROTOCOL_MAP
           value: "PLAINTEXT:PLAINTEXT"
         - name: KAFKA_INTER_BROKER_LISTENER_NAME

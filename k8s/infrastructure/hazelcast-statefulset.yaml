@@ -38,20 +38,20 @@ spec:
     spec:
       containers:
       - name: hazelcast
-        image: hazelcast/hazelcast:5.5.1
+        image: hazelcast/hazelcast:5.6
         ports:
         - containerPort: 5701
           name: hazelcast
         env:
         - name: JAVA_OPTS
-          value: "-Xms8g -Xmx8g -Dhazelcast.config=/config/hazelcast.yaml"
+          value: "-Xms4g -Xmx4g"
         - name: HZ_CLUSTERNAME
           value: "data-processing-cluster"
-        - name: HZ_NETWORK_JOIN_KUBERNETES_ENABLED
-          value: "true"
-        - name: HZ_NETWORK_JOIN_KUBERNETES_NAMESPACE
-          value: "ez-platform"
-        - name: HZ_NETWORK_JOIN_KUBERNETES_SERVICE_NAME
+        - name: HZ_KUBERNETES_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: HZ_KUBERNETES_SERVICE_NAME
           value: "hazelcast"
         resources:
           requests:
@@ -63,8 +63,6 @@ spec:
         volumeMounts:
         - name: hazelcast-data
           mountPath: /data
-        - name: hazelcast-config
-          mountPath: /config
         livenessProbe:
           httpGet:
             path: /hazelcast/health/node-state
@@ -77,10 +75,6 @@ spec:
             port: 5701
           initialDelaySeconds: 30
           periodSeconds: 5
-      volumes:
-      - name: hazelcast-config
-        configMap:
-          name: hazelcast-config
   volumeClaimTemplates:
   - metadata:
       name: hazelcast-data
