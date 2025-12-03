@@ -3,6 +3,8 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 COPY ["Directory.Packages.props", "./"]
+COPY ["Directory.Build.props", "./"]
+COPY ["global.json", "./"]
 COPY ["src/Services/MetricsConfigurationService/MetricsConfigurationService.csproj", "MetricsConfigurationService/"]
 COPY ["src/Services/Shared/DataProcessing.Shared.csproj", "Shared/"]
 RUN dotnet restore "MetricsConfigurationService/MetricsConfigurationService.csproj"

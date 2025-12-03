@@ -5,6 +5,8 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 COPY ["Directory.Packages.props", "./"]
+COPY ["Directory.Build.props", "./"]
+COPY ["global.json", "./"]
 COPY ["src/Services/FileProcessorService/DataProcessing.FileProcessor.csproj", "FileProcessorService/"]
 COPY ["src/Services/Shared/DataProcessing.Shared.csproj", "Shared/"]
 
