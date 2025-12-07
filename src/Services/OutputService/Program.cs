@@ -16,6 +16,7 @@ using DataProcessing.Output.Handlers;
 using DataProcessing.Output.Services;
 using DataProcessing.Shared.Configuration;
 using DataProcessing.Shared.Converters;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -129,6 +130,25 @@ builder.Services.AddMassTransit(x =>
         {
             cfg.ConfigureEndpoints(context);
         });
+    }
+});
+
+// Disable MassTransit automatic health check registration
+builder.Services.Configure<MassTransitHostOptions>(options =>
+{
+    options.WaitUntilStarted = false;
+});
+
+// Remove MassTransit from health check registrations to prevent startup issues
+builder.Services.PostConfigure<HealthCheckServiceOptions>(options =>
+{
+    var massTransitChecks = options.Registrations
+        .Where(r => r.Name.Contains("masstransit", StringComparison.OrdinalIgnoreCase))
+        .ToList();
+
+    foreach (var check in massTransitChecks)
+    {
+        options.Registrations.Remove(check);
     }
 });
 
