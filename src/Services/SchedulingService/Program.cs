@@ -32,15 +32,49 @@ var serviceName = "DataProcessing.Scheduling";
 // Configure MongoDB
 var connectionString = builder.Configuration.GetConnectionString("MongoDB") 
     ?? throw new InvalidOperationException("MongoDB connection string is required");
-await DB.InitAsync("DataProcessingScheduling", connectionString);
+await DB.InitAsync("ezplatform", connectionString);
 
-// Configure MassTransit with in-memory bus (per .clinerules - Kafka replaced by in-memory)
+// Configure MassTransit with Kafka for inter-service events
+var kafkaServer = builder.Configuration.GetConnectionString("Kafka") ?? "kafka-0.kafka.ez-platform.svc.cluster.local:9092";
 builder.Services.AddMassTransit(x =>
 {
-    // Use in-memory bus for testing/development
+    // Register DataSource lifecycle event consumers
+    x.AddConsumer<DataProcessing.Scheduling.Consumers.DataSourceCreatedConsumer>();
+    x.AddConsumer<DataProcessing.Scheduling.Consumers.DataSourceUpdatedConsumer>();
+    x.AddConsumer<DataProcessing.Scheduling.Consumers.DataSourceDeletedConsumer>();
+
+    // Use in-memory bus for request/response patterns
     x.UsingInMemory((context, cfg) =>
     {
         cfg.ConfigureEndpoints(context);
+    });
+
+    // Add Kafka riders for event consumption
+    x.AddRider(rider =>
+    {
+        rider.AddConsumer<DataProcessing.Scheduling.Consumers.DataSourceCreatedConsumer>();
+        rider.AddConsumer<DataProcessing.Scheduling.Consumers.DataSourceUpdatedConsumer>();
+        rider.AddConsumer<DataProcessing.Scheduling.Consumers.DataSourceDeletedConsumer>();
+
+        rider.UsingKafka((context, kafka) =>
+        {
+            kafka.Host(kafkaServer);
+
+            kafka.TopicEndpoint<DataProcessing.Shared.Messages.DataSourceCreatedEvent>("datasource-events", "scheduling-service", e =>
+            {
+                e.ConfigureConsumer<DataProcessing.Scheduling.Consumers.DataSourceCreatedConsumer>(context);
+            });
+
+            kafka.TopicEndpoint<DataProcessing.Shared.Messages.DataSourceUpdatedEvent>("datasource-events", "scheduling-service", e =>
+            {
+                e.ConfigureConsumer<DataProcessing.Scheduling.Consumers.DataSourceUpdatedConsumer>(context);
+            });
+
+            kafka.TopicEndpoint<DataProcessing.Shared.Messages.DataSourceDeletedEvent>("datasource-events", "scheduling-service", e =>
+            {
+                e.ConfigureConsumer<DataProcessing.Scheduling.Consumers.DataSourceDeletedConsumer>(context);
+            });
+        });
     });
 });
 

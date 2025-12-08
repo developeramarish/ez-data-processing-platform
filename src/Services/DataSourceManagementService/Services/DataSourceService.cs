@@ -2,12 +2,14 @@ using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using DataProcessing.Shared.Entities;
 using DataProcessing.Shared.Monitoring;
+using DataProcessing.Shared.Messages;
 using DataProcessing.DataSourceManagement.Models.Requests;
 using DataProcessing.DataSourceManagement.Models.Responses;
 using DataProcessing.DataSourceManagement.Models.Queries;
 using DataProcessing.DataSourceManagement.Repositories;
 using DataProcessing.DataSourceManagement.Infrastructure;
 using MongoDB.Bson;
+using MassTransit;
 
 namespace DataProcessing.DataSourceManagement.Services;
 
@@ -20,16 +22,19 @@ public class DataSourceService : IDataSourceService
     private readonly IDataSourceRepository _repository;
     private readonly ILogger<DataSourceService> _logger;
     private readonly DataProcessingMetrics _metrics;
+    private readonly IPublishEndpoint _publishEndpoint;
     private static readonly ActivitySource ActivitySource = new("DataProcessing.DataSourceManagement.Service");
 
     public DataSourceService(
         IDataSourceRepository repository,
         ILogger<DataSourceService> logger,
-        DataProcessingMetrics metrics)
+        DataProcessingMetrics metrics,
+        IPublishEndpoint publishEndpoint)
     {
         _repository = repository;
         _logger = logger;
         _metrics = metrics;
+        _publishEndpoint = publishEndpoint;
     }
 
     /// <summary>
@@ -206,6 +211,31 @@ public class DataSourceService : IDataSourceService
             _logger.LogInformation("Successfully created data source. ID: {Id}, Name: {Name}, CorrelationId: {CorrelationId}",
                 createdDataSource.ID, createdDataSource.Name, correlationId);
 
+            // Publish DataSourceCreatedEvent for SchedulingService
+            try
+            {
+                await _publishEndpoint.Publish(new DataSourceCreatedEvent
+                {
+                    CorrelationId = correlationId,
+                    DataSourceId = createdDataSource.ID,
+                    DataSourceName = createdDataSource.Name,
+                    SupplierName = createdDataSource.SupplierName,
+                    PollingRate = createdDataSource.PollingRate,
+                    CronExpression = createdDataSource.CronExpression,
+                    IsActive = createdDataSource.IsActive,
+                    CreatedBy = createdDataSource.CreatedBy
+                });
+
+                _logger.LogInformation("Published DataSourceCreatedEvent for {DataSourceId}. CorrelationId: {CorrelationId}",
+                    createdDataSource.ID, correlationId);
+            }
+            catch (Exception publishEx)
+            {
+                // Log but don't fail the request if event publishing fails
+                _logger.LogError(publishEx, "Failed to publish DataSourceCreatedEvent for {DataSourceId}. CorrelationId: {CorrelationId}",
+                    createdDataSource.ID, correlationId);
+            }
+
             return ApiResponse<DataProcessingDataSource>.Success(createdDataSource, correlationId);
         }
         catch (Exception ex)
@@ -266,6 +296,30 @@ public class DataSourceService : IDataSourceService
             _logger.LogInformation("Successfully updated data source. ID: {Id}, Name: {Name}, CorrelationId: {CorrelationId}",
                 existingDataSource.ID, existingDataSource.Name, correlationId);
 
+            // Publish DataSourceUpdatedEvent for SchedulingService
+            try
+            {
+                await _publishEndpoint.Publish(new DataSourceUpdatedEvent
+                {
+                    CorrelationId = correlationId,
+                    DataSourceId = existingDataSource.ID,
+                    DataSourceName = existingDataSource.Name,
+                    SupplierName = existingDataSource.SupplierName,
+                    PollingRate = existingDataSource.PollingRate,
+                    CronExpression = existingDataSource.CronExpression,
+                    IsActive = existingDataSource.IsActive,
+                    UpdatedBy = existingDataSource.UpdatedBy
+                });
+
+                _logger.LogInformation("Published DataSourceUpdatedEvent for {DataSourceId}. CorrelationId: {CorrelationId}",
+                    existingDataSource.ID, correlationId);
+            }
+            catch (Exception publishEx)
+            {
+                _logger.LogError(publishEx, "Failed to publish DataSourceUpdatedEvent for {DataSourceId}. CorrelationId: {CorrelationId}",
+                    existingDataSource.ID, correlationId);
+            }
+
             return ApiResponse<object>.Success(new { message = "מקור הנתונים עודכן בהצלחה" }, correlationId);
         }
         catch (Exception ex)
@@ -297,9 +351,9 @@ public class DataSourceService : IDataSourceService
             _logger.LogInformation("Soft deleting data source. ID: {Id}, DeletedBy: {DeletedBy}, CorrelationId: {CorrelationId}",
                 id, deletedBy, correlationId);
 
-            var success = await _repository.SoftDeleteAsync(id, deletedBy, correlationId);
-
-            if (!success)
+            // Get datasource details before deletion for event
+            var dataSource = await _repository.GetByIdAsync(id, correlationId);
+            if (dataSource == null)
             {
                 _logger.LogWarning("Data source not found for deletion. ID: {Id}, CorrelationId: {CorrelationId}",
                     id, correlationId);
@@ -307,8 +361,36 @@ public class DataSourceService : IDataSourceService
                 return ApiResponse<object>.Failure(errorResponse.Error, correlationId);
             }
 
+            var success = await _repository.SoftDeleteAsync(id, deletedBy, correlationId);
+
+            if (!success)
+            {
+                var errorResponse = HebrewErrorResponseFactory.CreateNotFoundError(correlationId, "data_source", id);
+                return ApiResponse<object>.Failure(errorResponse.Error, correlationId);
+            }
+
             _logger.LogInformation("Successfully soft deleted data source. ID: {Id}, CorrelationId: {CorrelationId}",
                 id, correlationId);
+
+            // Publish DataSourceDeletedEvent for SchedulingService
+            try
+            {
+                await _publishEndpoint.Publish(new DataSourceDeletedEvent
+                {
+                    CorrelationId = correlationId,
+                    DataSourceId = id,
+                    DataSourceName = dataSource.Name,
+                    DeletedBy = deletedBy
+                });
+
+                _logger.LogInformation("Published DataSourceDeletedEvent for {DataSourceId}. CorrelationId: {CorrelationId}",
+                    id, correlationId);
+            }
+            catch (Exception publishEx)
+            {
+                _logger.LogError(publishEx, "Failed to publish DataSourceDeletedEvent for {DataSourceId}. CorrelationId: {CorrelationId}",
+                    id, correlationId);
+            }
 
             return ApiResponse<object>.Success(new { message = "מקור הנתונים נמחק בהצלחה" }, correlationId);
         }

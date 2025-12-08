@@ -86,6 +86,26 @@ public class SchedulingManager : ISchedulingManager
             // Schedule the job
             await _scheduler.ScheduleJob(job, trigger);
 
+            // Persist schedule to MongoDB
+            var scheduledDataSource = new DataProcessing.Shared.Entities.ScheduledDataSource
+            {
+                DataSourceId = dataSource.ID,
+                DataSourceName = dataSource.Name,
+                SupplierName = dataSource.SupplierName,
+                PollingInterval = dataSource.PollingRate,
+                CronExpression = cronExpression,
+                IsActive = true,
+                IsPaused = false,
+                QuartzJobKey = jobKey.ToString(),
+                QuartzTriggerKey = triggerKey.ToString(),
+                NextExecutionTime = trigger.GetNextFireTimeUtc()?.UtcDateTime,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                CorrelationId = correlationId
+            };
+
+            await scheduledDataSource.SaveAsync();
+
             // Update metrics
             _metrics.RecordMessageSent("schedule_created", "scheduling", true);
 
@@ -118,19 +138,24 @@ public class SchedulingManager : ISchedulingManager
             var jobKey = CreateJobKey(dataSourceId);
             var result = await _scheduler.DeleteJob(jobKey);
 
+            // Delete persisted schedule from MongoDB
+            var deleteResult = await DB.DeleteAsync<DataProcessing.Shared.Entities.ScheduledDataSource>(
+                s => s.DataSourceId == dataSourceId);
+            var deleteCount = deleteResult.DeletedCount;
+
             if (result)
             {
                 _metrics.RecordMessageSent("schedule_deleted", "scheduling", true);
-                _logger.LogInformation("Successfully unscheduled polling for data source {DataSourceId}. CorrelationId: {CorrelationId}",
-                    dataSourceId, correlationId);
+                _logger.LogInformation("Successfully unscheduled polling for data source {DataSourceId}. Deleted {Count} persisted schedule(s). CorrelationId: {CorrelationId}",
+                    dataSourceId, deleteCount, correlationId);
             }
             else
             {
-                _logger.LogWarning("No schedule found to unschedule for data source {DataSourceId}. CorrelationId: {CorrelationId}",
-                    dataSourceId, correlationId);
+                _logger.LogWarning("No Quartz schedule found to unschedule for data source {DataSourceId}, but deleted {Count} persisted schedule(s). CorrelationId: {CorrelationId}",
+                    dataSourceId, deleteCount, correlationId);
             }
 
-            return result;
+            return result || deleteCount > 0;
         }
         catch (Exception ex)
         {

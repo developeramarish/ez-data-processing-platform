@@ -52,19 +52,20 @@ public class DataProcessingDataSource : DataProcessingBaseEntity
             return CronExpression;
 
         // Convert TimeSpan to 6-field cron expression (with seconds)
+        // Use ? for day-of-week to avoid Quartz conflict with day-of-month
         var totalMinutes = (int)PollingRate.TotalMinutes;
         if (totalMinutes < 1)
-            return "*/30 * * * * *"; // Default to 30 seconds
+            return "*/30 * * * * ?"; // Default to 30 seconds
 
         // Generate minute-based cron
         if (totalMinutes == 1)
-            return "0 * * * * *"; // Every minute at 0 seconds
-        
+            return "0 * * * * ?"; // Every minute at 0 seconds
+
         if (totalMinutes < 60)
-            return $"0 */{totalMinutes} * * * *"; // Every N minutes
+            return $"0 */{totalMinutes} * * * ?"; // Every N minutes
         
         var hours = totalMinutes / 60;
-        return $"0 0 */{hours} * * *"; // Every N hours
+        return $"0 0 */{hours} * * ?"; // Every N hours
     }
 
     /// <summary>

@@ -7,6 +7,7 @@ using MongoDB.Entities;
 using MongoDB.Driver;
 using MongoDB.Bson;
 using System.Reflection;
+using MassTransit;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -45,6 +46,30 @@ services.AddLogging(builder =>
 
 // Configure metrics
 services.AddSingleton<DataProcessingMetrics>();
+
+// Configure MassTransit with Kafka for event publishing
+var kafkaServer = configuration.GetConnectionString("Kafka") ?? "kafka-0.kafka.ez-platform.svc.cluster.local:9092";
+services.AddMassTransit(x =>
+{
+    x.UsingInMemory((context, cfg) =>
+    {
+        // Use InMemory for request/response patterns
+        cfg.ConfigureEndpoints(context);
+    });
+
+    // Add Kafka riders for event publishing
+    x.AddRider(rider =>
+    {
+        rider.AddProducer<DataProcessing.Shared.Messages.DataSourceCreatedEvent>("datasource-events");
+        rider.AddProducer<DataProcessing.Shared.Messages.DataSourceUpdatedEvent>("datasource-events");
+        rider.AddProducer<DataProcessing.Shared.Messages.DataSourceDeletedEvent>("datasource-events");
+
+        rider.UsingKafka((context, kafka) =>
+        {
+            kafka.Host(kafkaServer);
+        });
+    });
+});
 
 // Add health checks
 services.AddHealthChecks()
