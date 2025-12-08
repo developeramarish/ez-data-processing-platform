@@ -9,7 +9,7 @@
   <ItemGroup>
     <!-- MassTransit for messaging -->
     <PackageReference Include="MassTransit" />
-    <PackageReference Include="MassTransit.Kafka" />
+    <PackageReference Include="MassTransit.RabbitMQ" />
 
     <!-- Kafka client for KafkaOutputHandler -->
     <PackageReference Include="Confluent.Kafka" />

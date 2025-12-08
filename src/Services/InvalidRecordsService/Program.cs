@@ -30,12 +30,21 @@ var connectionString = builder.Configuration.GetConnectionString("MongoDB")
 var databaseName = builder.Configuration.GetConnectionString("DatabaseName") ?? "DataProcessingPlatform";
 await DB.InitAsync(databaseName, connectionString);
 
-// Configure MassTransit with in-memory bus (per .clinerules - Kafka not required)
+// Configure MassTransit with RabbitMQ transport
+var rabbitMqHost = builder.Configuration.GetValue<string>("RabbitMQ:Host") ?? "rabbitmq.ez-platform.svc.cluster.local";
+var rabbitMqUser = builder.Configuration.GetValue<string>("RabbitMQ:Username") ?? "guest";
+var rabbitMqPass = builder.Configuration.GetValue<string>("RabbitMQ:Password") ?? "guest";
+
 builder.Services.AddMassTransit(x =>
 {
-    // Use in-memory bus for development
-    x.UsingInMemory((context, cfg) =>
+    x.UsingRabbitMq((context, cfg) =>
     {
+        cfg.Host(rabbitMqHost, "/", h =>
+        {
+            h.Username(rabbitMqUser);
+            h.Password(rabbitMqPass);
+        });
+
         cfg.ConfigureEndpoints(context);
     });
 });

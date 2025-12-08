@@ -59,16 +59,25 @@ builder.Services.AddSingleton<IHazelcastClient>(sp =>
 });
 
 // Configure MassTransit with InMemory transport (MVP - Kafka migration pending)
+var rabbitMqHost = builder.Configuration.GetValue<string>("RabbitMQ:Host") ?? "rabbitmq.ez-platform.svc.cluster.local";
+var rabbitMqUser = builder.Configuration.GetValue<string>("RabbitMQ:Username") ?? "guest";
+var rabbitMqPass = builder.Configuration.GetValue<string>("RabbitMQ:Password") ?? "guest";
+
 builder.Services.AddMassTransit(x =>
 {
-    // Register FileDiscoveredEvent consumer
     x.AddConsumer<FileDiscoveredEventConsumer>(cfg =>
     {
         cfg.UseConcurrentMessageLimit(10); // Process 10 files concurrently per instance
     });
 
-    x.UsingInMemory((context, cfg) =>
+    x.UsingRabbitMq((context, cfg) =>
     {
+        cfg.Host(rabbitMqHost, "/", h =>
+        {
+            h.Username(rabbitMqUser);
+            h.Password(rabbitMqPass);
+        });
+
         cfg.ConfigureEndpoints(context);
     });
 });

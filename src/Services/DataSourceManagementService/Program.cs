@@ -47,27 +47,22 @@ services.AddLogging(builder =>
 // Configure metrics
 services.AddSingleton<DataProcessingMetrics>();
 
-// Configure MassTransit with Kafka for event publishing
-var kafkaServer = configuration.GetConnectionString("Kafka") ?? "kafka-0.kafka.ez-platform.svc.cluster.local:9092";
+// Configure MassTransit with RabbitMQ transport
+var rabbitMqHost = configuration.GetValue<string>("RabbitMQ:Host") ?? "rabbitmq.ez-platform.svc.cluster.local";
+var rabbitMqUser = configuration.GetValue<string>("RabbitMQ:Username") ?? "guest";
+var rabbitMqPass = configuration.GetValue<string>("RabbitMQ:Password") ?? "guest";
+
 services.AddMassTransit(x =>
 {
-    x.UsingInMemory((context, cfg) =>
+    x.UsingRabbitMq((context, cfg) =>
     {
-        // Use InMemory for request/response patterns
-        cfg.ConfigureEndpoints(context);
-    });
-
-    // Add Kafka riders for event publishing
-    x.AddRider(rider =>
-    {
-        rider.AddProducer<DataProcessing.Shared.Messages.DataSourceCreatedEvent>("datasource-events");
-        rider.AddProducer<DataProcessing.Shared.Messages.DataSourceUpdatedEvent>("datasource-events");
-        rider.AddProducer<DataProcessing.Shared.Messages.DataSourceDeletedEvent>("datasource-events");
-
-        rider.UsingKafka((context, kafka) =>
+        cfg.Host(rabbitMqHost, "/", h =>
         {
-            kafka.Host(kafkaServer);
+            h.Username(rabbitMqUser);
+            h.Password(rabbitMqPass);
         });
+
+        cfg.ConfigureEndpoints(context);
     });
 });
 

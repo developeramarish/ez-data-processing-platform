@@ -32,17 +32,26 @@ var connectionString = builder.Configuration.GetConnectionString("MongoDB") ?? "
 Console.WriteLine($"[DEBUG] FileDiscovery MongoDB ConnectionString from config: '{connectionString}'");
 await DB.InitAsync("DataProcessingFileDiscovery", connectionString);
 
-// Configure MassTransit with InMemory transport (MVP - Kafka migration pending)
+// Configure MassTransit with RabbitMQ transport
+var rabbitMqHost = builder.Configuration.GetValue<string>("RabbitMQ:Host") ?? "rabbitmq.ez-platform.svc.cluster.local";
+var rabbitMqUser = builder.Configuration.GetValue<string>("RabbitMQ:Username") ?? "guest";
+var rabbitMqPass = builder.Configuration.GetValue<string>("RabbitMQ:Password") ?? "guest";
+
 builder.Services.AddMassTransit(x =>
 {
-    // Register FilePollingEvent consumer
     x.AddConsumer<FilePollingEventConsumer>(cfg =>
     {
         cfg.UseConcurrentMessageLimit(5); // Process 5 datasources concurrently
     });
 
-    x.UsingInMemory((context, cfg) =>
+    x.UsingRabbitMq((context, cfg) =>
     {
+        cfg.Host(rabbitMqHost, "/", h =>
+        {
+            h.Username(rabbitMqUser);
+            h.Password(rabbitMqPass);
+        });
+
         cfg.ConfigureEndpoints(context);
     });
 });

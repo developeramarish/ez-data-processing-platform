@@ -87,50 +87,25 @@ builder.Services.AddScoped<FormatReconstructorService>();
 
 Log.Information("Registered output handlers and format reconstructors");
 
-// Configure MassTransit with Kafka
-var useKafka = builder.Configuration.GetValue<bool>("MassTransit:UseKafka", true);
+// Configure MassTransit with RabbitMQ transport
+var rabbitMqHost = builder.Configuration.GetValue<string>("RabbitMQ:Host") ?? "rabbitmq.ez-platform.svc.cluster.local";
+var rabbitMqUser = builder.Configuration.GetValue<string>("RabbitMQ:Username") ?? "guest";
+var rabbitMqPass = builder.Configuration.GetValue<string>("RabbitMQ:Password") ?? "guest";
 
 builder.Services.AddMassTransit(x =>
 {
     x.AddConsumer<ValidationCompletedEventConsumer>();
 
-    if (useKafka)
+    x.UsingRabbitMq((context, cfg) =>
     {
-        // Use Kafka for production cross-process communication
-        x.UsingInMemory((context, cfg) =>
+        cfg.Host(rabbitMqHost, "/", h =>
         {
-            cfg.ConfigureEndpoints(context);
+            h.Username(rabbitMqUser);
+            h.Password(rabbitMqPass);
         });
 
-        x.AddRider(rider =>
-        {
-            var kafkaServer = builder.Configuration.GetValue<string>("MassTransit:Kafka:Server")
-                ?? "localhost:9092";
-
-            rider.AddConsumer<ValidationCompletedEventConsumer>();
-
-            rider.UsingKafka((context, kafka) =>
-            {
-                kafka.Host(kafkaServer);
-
-                kafka.TopicEndpoint<DataProcessing.Shared.Messages.ValidationCompletedEvent>(
-                    "validation-completed",
-                    "output-service-group",
-                    e =>
-                    {
-                        e.ConfigureConsumer<ValidationCompletedEventConsumer>(context);
-                    });
-            });
-        });
-    }
-    else
-    {
-        // Use in-memory bus for development/testing
-        x.UsingInMemory((context, cfg) =>
-        {
-            cfg.ConfigureEndpoints(context);
-        });
-    }
+        cfg.ConfigureEndpoints(context);
+    });
 });
 
 // Disable MassTransit automatic health check registration
@@ -153,9 +128,8 @@ builder.Services.PostConfigure<HealthCheckServiceOptions>(options =>
 });
 
 Log.Information(
-    "MassTransit configured with Kafka: {UseKafka}, Server={Server}",
-    useKafka,
-    builder.Configuration.GetValue<string>("MassTransit:Kafka:Server"));
+    "MassTransit configured with RabbitMQ: Server={Server}",
+    builder.Configuration.GetValue<string>("RabbitMQ:Host"));
 
 // Configure OpenTelemetry
 var otlpEndpoint = builder.Configuration["OpenTelemetry:OtlpEndpoint"] ?? "http://localhost:4317";

@@ -58,8 +58,10 @@ builder.Services.AddSingleton<IHazelcastClient>(sp =>
     return HazelcastClientFactory.StartNewClientAsync(options).GetAwaiter().GetResult();
 });
 
-// Configure MassTransit with conditional transport (in-memory for dev, Kafka for prod)
-var useKafka = builder.Configuration.GetValue<bool>("MassTransit:UseKafka", false);
+// Configure MassTransit with RabbitMQ transport
+var rabbitMqHost = builder.Configuration.GetValue<string>("RabbitMQ:Host") ?? "rabbitmq.ez-platform.svc.cluster.local";
+var rabbitMqUser = builder.Configuration.GetValue<string>("RabbitMQ:Username") ?? "guest";
+var rabbitMqPass = builder.Configuration.GetValue<string>("RabbitMQ:Password") ?? "guest";
 
 builder.Services.AddMassTransit(x =>
 {
@@ -68,40 +70,16 @@ builder.Services.AddMassTransit(x =>
     // Register request client for querying MetricsConfigurationService
     x.AddRequestClient<GetMetricsConfigurationRequest>();
 
-    if (useKafka)
+    x.UsingRabbitMq((context, cfg) =>
     {
-        // Use Kafka for production cross-process communication
-        x.UsingInMemory((context, cfg) =>
+        cfg.Host(rabbitMqHost, "/", h =>
         {
-            cfg.ConfigureEndpoints(context);
+            h.Username(rabbitMqUser);
+            h.Password(rabbitMqPass);
         });
 
-        x.AddRider(rider =>
-        {
-            var kafkaServer = builder.Configuration.GetValue<string>("MassTransit:Kafka:Server")
-                ?? "localhost:9092";
-
-            rider.AddConsumer<ValidationRequestEventConsumer>();
-
-            rider.UsingKafka((context, kafka) =>
-            {
-                kafka.Host(kafkaServer);
-
-                kafka.TopicEndpoint<ValidationRequestEvent>("validation-requests", "validation-service-group", e =>
-                {
-                    e.ConfigureConsumer<ValidationRequestEventConsumer>(context);
-                });
-            });
-        });
-    }
-    else
-    {
-        // Use in-memory bus for development/testing
-        x.UsingInMemory((context, cfg) =>
-        {
-            cfg.ConfigureEndpoints(context);
-        });
-    }
+        cfg.ConfigureEndpoints(context);
+    });
 });
 
 // Disable MassTransit automatic health check registration
