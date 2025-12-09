@@ -1,0 +1,66 @@
+# .NET build outputs
+**/bin/
+**/obj/
+**/out/
+
+# Node.js
+**/node_modules/
+**/npm-debug.log
+
+# Frontend build artifacts
+**/build/
+**/dist/
+**/.next/
+
+# IDEs
+**/.vs/
+**/.vscode/
+**/.idea/
+**/*.suo
+**/*.user
+**/.DS_Store
+
+# Git
+**/.git/
+**/.gitignore
+**/.gitattributes
+
+# Documentation and markdown
+**/*.md
+!README.md
+
+# Test results
+**/TestResults/
+**/*.trx
+
+# Logs
+**/*.log
+
+# Temporary files
+**/tmp/
+**/temp/
+**/.tmp/
+
+# Docker
+**/.dockerignore
+**/Dockerfile
+**/Dockerfile.*
+**/docker-compose*
+
+# CI/CD
+**/.github/
+**/.gitlab-ci.yml
+**/azure-pipelines.yml
+
+# OS files
+**/Thumbs.db
+**/.DS_Store
+
+# Database files
+**/*.db
+**/*.sqlite
+
+# Certificates and keys
+**/*.pfx
+**/*.key
+**/*.pem

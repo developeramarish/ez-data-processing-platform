@@ -48,12 +48,14 @@ public class DataProcessingDataSource : DataProcessingBaseEntity
     /// Used by frontend to display and configure scheduling
     /// </summary>
     [StringLength(50)]
+    [MongoDB.Bson.Serialization.Attributes.BsonElement("ScheduleFrequency")]
     public string? ScheduleFrequency { get; set; }
 
     /// <summary>
     /// Indicates if automatic scheduling is enabled
     /// Used by frontend to show timing status
     /// </summary>
+    [MongoDB.Bson.Serialization.Attributes.BsonElement("ScheduleEnabled")]
     public bool? ScheduleEnabled { get; set; }
 
     /// <summary>
