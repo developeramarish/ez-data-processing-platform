@@ -4,6 +4,7 @@ using Quartz;
 using Quartz.Impl.Matchers;
 using DataProcessing.Shared.Entities;
 using DataProcessing.Shared.Monitoring;
+using DataProcessing.Shared.Utilities;
 using DataProcessing.Scheduling.Jobs;
 
 namespace DataProcessing.Scheduling.Services;
@@ -75,25 +76,39 @@ public class SchedulingManager : ISchedulingManager
                 .Build();
 
             // Create trigger with cron expression (supports seconds resolution)
-            var cronExpression = dataSource.GetEffectiveCronExpression();
+            // Get Unix cron from datasource and convert to Quartz.NET format
+            var unixCron = dataSource.GetEffectiveCronExpression();
+            var quartzCron = CronExpressionConverter.ConvertUnixToQuartz(unixCron);
+
+            _logger.LogDebug("Converted cron expression: {UnixCron} → {QuartzCron}. CorrelationId: {CorrelationId}",
+                unixCron, quartzCron, correlationId);
+
+            // Validate Quartz.NET cron
+            if (!ValidateCronExpression(quartzCron))
+            {
+                _logger.LogError("Invalid Quartz cron expression after conversion: {QuartzCron}. CorrelationId: {CorrelationId}",
+                    quartzCron, correlationId);
+                return false;
+            }
+
             var trigger = TriggerBuilder.Create()
                 .WithIdentity(triggerKey)
-                .WithDescription($"Trigger for data source: {dataSource.Name} - Cron: {cronExpression}")
+                .WithDescription($"Trigger for data source: {dataSource.Name} - Cron: {quartzCron}")
                 .StartNow()
-                .WithCronSchedule(cronExpression)
+                .WithCronSchedule(quartzCron)
                 .Build();
 
             // Schedule the job
             await _scheduler.ScheduleJob(job, trigger);
 
-            // Persist schedule to MongoDB
+            // Persist schedule to MongoDB (store Quartz.NET format)
             var scheduledDataSource = new DataProcessing.Shared.Entities.ScheduledDataSource
             {
                 DataSourceId = dataSource.ID,
                 DataSourceName = dataSource.Name,
                 SupplierName = dataSource.SupplierName,
                 PollingInterval = dataSource.PollingRate,
-                CronExpression = cronExpression,
+                CronExpression = quartzCron,  // Store Quartz.NET format (scheduler-specific)
                 IsActive = true,
                 IsPaused = false,
                 QuartzJobKey = jobKey.ToString(),
