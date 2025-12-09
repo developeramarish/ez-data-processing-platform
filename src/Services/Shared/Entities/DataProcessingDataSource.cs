@@ -44,6 +44,19 @@ public class DataProcessingDataSource : DataProcessingBaseEntity
     public string? CronExpression { get; set; }
 
     /// <summary>
+    /// Schedule frequency preset selected in UI (Manual, Every5Minutes, Hourly, Custom, etc.)
+    /// Used by frontend to display and configure scheduling
+    /// </summary>
+    [StringLength(50)]
+    public string? ScheduleFrequency { get; set; }
+
+    /// <summary>
+    /// Indicates if automatic scheduling is enabled
+    /// Used by frontend to show timing status
+    /// </summary>
+    public bool? ScheduleEnabled { get; set; }
+
+    /// <summary>
     /// Gets the effective cron expression (uses CronExpression if set, else converts PollingRate)
     /// </summary>
     public string GetEffectiveCronExpression()

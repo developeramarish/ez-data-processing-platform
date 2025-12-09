@@ -160,7 +160,14 @@ const DataSourceDetailsEnhanced: React.FC = () => {
 
   const connectionConfig = parsedConfig?.connectionConfig || {};
   const fileConfig = parsedConfig?.fileConfig || {};
-  const schedule = parsedConfig?.schedule || {};
+
+  // Construct schedule from datasource properties (not from parsedConfig)
+  const schedule = {
+    frequency: dataSource.ScheduleFrequency || dataSource.scheduleFrequency || 'Manual',
+    enabled: dataSource.ScheduleEnabled ?? dataSource.scheduleEnabled ?? false,
+    cronExpression: dataSource.CronExpression || dataSource.cronExpression
+  };
+
   const validationRules = parsedConfig?.validationRules || {};
   const notificationSettings = parsedConfig?.notificationSettings || {};
 
