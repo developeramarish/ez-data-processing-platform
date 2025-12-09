@@ -31,30 +31,46 @@ builder.Services.AddDataProcessingOpenTelemetry(builder.Configuration, serviceNa
 
 // Configure MongoDB
 var connectionString = builder.Configuration.GetConnectionString("MongoDB") ?? "localhost";
-await DB.InitAsync("DataProcessingFileProcessor", connectionString);
+await DB.InitAsync("ezplatform", connectionString);
 
-// Configure Hazelcast Client
+// Configure Hazelcast Client - Capture configuration BEFORE lambda
+var hazelcastHost = builder.Configuration.GetValue<string>("Hazelcast:Server") ?? "localhost:5701";
+var clusterName = builder.Configuration.GetValue<string>("Hazelcast:ClusterName") ?? "data-processing-cluster";
+var hazelcastAddresses = hazelcastHost.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
 builder.Services.AddSingleton<IHazelcastClient>(sp =>
 {
     var logger = sp.GetRequiredService<ILogger<Program>>();
-    var hazelcastHost = builder.Configuration.GetValue<string>("Hazelcast:Server") ?? "localhost:5701";
-    var clusterName = builder.Configuration.GetValue<string>("Hazelcast:ClusterName") ?? "data-processing-cluster";
-    
+
+    // Debug logging to verify configuration
+    logger.LogInformation("Hazelcast configuration - Server: {Server}, ClusterName: {ClusterName}", hazelcastHost, clusterName);
+    logger.LogInformation("Parsed {Count} Hazelcast addresses: {Addresses}", hazelcastAddresses.Length, string.Join(", ", hazelcastAddresses));
+
     var options = new HazelcastOptionsBuilder()
         .With(args =>
         {
-            args.Networking.Addresses.Add(hazelcastHost);
+            logger.LogInformation("Before adding addresses, Addresses.Count = {Count}", args.Networking.Addresses.Count);
+            foreach (var address in hazelcastAddresses)
+            {
+                logger.LogInformation("Adding address: {Address}", address);
+                args.Networking.Addresses.Add(address);
+            }
+            logger.LogInformation("After adding addresses, Addresses.Count = {Count}, Addresses = {Addresses}",
+                args.Networking.Addresses.Count,
+                string.Join(", ", args.Networking.Addresses));
             args.ClusterName = clusterName;
             args.Networking.ConnectionRetry.ClusterConnectionTimeoutMilliseconds = 30000;
         })
         .WithDefault("Logging:LogLevel:Hazelcast", "Information")
         .Build();
-    
+
+    logger.LogInformation("Built options with Addresses.Count = {Count}", options.Networking.Addresses.Count);
+
     var client = HazelcastClientFactory.StartNewClientAsync(options).GetAwaiter().GetResult();
-    
-    logger.LogInformation("Hazelcast client connected to cluster: {ClusterName} at {Server}", 
-        clusterName, hazelcastHost);
-    
+
+    logger.LogInformation("Hazelcast client connected to cluster: {ClusterName} at {Servers}",
+        clusterName, string.Join(", ", hazelcastAddresses));
+
     return client;
 });
 

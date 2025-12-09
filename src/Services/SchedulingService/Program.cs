@@ -87,6 +87,9 @@ builder.Services.AddSingleton<IScheduler>(provider =>
 builder.Services.AddScoped<ISchedulingManager, SchedulingManager>();
 builder.Services.AddScoped<DataSourcePollingJob>();
 
+// Register schedule reload hosted service (runs on startup to restore schedules from MongoDB)
+builder.Services.AddHostedService<ScheduleReloadService>();
+
 // Configure health checks
 builder.Services.AddDataProcessingHealthChecks(builder.Configuration, serviceName);
 

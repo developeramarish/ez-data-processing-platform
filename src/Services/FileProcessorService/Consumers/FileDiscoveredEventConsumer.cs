@@ -183,19 +183,22 @@ public class FileDiscoveredEventConsumer : IConsumer<FileDiscoveredEvent>
                 return (string.Empty, originalFormat, new Dictionary<string, object>());
             }
 
-            // Convert content to stream for the converter
-            using var stream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(fileContent));
-            var jsonContent = await converter.ConvertToJsonAsync(stream);
+            // Convert content to JSON
+            var contentBytes = System.Text.Encoding.UTF8.GetBytes(fileContent);
+            using (var stream = new MemoryStream(contentBytes))
+            {
+                var jsonContent = await converter.ConvertToJsonAsync(stream);
 
-            // Extract metadata for reconstruction
-            stream.Position = 0;
-            var metadata = await converter.ExtractMetadataAsync(stream);
+                // Extract metadata using a fresh stream (converter may have disposed the first one)
+                using var metadataStream = new MemoryStream(contentBytes);
+                var metadata = await converter.ExtractMetadataAsync(metadataStream);
 
-            _logger.LogDebug(
-                "[{CorrelationId}] Converted {Format} file to JSON ({JsonLength} characters)",
-                correlationId, originalFormat, jsonContent.Length);
+                _logger.LogDebug(
+                    "[{CorrelationId}] Converted {Format} file to JSON ({JsonLength} characters)",
+                    correlationId, originalFormat, jsonContent.Length);
 
-            return (jsonContent, originalFormat, metadata);
+                return (jsonContent, originalFormat, metadata);
+            }
         }
         catch (Exception ex)
         {

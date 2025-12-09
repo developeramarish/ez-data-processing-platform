@@ -64,7 +64,11 @@ public class LocalFileConnector : IDataSourceConnector
                 return Task.FromResult(new List<string>());
             }
 
-            var files = Directory.GetFiles(basePath, pattern, SearchOption.TopDirectoryOnly)
+            // Use DirectoryInfo.EnumerateFiles instead of Directory.GetFiles
+            // This is more compatible with network/FUSE filesystems and doesn't block
+            var directoryInfo = new DirectoryInfo(basePath);
+            var files = directoryInfo.EnumerateFiles(pattern, SearchOption.TopDirectoryOnly)
+                .Select(f => f.FullName)
                 .ToList();
 
             _logger.LogInformation("Found {Count} files matching pattern", files.Count);

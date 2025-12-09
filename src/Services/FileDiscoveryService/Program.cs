@@ -30,7 +30,8 @@ builder.Services.AddDataProcessingOpenTelemetry(builder.Configuration, serviceNa
 // Configure MongoDB
 var connectionString = builder.Configuration.GetConnectionString("MongoDB") ?? "localhost";
 Console.WriteLine($"[DEBUG] FileDiscovery MongoDB ConnectionString from config: '{connectionString}'");
-await DB.InitAsync("DataProcessingFileDiscovery", connectionString);
+// IMPORTANT: Use "ezplatform" database to access shared DataProcessingDataSource collection
+await DB.InitAsync("ezplatform", connectionString);
 
 // Configure MassTransit with RabbitMQ transport
 var rabbitMqHost = builder.Configuration.GetValue<string>("RabbitMQ:Host") ?? "rabbitmq.ez-platform.svc.cluster.local";
