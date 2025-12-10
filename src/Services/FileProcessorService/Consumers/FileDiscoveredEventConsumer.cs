@@ -252,6 +252,7 @@ public class FileDiscoveredEventConsumer : IConsumer<FileDiscoveredEvent>
         var validationEvent = new ValidationRequestEvent
         {
             CorrelationId = fileEvent.CorrelationId,
+            PublishedBy = "FileProcessorService",
             DataSourceId = datasource.ID!,
             FileName = fileEvent.FileName,
             HazelcastKey = hazelcastKey,

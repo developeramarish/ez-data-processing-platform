@@ -153,7 +153,7 @@ public class ValidationRequestEventConsumer : DataProcessingConsumerBase<Validat
             var completedEvent = new ValidationCompletedEvent
             {
                 CorrelationId = message.CorrelationId,
-                PublishedBy = "Validation",
+                PublishedBy = "ValidationService",
                 DataSourceId = message.DataSourceId,
                 FileName = message.FileName,
                 ValidationResultId = validationResult.ValidationResultId,
@@ -202,7 +202,7 @@ public class ValidationRequestEventConsumer : DataProcessingConsumerBase<Validat
             var failureEvent = new FileProcessingFailedEvent
             {
                 CorrelationId = message.CorrelationId,
-                PublishedBy = "Validation",
+                PublishedBy = "ValidationService",
                 DataSourceId = message.DataSourceId,
                 ErrorMessage = ex.Message,
                 Timestamp = DateTime.UtcNow
