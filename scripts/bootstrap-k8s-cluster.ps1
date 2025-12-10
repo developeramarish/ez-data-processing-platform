@@ -352,6 +352,31 @@ kubectl rollout status deployment metrics-configuration -n ez-platform --timeout
 Write-Success "CORS configuration applied"
 
 # ========================================
+# STEP 9.5: Enable Information Logging for Early Deployment
+# ========================================
+Write-Step "STEP 9.5: Enabling Information-Level Logging"
+
+Write-Info "Setting Information logging for pipeline services (debugging/testing phase)..."
+
+$pipelineServices = @("filediscovery", "fileprocessor", "validation", "output", "invalidrecords")
+
+foreach ($service in $pipelineServices) {
+    Write-Info "Configuring logging for $service..."
+    kubectl set env deployment $service -n ez-platform `
+        Logging__LogLevel__Default=Information `
+        Logging__LogLevel__MassTransit=Information
+
+    if ($LASTEXITCODE -eq 0) {
+        Write-Success "$service logging configured"
+    } else {
+        Write-Warning "Failed to configure logging for $service"
+    }
+}
+
+Write-Success "Information-level logging enabled"
+Write-Info "Note: Change to Warning level in Production after system stabilization"
+
+# ========================================
 # STEP 10: Setup Port Forwarding
 # ========================================
 Write-Step "STEP 10: Setting Up Port Forwarding"

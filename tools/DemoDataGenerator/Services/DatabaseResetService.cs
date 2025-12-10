@@ -15,10 +15,13 @@ public class DatabaseResetService
             // Reset DataSource Management collections
             await ResetCollectionAsync<DataProcessingDataSource>("DataSources");
             await ResetCollectionAsync<DataProcessingSchema>("Schemas");
-            
+
+            // Reset Scheduling collections
+            await ResetCollectionAsync<ScheduledDataSource>("ScheduledDataSources");
+
             // Reset Metrics Configuration collections
             await ResetCollectionAsync<MetricConfiguration>("Metrics");
-            
+
             // Reset Validation collections
             await ResetCollectionAsync<DataProcessingValidationResult>("ValidationResults");
             await ResetCollectionAsync<DataProcessingInvalidRecord>("InvalidRecords");

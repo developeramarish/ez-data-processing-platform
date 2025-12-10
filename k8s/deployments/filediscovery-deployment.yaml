@@ -31,7 +31,7 @@ spec:
       containers:
       - name: filediscovery
         image: ez-platform/filediscovery:latest
-        imagePullPolicy: Always
+        imagePullPolicy: Never
         ports:
         - containerPort: 5007
           name: http
@@ -87,8 +87,15 @@ spec:
         - name: data-input
           mountPath: /data/input
           readOnly: true
+        - name: external-data
+          mountPath: /mnt/external-test-data
+          readOnly: true
       volumes:
       - name: data-input
         persistentVolumeClaim:
           claimName: data-input-pvc
+      - name: external-data
+        hostPath:
+          path: /mnt/external-test-data
+          type: Directory
       restartPolicy: Always
