@@ -20,7 +20,7 @@ spec:
         image: ez-platform/demo-data-generator:latest
         imagePullPolicy: Never
         args:
-          - "--mongodb-connection=mongodb-0.mongodb.ez-platform.svc.cluster.local"
+          - "--mongodb-connection=mongodb"
         env:
           - name: DOTNET_ENVIRONMENT
             value: "Production"

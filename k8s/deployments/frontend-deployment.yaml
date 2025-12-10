@@ -33,7 +33,7 @@ spec:
         image: ez-platform/frontend:latest
         imagePullPolicy: Always
         ports:
-        - containerPort: 3000
+        - containerPort: 80
           name: http
           protocol: TCP
         env:
@@ -53,13 +53,13 @@ spec:
         livenessProbe:
           httpGet:
             path: /
-            port: 3000
+            port: 80
           initialDelaySeconds: 30
           periodSeconds: 10
         readinessProbe:
           httpGet:
             path: /
-            port: 3000
+            port: 80
           initialDelaySeconds: 15
           periodSeconds: 5
       restartPolicy: Always

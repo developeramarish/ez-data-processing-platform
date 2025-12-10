@@ -56,9 +56,19 @@ public class FilePollingEventConsumer : IConsumer<FilePollingEvent>
 
             if (!files.Any())
             {
-                _logger.LogDebug(
-                    "[{CorrelationId}] No files discovered from datasource {DataSourceName}",
+                _logger.LogInformation(
+                    "[{CorrelationId}] No files discovered from datasource {DataSourceName}, releasing lock",
                     message.CorrelationId, datasource.Name);
+
+                // Release lock even when no files found
+                datasource.LastProcessedAt = DateTime.UtcNow;
+                datasource.ReleaseProcessingLock("completed_no_files");
+                await datasource.SaveAsync();
+
+                _logger.LogInformation(
+                    "[{CorrelationId}] Lock released for datasource {DataSourceName} (no files found)",
+                    message.CorrelationId, datasource.Name);
+
                 return;
             }
 
@@ -78,12 +88,13 @@ public class FilePollingEventConsumer : IConsumer<FilePollingEvent>
                     i);
             }
 
-            // Update last processed timestamp
+            // Update last processed timestamp and release lock
             datasource.LastProcessedAt = DateTime.UtcNow;
+            datasource.ReleaseProcessingLock("completed");
             await datasource.SaveAsync();
 
             _logger.LogInformation(
-                "[{CorrelationId}] Published {EventCount} FileDiscoveredEvent(s) for datasource {DataSourceName}",
+                "[{CorrelationId}] Published {EventCount} FileDiscoveredEvent(s) for datasource {DataSourceName}. Lock released.",
                 message.CorrelationId, files.Count, datasource.Name);
         }
         catch (Exception ex)
@@ -91,6 +102,25 @@ public class FilePollingEventConsumer : IConsumer<FilePollingEvent>
             _logger.LogError(ex,
                 "[{CorrelationId}] Error processing FilePollingEvent for datasource {DataSourceId}",
                 message.CorrelationId, message.DataSourceId);
+
+            // Release lock on error
+            try
+            {
+                var datasource = await DB.Find<DataProcessingDataSource>()
+                    .OneAsync(message.DataSourceId);
+                if (datasource != null)
+                {
+                    datasource.ReleaseProcessingLock("error");
+                    await datasource.SaveAsync();
+                }
+            }
+            catch (Exception lockEx)
+            {
+                _logger.LogWarning(lockEx,
+                    "[{CorrelationId}] Failed to release lock after error for datasource {DataSourceId}",
+                    message.CorrelationId, message.DataSourceId);
+            }
+
             throw; // Let MassTransit handle retry logic
         }
     }

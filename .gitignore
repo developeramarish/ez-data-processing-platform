@@ -59,3 +59,9 @@ backups/
 
 # VS Code extensions
 *.vsix
+
+# Playwright screenshots and testing artifacts
+.playwright-mcp/
+
+# Test data directory (external mount)
+test-data/
