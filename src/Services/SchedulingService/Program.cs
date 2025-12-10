@@ -32,7 +32,8 @@ var serviceName = "DataProcessing.Scheduling";
 // Configure MongoDB
 var connectionString = builder.Configuration.GetConnectionString("MongoDB") 
     ?? throw new InvalidOperationException("MongoDB connection string is required");
-await DB.InitAsync("ezplatform", connectionString);
+var databaseName = builder.Configuration.GetConnectionString("DatabaseName") ?? "ezplatform";
+await DB.InitAsync(databaseName, connectionString);
 
 // Configure MassTransit with RabbitMQ transport
 var rabbitMqHost = builder.Configuration.GetValue<string>("RabbitMQ:Host") ?? "rabbitmq.ez-platform.svc.cluster.local";

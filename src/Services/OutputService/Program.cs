@@ -31,7 +31,8 @@ builder.Host.UseSerilog();
 
 // Configure MongoDB
 var mongoConnectionString = builder.Configuration.GetConnectionString("MongoDB") ?? "localhost";
-await DB.InitAsync("ezplatform", mongoConnectionString);
+var databaseName = builder.Configuration.GetConnectionString("DatabaseName") ?? "ezplatform";
+await DB.InitAsync(databaseName, mongoConnectionString);
 
 Log.Information("Connected to MongoDB: {ConnectionString}", mongoConnectionString);
 

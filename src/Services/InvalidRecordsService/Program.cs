@@ -27,7 +27,7 @@ builder.Services.AddDataProcessingOpenTelemetry(builder.Configuration, serviceNa
 // Configure MongoDB
 var connectionString = builder.Configuration.GetConnectionString("MongoDB") 
     ?? throw new InvalidOperationException("MongoDB connection string is required");
-var databaseName = builder.Configuration.GetConnectionString("DatabaseName") ?? "DataProcessingPlatform";
+var databaseName = builder.Configuration.GetConnectionString("DatabaseName") ?? "ezplatform";
 await DB.InitAsync(databaseName, connectionString);
 
 // Configure MassTransit with RabbitMQ transport

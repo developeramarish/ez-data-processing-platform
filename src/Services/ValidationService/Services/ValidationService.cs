@@ -91,12 +91,18 @@ public class ValidationService : IValidationService
             _logger.LogInformation("Validation completed for file: {FileName}, Total: {Total}, Valid: {Valid}, Invalid: {Invalid}",
                 fileName, totalRecords, validRecords, invalidRecords);
 
+            // Extract valid records data for Hazelcast caching
+            var validRecordsData = records
+                .Where((r, i) => i < validationResults.Count && validationResults[i].IsValid)
+                .ToList();
+
             return new ValidationResult
             {
                 ValidationResultId = validationResultId,
                 TotalRecords = totalRecords,
                 ValidRecords = validRecords,
                 InvalidRecords = invalidRecords,
+                ValidRecordsData = validRecordsData.Count > 0 ? validRecordsData : null,
                 ValidatedAt = DateTime.UtcNow
             };
         }

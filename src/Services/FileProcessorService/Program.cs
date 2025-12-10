@@ -31,7 +31,8 @@ builder.Services.AddDataProcessingOpenTelemetry(builder.Configuration, serviceNa
 
 // Configure MongoDB
 var connectionString = builder.Configuration.GetConnectionString("MongoDB") ?? "localhost";
-await DB.InitAsync("ezplatform", connectionString);
+var databaseName = builder.Configuration.GetConnectionString("DatabaseName") ?? "ezplatform";
+await DB.InitAsync(databaseName, connectionString);
 
 // Configure Hazelcast Client - Capture configuration BEFORE lambda
 var hazelcastHost = builder.Configuration.GetValue<string>("Hazelcast:Server") ?? "localhost:5701";

@@ -59,7 +59,7 @@ public class ValidationCompletedEventConsumer : IConsumer<ValidationCompletedEve
         try
         {
             // Skip if validation failed
-            if (message.ValidationStatus != "Completed")
+            if (message.ValidationStatus != "Success" && message.ValidationStatus != "Completed")
             {
                 _logger.LogWarning(
                     "Skipping output for failed validation: {FileName}, Status={Status}",
@@ -297,8 +297,8 @@ public class ValidationCompletedEventConsumer : IConsumer<ValidationCompletedEve
 
         try
         {
-            var fileContentMap = await _hazelcastClient.GetMapAsync<string, string>("file-content");
-            var jsonContent = await fileContentMap.GetAsync(hazelcastKey);
+            var validRecordsMap = await _hazelcastClient.GetMapAsync<string, string>("valid-records");
+            var jsonContent = await validRecordsMap.GetAsync(hazelcastKey);
 
             if (string.IsNullOrEmpty(jsonContent))
             {
