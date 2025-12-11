@@ -87,15 +87,16 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-// Enable CORS in all environments (needed for frontend communication)
-app.UseCors("AllowAll");
-
 app.UseHttpsRedirection();
 
 // Add correlation ID middleware
 app.UseMiddleware<CorrelationIdMiddleware>();
 
 app.UseRouting();
+
+// Enable CORS in all environments (needed for frontend communication)
+// MUST be between UseRouting and UseEndpoints
+app.UseCors("AllowAll");
 
 app.UseAuthorization();
 
