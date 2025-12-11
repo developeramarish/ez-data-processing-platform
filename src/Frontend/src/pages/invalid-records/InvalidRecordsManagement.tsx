@@ -7,8 +7,10 @@ import {
   ReloadOutlined,
   SearchOutlined,
 } from '@ant-design/icons';
-import { invalidRecordsApiClient, InvalidRecord } from '../../services/invalidrecords-api-client';
+import { invalidRecordsApiClient, InvalidRecord, Statistics } from '../../services/invalidrecords-api-client';
 import dayjs, { Dayjs } from 'dayjs';
+import { Statistic } from 'antd';
+import { CheckCircleOutlined, EyeInvisibleOutlined, BarChartOutlined, DatabaseOutlined } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
@@ -31,6 +33,7 @@ const InvalidRecordsManagement: React.FC = () => {
   const [invalidRecords, setInvalidRecords] = useState<InvalidRecord[]>([]);
   const [dataSources, setDataSources] = useState<DataSource[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
+  const [statistics, setStatistics] = useState<Statistics | null>(null);
   const [totalCount, setTotalCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
@@ -48,6 +51,16 @@ const InvalidRecordsManagement: React.FC = () => {
       }
     } catch (error) {
       console.error('Failed to fetch datasources:', error);
+    }
+  };
+
+  // Fetch statistics for dashboard
+  const fetchStatistics = async () => {
+    try {
+      const stats = await invalidRecordsApiClient.getStatistics();
+      setStatistics(stats);
+    } catch (error) {
+      console.error('Failed to fetch statistics:', error);
     }
   };
 
@@ -133,6 +146,7 @@ const InvalidRecordsManagement: React.FC = () => {
 
   useEffect(() => {
     fetchDataSources();
+    fetchStatistics();
   }, []);
 
   useEffect(() => {
@@ -144,7 +158,7 @@ const InvalidRecordsManagement: React.FC = () => {
     try {
       await invalidRecordsApiClient.reprocessRecord(recordId);
       message.success('Record reprocessed successfully');
-      fetchRecords();
+      await Promise.all([fetchRecords(), fetchStatistics()]);
     } catch (error: any) {
       message.error(error.message || 'Failed to reprocess record');
     }
@@ -154,7 +168,7 @@ const InvalidRecordsManagement: React.FC = () => {
     try {
       await invalidRecordsApiClient.deleteRecord(recordId);
       message.success('Record deleted successfully');
-      fetchRecords();
+      await Promise.all([fetchRecords(), fetchStatistics()]);
     } catch (error: any) {
       message.error(error.message || 'Failed to delete record');
     }
@@ -294,6 +308,52 @@ const InvalidRecordsManagement: React.FC = () => {
           </Button>
         </Space>
       </div>
+
+      {/* Statistics Dashboard */}
+      {statistics && (
+        <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+          <Col span={6}>
+            <Card>
+              <Statistic
+                title="סה״כ רשומות לא תקינות"
+                value={statistics.totalInvalidRecords}
+                prefix={<ExclamationCircleOutlined />}
+                valueStyle={{ color: '#ff4d4f' }}
+              />
+            </Card>
+          </Col>
+          <Col span={6}>
+            <Card>
+              <Statistic
+                title="רשומות שנבדקו"
+                value={statistics.reviewedRecords}
+                prefix={<CheckCircleOutlined />}
+                valueStyle={{ color: '#52c41a' }}
+              />
+            </Card>
+          </Col>
+          <Col span={6}>
+            <Card>
+              <Statistic
+                title="רשומות שהתעלמו"
+                value={statistics.ignoredRecords}
+                prefix={<EyeInvisibleOutlined />}
+                valueStyle={{ color: '#faad14' }}
+              />
+            </Card>
+          </Col>
+          <Col span={6}>
+            <Card>
+              <Statistic
+                title="סוגי שגיאות"
+                value={Object.keys(statistics.byErrorType).length}
+                prefix={<BarChartOutlined />}
+                valueStyle={{ color: '#1890ff' }}
+              />
+            </Card>
+          </Col>
+        </Row>
+      )}
 
       {/* Search and Filter Controls */}
       <Card style={{ marginBottom: 24 }}>
