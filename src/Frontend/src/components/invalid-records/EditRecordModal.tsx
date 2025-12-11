@@ -112,12 +112,28 @@ const EditRecordModal: React.FC<EditRecordModalProps> = ({
       const result = await response.json();
 
       if (result.isSuccess) {
-        message.success('Record corrected and sent for reprocessing');
         form.resetFields();
-        onSuccess();
         onClose();
+
+        // Show persistent processing message
+        message.loading({
+          content: 'נשלח לאימות מחדש... ממתין לתוצאות',
+          key: 'reprocess',
+          duration: 0,
+        });
+
+        // Wait 4 seconds for ValidationService to process, then refresh
+        setTimeout(async () => {
+          await onSuccess();
+
+          message.info({
+            content: 'עיבוד מחדש הושלם. אם הרשומה נעלמה - האימות עבר בהצלחה. אם נשארה - יש עדיין שגיאות.',
+            key: 'reprocess',
+            duration: 5,
+          });
+        }, 4000);
       } else {
-        message.error(result.error?.message || 'Failed to correct record');
+        message.error(result.error?.message || 'שגיאה בתיקון הרשומה');
       }
     } catch (error: any) {
       message.error(error.message || 'Failed to correct record');

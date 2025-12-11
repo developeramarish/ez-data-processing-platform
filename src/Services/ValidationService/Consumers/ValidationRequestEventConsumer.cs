@@ -1,5 +1,6 @@
 using DataProcessing.Shared.Configuration;
 using DataProcessing.Shared.Consumers;
+using DataProcessing.Shared.Entities;
 using DataProcessing.Shared.Messages;
 using DataProcessing.Shared.Monitoring;
 using DataProcessing.Validation.Services;
@@ -10,6 +11,7 @@ using Hazelcast;
 using Newtonsoft.Json;
 using System.Text;
 using Microsoft.Extensions.Caching.Memory;
+using MongoDB.Entities;
 
 namespace DataProcessing.Validation.Consumers;
 
@@ -179,6 +181,43 @@ public class ValidationRequestEventConsumer : DataProcessingConsumerBase<Validat
             Logger.LogInformation(
                 "[{CorrelationId}] Published ValidationCompletedEvent: ValidationResultId={ValidationResultId}, ValidRecordsKey={ValidRecordsKey}",
                 message.CorrelationId, validationResult.ValidationResultId, validRecordsKey);
+
+            // Handle reprocess: ALWAYS delete original invalid record
+            // ValidationService creates a new invalid record if corrected data still fails
+            if (message.IsReprocess && !string.IsNullOrEmpty(message.OriginalInvalidRecordId))
+            {
+                Logger.LogInformation(
+                    "[{CorrelationId}] Reprocess detected - attempting to delete original invalid record {RecordId}",
+                    message.CorrelationId, message.OriginalInvalidRecordId);
+
+                try
+                {
+                    var deleteResult = await DB.DeleteAsync<DataProcessingInvalidRecord>(message.OriginalInvalidRecordId);
+
+                    Logger.LogInformation(
+                        "[{CorrelationId}] Original invalid record {RecordId} deleted. DeleteCount={DeleteCount}, ValidationPassed={ValidationPassed}",
+                        message.CorrelationId, message.OriginalInvalidRecordId, deleteResult.DeletedCount, validationResult.InvalidRecords == 0);
+
+                    if (validationResult.InvalidRecords == 0)
+                    {
+                        Logger.LogInformation(
+                            "[{CorrelationId}] SUCCESS: Reprocessed record is now VALID - sent to output pipeline",
+                            message.CorrelationId);
+                    }
+                    else
+                    {
+                        Logger.LogWarning(
+                            "[{CorrelationId}] Reprocessed record still INVALID - new invalid record created with updated errors",
+                            message.CorrelationId);
+                    }
+                }
+                catch (Exception deleteEx)
+                {
+                    Logger.LogError(deleteEx,
+                        "[{CorrelationId}] FAILED to delete original invalid record {RecordId}",
+                        message.CorrelationId, message.OriginalInvalidRecordId);
+                }
+            }
         }
         catch (Exception ex)
         {
