@@ -1,13 +1,48 @@
 # Reprocess Flow Debug Handoff
 
 **Date:** December 11, 2025
-**Status:** 95% Complete - Deletion Logic Needs Debug
-**Session:** 12
-**Priority:** Medium (can proceed with E2E tests, debug later)
+**Status:** ✅ 100% COMPLETE - RESOLVED
+**Session:** 12 (debugging), Session 13 (resolution)
+**Priority:** COMPLETE
 
 ---
 
-## Current State
+## 🎉 RESOLUTION (Session 13)
+
+**Root Cause:** Docker build cache serving OLD code from before Session 12 implementation
+
+**Problem:**
+- Code changes committed in Session 12 (commits e656891, 370dd73)
+- But `docker build` used cache and didn't rebuild with new code
+- Both InvalidRecordsService and ValidationService pods running old binaries
+
+**Solution:**
+1. Rebuilt InvalidRecordsService with `docker build --no-cache`
+2. Rebuilt ValidationService with `docker build --no-cache`
+3. Deployed both services to cluster
+4. Tested complete reprocess flow
+
+**Verification:**
+- ✅ InvalidRecords published ValidationRequestEvent with IsReprocess=true
+- ✅ ValidationService validated corrected data (Valid=1, Invalid=0)
+- ✅ **DELETED original invalid record** (DeleteCount=1, logs: "SUCCESS: Reprocessed record is now VALID")
+- ✅ OutputService wrote corrected record to `/test-data/output/E2E-001/E2E-001-File-Output_E2E-003-invalid-records-115402_20251211165703.json`
+- ✅ Frontend updated showing 3 records (was 4)
+- ✅ Corrected record contains Amount=100 (was empty)
+
+**Key Logs (Session 13):**
+```
+[InvalidRecords] Publishing revalidation request for invalid record 693a9530f72655940a8e826a
+[InvalidRecords] ValidationRequestEvent published successfully, CorrelationId: 21a79dc4-3305-4c96-9c54-6d8294f4e521
+[Validation] Validation completed: Total=1, Valid=1, Invalid=0
+[Validation] Reprocess detected - attempting to delete original invalid record 693a9530f72655940a8e826a
+[Validation] Original invalid record deleted. DeleteCount=1, ValidationPassed=True
+[Validation] SUCCESS: Reprocessed record is now VALID - sent to output pipeline
+```
+
+---
+
+## Historical Debugging (Session 12)
 
 ### ✅ What Works
 
