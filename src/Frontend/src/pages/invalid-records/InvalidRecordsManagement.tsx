@@ -8,32 +8,102 @@ import {
   SearchOutlined,
 } from '@ant-design/icons';
 import { invalidRecordsApiClient, InvalidRecord } from '../../services/invalidrecords-api-client';
+import dayjs, { Dayjs } from 'dayjs';
 
 const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
 const { Panel } = Collapse;
 const { Option } = Select;
 
+interface DataSource {
+  ID: string;
+  Name: string;
+  Category: string;
+}
+
 const InvalidRecordsManagement: React.FC = () => {
   const [selectedDataSource, setSelectedDataSource] = useState<string>('all');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedErrorType, setSelectedErrorType] = useState<string>('all');
+  const [selectedTimeRange, setSelectedTimeRange] = useState<string>('all');
+  const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null] | null>(null);
   const [loading, setLoading] = useState(false);
   const [invalidRecords, setInvalidRecords] = useState<InvalidRecord[]>([]);
+  const [dataSources, setDataSources] = useState<DataSource[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
+
+  // Fetch datasources for filter dropdown
+  const fetchDataSources = async () => {
+    try {
+      const response = await fetch('http://localhost:5001/api/v1/datasource?page=1&pageSize=100');
+      const data = await response.json();
+
+      if (data.Data?.Items) {
+        setDataSources(data.Data.Items);
+        const uniqueCategories = [...new Set(data.Data.Items.map((ds: DataSource) => ds.Category))];
+        setCategories(uniqueCategories);
+      }
+    } catch (error) {
+      console.error('Failed to fetch datasources:', error);
+    }
+  };
+
+  // Calculate date range based on time interval selection
+  const getDateRangeFromInterval = (interval: string): [string, string] | undefined => {
+    if (interval === 'all') return undefined;
+
+    const now = dayjs();
+    let start: Dayjs;
+
+    switch (interval) {
+      case 'hour':
+        start = now.subtract(1, 'hour');
+        break;
+      case 'day':
+        start = now.subtract(1, 'day');
+        break;
+      case 'week':
+        start = now.subtract(1, 'week');
+        break;
+      case 'month':
+        start = now.subtract(1, 'month');
+        break;
+      default:
+        return undefined;
+    }
+
+    return [start.toISOString(), now.toISOString()];
+  };
 
   // Fetch invalid records from API
   const fetchRecords = async () => {
     setLoading(true);
     try {
+      let startDate, endDate;
+
+      // Use custom date range if set, otherwise use time interval
+      if (dateRange && dateRange[0] && dateRange[1]) {
+        startDate = dateRange[0].toISOString();
+        endDate = dateRange[1].toISOString();
+      } else {
+        const intervalRange = getDateRangeFromInterval(selectedTimeRange);
+        if (intervalRange) {
+          [startDate, endDate] = intervalRange;
+        }
+      }
+
       const result = await invalidRecordsApiClient.getList({
         page: currentPage,
         pageSize,
         dataSourceId: selectedDataSource === 'all' ? undefined : selectedDataSource,
         errorType: selectedErrorType === 'all' ? undefined : selectedErrorType,
+        startDate,
+        endDate,
       });
-      
+
       setInvalidRecords(result.data);
       setTotalCount(result.totalCount);
     } catch (error: any) {
@@ -44,10 +114,31 @@ const InvalidRecordsManagement: React.FC = () => {
     }
   };
 
+  // Get filtered datasources based on selected category
+  const getFilteredDataSources = () => {
+    if (selectedCategory === 'all') return dataSources;
+    return dataSources.filter(ds => ds.Category === selectedCategory);
+  };
+
+  // Handle category change - reset datasource selection if it's not in the new category
+  const handleCategoryChange = (category: string) => {
+    setSelectedCategory(category);
+    if (category !== 'all') {
+      const filteredDs = dataSources.filter(ds => ds.Category === category);
+      if (selectedDataSource !== 'all' && !filteredDs.find(ds => ds.ID === selectedDataSource)) {
+        setSelectedDataSource('all');
+      }
+    }
+  };
+
+  useEffect(() => {
+    fetchDataSources();
+  }, []);
+
   useEffect(() => {
     fetchRecords();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedDataSource, selectedErrorType, currentPage]);
+  }, [selectedDataSource, selectedErrorType, selectedTimeRange, dateRange, currentPage]);
 
   const handleReprocess = async (recordId: string) => {
     try {
@@ -71,20 +162,19 @@ const InvalidRecordsManagement: React.FC = () => {
 
   const handleExport = async () => {
     try {
-      const blob = await invalidRecordsApiClient.exportToCsv({
-        dataSourceId: selectedDataSource === 'all' ? undefined : selectedDataSource,
-        errorType: selectedErrorType === 'all' ? undefined : selectedErrorType,
-      });
-      
+      // Export current filtered records as JSON
+      const jsonData = JSON.stringify(invalidRecords, null, 2);
+      const blob = new Blob([jsonData], { type: 'application/json' });
+
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `invalid-records-${new Date().toISOString().split('T')[0]}.csv`;
+      a.download = `invalid-records-${new Date().toISOString().split('T')[0]}.json`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
-      
+
       message.success('Export completed successfully');
     } catch (error: any) {
       message.error(error.message || 'Failed to export data');
@@ -200,14 +290,29 @@ const InvalidRecordsManagement: React.FC = () => {
             onClick={handleExport}
             disabled={totalCount === 0}
           >
-            יצא CSV ({totalCount})
+            יצא JSON ({totalCount})
           </Button>
         </Space>
       </div>
 
       {/* Search and Filter Controls */}
       <Card style={{ marginBottom: 24 }}>
-        <Row gutter={[16, 16]} align="middle">
+        <Row gutter={[16, 16]}>
+          <Col span={6}>
+            <Space direction="vertical" size="small" style={{ width: '100%' }}>
+              <Text>קטגוריה:</Text>
+              <Select
+                style={{ width: '100%' }}
+                value={selectedCategory}
+                onChange={handleCategoryChange}
+              >
+                <Option value="all">כל הקטגוריות</Option>
+                {categories.map(cat => (
+                  <Option key={cat} value={cat}>{cat}</Option>
+                ))}
+              </Select>
+            </Space>
+          </Col>
           <Col span={6}>
             <Space direction="vertical" size="small" style={{ width: '100%' }}>
               <Text>מקור נתונים:</Text>
@@ -215,15 +320,14 @@ const InvalidRecordsManagement: React.FC = () => {
                 style={{ width: '100%' }}
                 value={selectedDataSource}
                 onChange={setSelectedDataSource}
+                showSearch
+                optionFilterProp="children"
               >
                 <Option value="all">כל מקורות הנתונים</Option>
+                {getFilteredDataSources().map(ds => (
+                  <Option key={ds.ID} value={ds.ID}>{ds.Name}</Option>
+                ))}
               </Select>
-            </Space>
-          </Col>
-          <Col span={6}>
-            <Space direction="vertical" size="small" style={{ width: '100%' }}>
-              <Text>טווח תאריכים:</Text>
-              <RangePicker style={{ width: '100%' }} />
             </Space>
           </Col>
           <Col span={6}>
@@ -235,25 +339,60 @@ const InvalidRecordsManagement: React.FC = () => {
                 onChange={setSelectedErrorType}
               >
                 <Option value="all">כל השגיאות</Option>
-                <Option value="schema">אימות Schema</Option>
-                <Option value="format">שגיאת פורמט</Option>
-                <Option value="required">שדה חובה חסר</Option>
-                <Option value="range">שגיאת טווח</Option>
+                <Option value="SchemaValidation">אימות Schema</Option>
+                <Option value="FormatError">שגיאת פורמט</Option>
+                <Option value="RequiredField">שדה חובה חסר</Option>
+                <Option value="RangeError">שגיאת טווח</Option>
               </Select>
             </Space>
           </Col>
           <Col span={6}>
-            <Button 
-              type="primary" 
-              icon={<SearchOutlined />} 
-              style={{ marginTop: 24 }}
-              onClick={fetchRecords}
-              loading={loading}
-            >
-              חפש
-            </Button>
+            <Space direction="vertical" size="small" style={{ width: '100%' }}>
+              <Text>טווח זמן:</Text>
+              <Select
+                style={{ width: '100%' }}
+                value={selectedTimeRange}
+                onChange={(value) => {
+                  setSelectedTimeRange(value);
+                  if (value !== 'custom') setDateRange(null);
+                }}
+              >
+                <Option value="all">כל הזמנים</Option>
+                <Option value="hour">שעה אחרונה</Option>
+                <Option value="day">יום אחרון</Option>
+                <Option value="week">שבוע אחרון</Option>
+                <Option value="month">חודש אחרון</Option>
+                <Option value="custom">טווח מותאם אישית</Option>
+              </Select>
+            </Space>
           </Col>
         </Row>
+        {selectedTimeRange === 'custom' && (
+          <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+            <Col span={12}>
+              <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                <Text>תאריכים מותאמים:</Text>
+                <RangePicker
+                  style={{ width: '100%' }}
+                  value={dateRange}
+                  onChange={(dates) => setDateRange(dates as [Dayjs | null, Dayjs | null])}
+                  showTime
+                />
+              </Space>
+            </Col>
+            <Col span={12}>
+              <Button
+                type="primary"
+                icon={<SearchOutlined />}
+                style={{ marginTop: 24 }}
+                onClick={fetchRecords}
+                loading={loading}
+              >
+                חפש
+              </Button>
+            </Col>
+          </Row>
+        )}
       </Card>
 
       {/* Invalid Records List */}
