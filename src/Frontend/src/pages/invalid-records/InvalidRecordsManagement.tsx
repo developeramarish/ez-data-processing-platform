@@ -13,6 +13,7 @@ import {
 } from '@ant-design/icons';
 import { invalidRecordsApiClient, InvalidRecord, Statistics } from '../../services/invalidrecords-api-client';
 import dayjs, { Dayjs } from 'dayjs';
+import EditRecordModal from '../../components/invalid-records/EditRecordModal';
 
 const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
@@ -38,6 +39,8 @@ const InvalidRecordsManagement: React.FC = () => {
   const [statistics, setStatistics] = useState<Statistics | null>(null);
   const [totalCount, setTotalCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [selectedRecord, setSelectedRecord] = useState<InvalidRecord | null>(null);
   const pageSize = 10;
 
   // Fetch datasources for filter dropdown
@@ -156,14 +159,15 @@ const InvalidRecordsManagement: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDataSource, selectedErrorType, selectedTimeRange, dateRange, currentPage]);
 
-  const handleReprocess = async (recordId: string) => {
-    try {
-      await invalidRecordsApiClient.reprocessRecord(recordId);
-      message.success('Record reprocessed successfully');
-      await Promise.all([fetchRecords(), fetchStatistics()]);
-    } catch (error: any) {
-      message.error(error.message || 'Failed to reprocess record');
-    }
+  const handleReprocess = (record: InvalidRecord) => {
+    // Open edit modal instead of direct reprocess
+    setSelectedRecord(record);
+    setEditModalVisible(true);
+  };
+
+  const handleEditSuccess = async () => {
+    // Refresh both records list and statistics after successful edit
+    await Promise.all([fetchRecords(), fetchStatistics()]);
   };
 
   const handleDelete = async (recordId: string) => {
@@ -264,10 +268,10 @@ const InvalidRecordsManagement: React.FC = () => {
         </Col>
         <Col>
           <Space>
-            <Button 
-              size="small" 
-              icon={<ReloadOutlined />} 
-              onClick={() => handleReprocess(record.id)}
+            <Button
+              size="small"
+              icon={<ReloadOutlined />}
+              onClick={() => handleReprocess(record)}
             >
               עבד מחדש
             </Button>
@@ -546,6 +550,14 @@ const InvalidRecordsManagement: React.FC = () => {
           </div>
         )}
       </Spin>
+
+      {/* Edit Record Modal */}
+      <EditRecordModal
+        visible={editModalVisible}
+        record={selectedRecord}
+        onClose={() => setEditModalVisible(false)}
+        onSuccess={handleEditSuccess}
+      />
     </div>
   );
 };

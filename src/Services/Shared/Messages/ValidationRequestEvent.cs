@@ -33,4 +33,16 @@ public class ValidationRequestEvent : IDataProcessingMessage
     /// Contains format-specific information like delimiters, encoding, etc.
     /// </summary>
     public Dictionary<string, object> FormatMetadata { get; set; } = new Dictionary<string, object>();
+
+    /// <summary>
+    /// Indicates this is a reprocess request for a previously invalid record
+    /// When true, ValidationService will delete or update the OriginalInvalidRecordId
+    /// </summary>
+    public bool IsReprocess { get; set; } = false;
+
+    /// <summary>
+    /// ID of the invalid record being reprocessed
+    /// Used to delete record if validation passes or update if validation fails
+    /// </summary>
+    public string? OriginalInvalidRecordId { get; set; }
 }

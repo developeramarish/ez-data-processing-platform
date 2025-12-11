@@ -1,9 +1,12 @@
 using DataProcessing.Shared.Entities;
+using DataProcessing.Shared.Messages;
 using InvalidRecordsService.Models.Requests;
 using InvalidRecordsService.Models.Responses;
 using InvalidRecordsService.Repositories;
+using MassTransit;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
+using System.Text;
 
 namespace InvalidRecordsService.Services;
 
@@ -11,13 +14,16 @@ public class CorrectionService : ICorrectionService
 {
     private readonly IInvalidRecordRepository _repository;
     private readonly ILogger<CorrectionService> _logger;
+    private readonly IPublishEndpoint _publishEndpoint;
 
     public CorrectionService(
         IInvalidRecordRepository repository,
-        ILogger<CorrectionService> logger)
+        ILogger<CorrectionService> logger,
+        IPublishEndpoint publishEndpoint)
     {
         _repository = repository;
         _logger = logger;
+        _publishEndpoint = publishEndpoint;
     }
 
     public async Task<CorrectionResult> CorrectRecordAsync(string recordId, CorrectRecordRequest request)
@@ -50,13 +56,13 @@ public class CorrectionService : ICorrectionService
                 "Record {RecordId} corrected successfully by {User}",
                 recordId, request.CorrectedBy);
 
-            // 4. If AutoReprocess is enabled, would send to ValidationService
-            // For MVP: Just mark as corrected without actual revalidation
-            // Full implementation would require HTTP client to ValidationService
+            // 4. If AutoReprocess is enabled, publish ValidationRequestEvent for actual revalidation
             if (request.AutoReprocess)
             {
+                await PublishRevalidationRequest(record, correctedDataBson);
+
                 _logger.LogInformation(
-                    "Auto-reprocess requested for {RecordId} - skipped in MVP (would require ValidationService HTTP client)",
+                    "Published ValidationRequestEvent for reprocessing record {RecordId}",
                     recordId);
             }
 
@@ -202,5 +208,43 @@ public class CorrectionService : ICorrectionService
             result.Successful, result.TotalRequested);
 
         return result;
+    }
+
+    private async Task PublishRevalidationRequest(
+        DataProcessingInvalidRecord record,
+        BsonDocument correctedData)
+    {
+        _logger.LogInformation(
+            "Publishing revalidation request for invalid record {RecordId}",
+            record.ID);
+
+        // Convert corrected data to JSON bytes
+        var jsonContent = correctedData.ToJson();
+        var fileContent = Encoding.UTF8.GetBytes(jsonContent);
+
+        // Create ValidationRequestEvent for reprocessing
+        var validationRequest = new ValidationRequestEvent
+        {
+            CorrelationId = Guid.NewGuid().ToString(),
+            Timestamp = DateTime.UtcNow,
+            PublishedBy = "InvalidRecordsService-Reprocess",
+            DataSourceId = record.DataSourceId,
+            FileName = $"{record.FileName}_CORRECTED",
+            FileContent = fileContent,
+            FileContentType = "application/json",
+            FileSizeBytes = fileContent.Length,
+            HazelcastKey = string.Empty,  // No Hazelcast needed for single record
+            OriginalFormat = "JSON",
+            FormatMetadata = new Dictionary<string, object>(),
+            IsReprocess = true,
+            OriginalInvalidRecordId = record.ID
+        };
+
+        // Publish to RabbitMQ for ValidationService to consume
+        await _publishEndpoint.Publish(validationRequest);
+
+        _logger.LogInformation(
+            "ValidationRequestEvent published successfully for record {RecordId}, CorrelationId: {CorrelationId}",
+            record.ID, validationRequest.CorrelationId);
     }
 }
