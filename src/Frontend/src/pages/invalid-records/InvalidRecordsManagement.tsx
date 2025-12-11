@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Button, Tag, Space, Typography, Row, Col, Select, DatePicker, Collapse, Descriptions, message, Spin } from 'antd';
+import { Card, Button, Tag, Space, Typography, Row, Col, Select, DatePicker, Collapse, Descriptions, message, Spin, Statistic, Pagination } from 'antd';
 import {
   ExclamationCircleOutlined,
   ExportOutlined,
   DeleteOutlined,
   ReloadOutlined,
   SearchOutlined,
+  CheckCircleOutlined,
+  EyeInvisibleOutlined,
+  BarChartOutlined,
+  DatabaseOutlined,
 } from '@ant-design/icons';
 import { invalidRecordsApiClient, InvalidRecord, Statistics } from '../../services/invalidrecords-api-client';
 import dayjs, { Dayjs } from 'dayjs';
-import { Statistic } from 'antd';
-import { CheckCircleOutlined, EyeInvisibleOutlined, BarChartOutlined, DatabaseOutlined } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
@@ -176,9 +178,33 @@ const InvalidRecordsManagement: React.FC = () => {
 
   const handleExport = async () => {
     try {
-      // Export current filtered records as JSON
-      const jsonData = JSON.stringify(invalidRecords, null, 2);
-      const blob = new Blob([jsonData], { type: 'application/json' });
+      setLoading(true);
+
+      // Calculate date range for export (same as fetchRecords)
+      let startDate, endDate;
+      if (dateRange && dateRange[0] && dateRange[1]) {
+        startDate = dateRange[0].toISOString();
+        endDate = dateRange[1].toISOString();
+      } else {
+        const intervalRange = getDateRangeFromInterval(selectedTimeRange);
+        if (intervalRange) {
+          [startDate, endDate] = intervalRange;
+        }
+      }
+
+      // Fetch ALL records matching current filters (not just current page)
+      const allRecords = await invalidRecordsApiClient.getList({
+        page: 1,
+        pageSize: totalCount || 1000, // Get all records (use totalCount or max 1000)
+        dataSourceId: selectedDataSource === 'all' ? undefined : selectedDataSource,
+        errorType: selectedErrorType === 'all' ? undefined : selectedErrorType,
+        startDate,
+        endDate,
+      });
+
+      // Export with UTF-8 BOM for Hebrew support
+      const jsonData = JSON.stringify(allRecords.data, null, 2);
+      const blob = new Blob(['\ufeff' + jsonData], { type: 'application/json;charset=utf-8' });
 
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -189,9 +215,11 @@ const InvalidRecordsManagement: React.FC = () => {
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
 
-      message.success('Export completed successfully');
+      message.success(`Exported ${allRecords.data.length} records successfully`);
     } catch (error: any) {
       message.error(error.message || 'Failed to export data');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -465,28 +493,55 @@ const InvalidRecordsManagement: React.FC = () => {
           </Card>
         ) : (
           <div>
-            {invalidRecords.map(renderInvalidRecord)}
-            
+            {(() => {
+              // Group records by dataSource
+              const groupedRecords = invalidRecords.reduce((acc, record) => {
+                const key = record.dataSourceId;
+                if (!acc[key]) {
+                  acc[key] = {
+                    dataSourceName: record.dataSourceName,
+                    dataSourceId: record.dataSourceId,
+                    records: []
+                  };
+                }
+                acc[key].records.push(record);
+                return acc;
+              }, {} as Record<string, {dataSourceName: string, dataSourceId: string, records: InvalidRecord[]}>);
+
+              // Render with Collapse grouping
+              return (
+                <Collapse
+                  items={Object.entries(groupedRecords).map(([dsId, group]) => ({
+                    key: dsId,
+                    label: (
+                      <Space>
+                        <DatabaseOutlined />
+                        <Text strong>{group.dataSourceName}</Text>
+                        <Tag color="red">{group.records.length} רשומות</Tag>
+                      </Space>
+                    ),
+                    children: (
+                      <Space direction="vertical" style={{ width: '100%' }}>
+                        {group.records.map(renderInvalidRecord)}
+                      </Space>
+                    )
+                  }))}
+                  defaultActiveKey={Object.keys(groupedRecords).slice(0, 1)}
+                  style={{ marginBottom: 24 }}
+                />
+              );
+            })()}
+
             {totalCount > pageSize && (
-              <div style={{ textAlign: 'center', marginTop: 24 }}>
-                <Button.Group>
-                  <Button 
-                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                    disabled={currentPage === 1}
-                  >
-                    הקודם
-                  </Button>
-                  <Button disabled>
-                    עמוד {currentPage} מתוך {Math.ceil(totalCount / pageSize)}
-                  </Button>
-                  <Button 
-                    onClick={() => setCurrentPage(p => p + 1)}
-                    disabled={currentPage >= Math.ceil(totalCount / pageSize)}
-                  >
-                    הבא
-                  </Button>
-                </Button.Group>
-              </div>
+              <Pagination
+                current={currentPage}
+                pageSize={pageSize}
+                total={totalCount}
+                onChange={(page) => setCurrentPage(page)}
+                showSizeChanger={false}
+                showTotal={(total) => `סה"כ ${total} רשומות לא תקינות`}
+                style={{ marginTop: 24, textAlign: 'center' }}
+              />
             )}
           </div>
         )}
