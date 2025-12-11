@@ -88,10 +88,18 @@ const EditRecordModal: React.FC<EditRecordModalProps> = ({
       if (!record) return;
 
       // Merge corrected values with original data
-      const correctedData = {
+      const correctedData: any = {
         ...record.originalData,
         ...values,
       };
+
+      // Convert Amount to number if it's a string (schema expects number)
+      if (correctedData.Amount && typeof correctedData.Amount === 'string') {
+        const amountNum = parseFloat(correctedData.Amount);
+        if (!isNaN(amountNum)) {
+          correctedData.Amount = amountNum;
+        }
+      }
 
       // Call the API to correct and reprocess
       const response = await fetch(
