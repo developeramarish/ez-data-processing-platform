@@ -85,8 +85,10 @@ if (app.Environment.IsDevelopment())
         c.SwaggerEndpoint("/swagger/v1/swagger.json", "Invalid Records Service API v1");
         c.RoutePrefix = string.Empty; // Swagger UI at root
     });
-    app.UseCors("AllowAll");
 }
+
+// Enable CORS in all environments (needed for frontend communication)
+app.UseCors("AllowAll");
 
 app.UseHttpsRedirection();
 
