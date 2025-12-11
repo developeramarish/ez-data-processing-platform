@@ -87,15 +87,17 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-app.UseHttpsRedirection();
+// IMPORTANT: HTTPS redirection disabled in containerized environments
+// as it breaks CORS preflight requests from frontend
+// app.UseHttpsRedirection();
 
 // Add correlation ID middleware
 app.UseMiddleware<CorrelationIdMiddleware>();
 
 app.UseRouting();
 
-// Enable CORS in all environments (needed for frontend communication)
-// MUST be between UseRouting and UseEndpoints
+// CRITICAL: For endpoint routing, UseCors MUST be between UseRouting and MapControllers
+// This ensures OPTIONS preflight requests are handled correctly
 app.UseCors("AllowAll");
 
 app.UseAuthorization();
