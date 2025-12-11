@@ -58,8 +58,11 @@ public class ValidationCompletedEventConsumer : IConsumer<ValidationCompletedEve
 
         try
         {
-            // Skip if validation failed
-            if (message.ValidationStatus != "Success" && message.ValidationStatus != "Completed")
+            // Skip if validation completely failed (no valid records)
+            // Accept: Success, Completed, PartialFailure (has some valid records)
+            if (message.ValidationStatus != "Success" &&
+                message.ValidationStatus != "Completed" &&
+                message.ValidationStatus != "PartialFailure")
             {
                 _logger.LogWarning(
                     "Skipping output for failed validation: {FileName}, Status={Status}",
