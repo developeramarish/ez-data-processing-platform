@@ -40,6 +40,7 @@ export interface ConnectionConfig {
   password?: string;
   path?: string;
   url?: string;
+  filePattern?: string;
   // Kafka-specific fields
   brokers?: string;
   topic?: string;

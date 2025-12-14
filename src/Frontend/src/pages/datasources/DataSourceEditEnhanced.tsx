@@ -142,6 +142,7 @@ const DataSourceEditEnhanced: React.FC = () => {
           connectionPassword: connectionConfig.password,
           connectionPath: connectionConfig.path || data.Data.FilePath,
           connectionUrl: connectionConfig.url,
+          filePattern: connectionConfig.filePattern || data.Data.FilePattern || '*.*',
           // Kafka fields
           kafkaBrokers: connectionConfig.brokers,
           kafkaTopic: connectionConfig.topic,
@@ -164,14 +165,18 @@ const DataSourceEditEnhanced: React.FC = () => {
         });
 
         // Initialize output config if it exists (handle both camelCase and PascalCase)
-        let outputConfigData = configSettings.outputConfig || configSettings.OutputConfig;
+        // Priority: configSettings.outputConfig > data.Data.Output
+        let outputConfigData = configSettings.outputConfig || configSettings.OutputConfig || data.Data.Output;
+
+        // Check if destinations have PascalCase properties (check first destination)
+        const needsConversion = outputConfigData?.destinations?.[0]?.Type !== undefined || outputConfigData?.DefaultOutputFormat !== undefined;
 
         // If we have PascalCase properties, convert to camelCase
-        if (outputConfigData && outputConfigData.DefaultOutputFormat) {
+        if (outputConfigData && needsConversion) {
           outputConfigData = {
-            defaultOutputFormat: outputConfigData.DefaultOutputFormat,
-            includeInvalidRecords: outputConfigData.IncludeInvalidRecords,
-            destinations: (outputConfigData.Destinations || []).map((dest: any) => ({
+            defaultOutputFormat: outputConfigData.DefaultOutputFormat || outputConfigData.defaultOutputFormat,
+            includeInvalidRecords: outputConfigData.IncludeInvalidRecords ?? outputConfigData.includeInvalidRecords,
+            destinations: (outputConfigData.Destinations || outputConfigData.destinations || []).map((dest: any) => ({
               id: dest.Id,
               name: dest.Name,
               description: dest.Description,
@@ -243,6 +248,7 @@ const DataSourceEditEnhanced: React.FC = () => {
           password: values.connectionPassword ?? existingConfig.connectionConfig?.password,
           path: values.connectionPath ?? existingConfig.connectionConfig?.path,
           url: values.connectionUrl ?? existingConfig.connectionConfig?.url,
+          filePattern: values.filePattern ?? existingConfig.connectionConfig?.filePattern ?? '*.*',
           // Kafka-specific fields
           brokers: values.kafkaBrokers ?? existingConfig.connectionConfig?.brokers,
           topic: values.kafkaTopic ?? existingConfig.connectionConfig?.topic,
@@ -288,7 +294,13 @@ const DataSourceEditEnhanced: React.FC = () => {
         Description: values.description ?? dataSource.Description,
         ConnectionString: buildConnectionString(values) || dataSource.FilePath,
         IsActive: values.isActive ?? dataSource.IsActive,
+        FilePattern: values.filePattern ?? existingConfig.connectionConfig?.filePattern ?? dataSource.FilePattern ?? '*.*',
         ConfigurationSettings: JSON.stringify(mergedConfig),
+        Output: {
+          DefaultOutputFormat: outputConfig?.defaultOutputFormat || 'original',
+          IncludeInvalidRecords: outputConfig?.includeInvalidRecords || false,
+          Destinations: outputConfig?.destinations || []
+        },
         ValidationRules: null,
         Metadata: null,
         FileFormat: mergedConfig.fileConfig.type || null,

@@ -122,13 +122,32 @@ export const ConnectionTab: React.FC<ConnectionTabProps> = ({
             </Col>
           </Row>
 
-              <Form.Item
-                name="connectionPath"
-                label="נתיב בשרת"
-                rules={[{ required: true, message: t('errors.required') }]}
-              >
-                <Input className="ltr-field" placeholder="/path/to/files/" />
-              </Form.Item>
+          <Form.Item
+            name="connectionPath"
+            label="נתיב בשרת"
+            rules={[{ required: true, message: t('errors.required') }]}
+          >
+            <Input className="ltr-field" placeholder="/path/to/files/" />
+          </Form.Item>
+
+          <Form.Item
+            name="filePattern"
+            label="תבנית קובץ (File Pattern)"
+            initialValue="*.*"
+            rules={[
+              { required: true, message: t('errors.required') },
+              {
+                pattern: /^(\*\.[\w]+|\*\.\*|[\w-]+_\*\.[\w]+|[\w-]+\.[\w]+)$/,
+                message: 'תבנית לא תקינה. דוגמאות: *.csv, *.*, data_*.xml'
+              }
+            ]}
+            tooltip="תבנית לסינון קבצים בתיקייה. דוגמאות: *.csv (כל קבצי CSV), *.* (כל הקבצים), data_*.xml"
+          >
+            <Input
+              className="ltr-field"
+              placeholder="*.csv, *.json, data_*.xml, *.*"
+            />
+          </Form.Item>
         </>
       )}
 
@@ -146,14 +165,35 @@ export const ConnectionTab: React.FC<ConnectionTabProps> = ({
       )}
 
       {connectionType === 'Local' && (
-        <Form.Item
-          name="connectionPath"
-          label="נתיב מקומי"
-          rules={[{ required: true, message: t('errors.required') }]}
-          tooltip="נתיב מלא לתיקייה במחשב או ברשת"
-        >
-          <Input className="ltr-field" placeholder="C:\Data\Files או \\server\share\files" />
-        </Form.Item>
+        <>
+          <Form.Item
+            name="connectionPath"
+            label="נתיב מקומי"
+            rules={[{ required: true, message: t('errors.required') }]}
+            tooltip="נתיב מלא לתיקייה במחשב או ברשת"
+          >
+            <Input className="ltr-field" placeholder="C:\Data\Files או \\server\share\files" />
+          </Form.Item>
+
+          <Form.Item
+            name="filePattern"
+            label="תבנית קובץ (File Pattern)"
+            initialValue="*.*"
+            rules={[
+              { required: true, message: t('errors.required') },
+              {
+                pattern: /^(\*\.[\w]+|\*\.\*|[\w-]+_\*\.[\w]+|[\w-]+\.[\w]+)$/,
+                message: 'תבנית לא תקינה. דוגמאות: *.csv, *.*, data_*.xml'
+              }
+            ]}
+            tooltip="תבנית לסינון קבצים בתיקייה. דוגמאות: *.csv (כל קבצי CSV), *.* (כל הקבצים), data_*.xml"
+          >
+            <Input
+              className="ltr-field"
+              placeholder="*.csv, *.json, data_*.xml, *.*"
+            />
+          </Form.Item>
+        </>
       )}
 
       {/* Kafka specific fields */}

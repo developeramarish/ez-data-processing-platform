@@ -37,15 +37,63 @@ public class CsvToJsonConverter : IFormatConverter
 
             using var reader = new StreamReader(sourceStream);
             using var csv = new CsvReader(reader, config);
-            
+
+            // Get records as dynamic objects (all fields are strings by default)
             var records = csv.GetRecords<dynamic>().ToList();
-            return Task.FromResult(JsonSerializer.Serialize(records));
+
+            // Convert numeric and boolean strings to their actual types
+            var convertedRecords = records.Select(record => ConvertTypes((IDictionary<string, object>)record)).ToList();
+
+            return Task.FromResult(JsonSerializer.Serialize(convertedRecords));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error converting CSV to JSON");
             throw;
         }
+    }
+
+    /// <summary>
+    /// Converts string values to appropriate types (numbers, booleans) based on content
+    /// </summary>
+    private Dictionary<string, object> ConvertTypes(IDictionary<string, object> record)
+    {
+        var converted = new Dictionary<string, object>();
+
+        foreach (var kvp in record)
+        {
+            var value = kvp.Value?.ToString() ?? "";
+
+            // Try to convert to number (int or decimal)
+            if (double.TryParse(value, NumberStyles.Any, CultureInfo.InvariantCulture, out var numValue))
+            {
+                // Use decimal for values with decimal points, int for whole numbers
+                if (value.Contains('.') || value.Contains(','))
+                {
+                    converted[kvp.Key] = numValue;
+                }
+                else if (int.TryParse(value, out var intValue))
+                {
+                    converted[kvp.Key] = intValue;
+                }
+                else
+                {
+                    converted[kvp.Key] = numValue;
+                }
+            }
+            // Try to convert to boolean
+            else if (bool.TryParse(value, out var boolValue))
+            {
+                converted[kvp.Key] = boolValue;
+            }
+            // Keep as string
+            else
+            {
+                converted[kvp.Key] = value;
+            }
+        }
+
+        return converted;
     }
 
     public async Task<bool> IsValidFormatAsync(Stream stream, CancellationToken cancellationToken = default)

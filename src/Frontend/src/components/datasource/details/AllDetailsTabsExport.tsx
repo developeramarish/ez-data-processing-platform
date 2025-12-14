@@ -37,6 +37,11 @@ export const ConnectionDetailsTab: React.FC<{ connectionConfig: any; dataSource:
         {connectionConfig.path || connectionConfig.url || dataSource.FilePath || 'לא הוגדר'}
       </Text>
     </Descriptions.Item>
+    <Descriptions.Item label="תבנית קובץ (File Pattern)" span={2}>
+      <Text code style={{ fontSize: '14px' }}>
+        {connectionConfig.filePattern || dataSource.FilePattern || '*.*'}
+      </Text>
+    </Descriptions.Item>
     {connectionConfig.host && (
       <>
         <Descriptions.Item label="שרת (Host)">{connectionConfig.host}</Descriptions.Item>
@@ -203,7 +208,7 @@ export const OutputDetailsTab: React.FC<{ outputConfig: OutputConfiguration | nu
         <Space>
           {type === 'kafka' && <CloudServerOutlined style={{ color: '#1890ff' }} />}
           {type === 'folder' && <FolderOutlined style={{ color: '#faad14' }} />}
-          <Text>{type.toUpperCase()}</Text>
+          <Text>{type?.toUpperCase() || 'UNKNOWN'}</Text>
         </Space>
       )
     },

@@ -172,14 +172,18 @@ const DataSourceDetailsEnhanced: React.FC = () => {
   const notificationSettings = parsedConfig?.notificationSettings || {};
 
   // Handle both camelCase and PascalCase (C# may serialize with PascalCase)
-  let outputConfig = parsedConfig?.outputConfig || parsedConfig?.OutputConfig || null;
+  // Get output config from parsed config or fallback to dataSource.Output
+  let outputConfig = parsedConfig?.outputConfig || parsedConfig?.OutputConfig || dataSource?.Output || null;
+
+  // Check if destinations have PascalCase properties (check first destination)
+  const needsConversion = outputConfig?.destinations?.[0]?.Type !== undefined || outputConfig?.DefaultOutputFormat !== undefined;
 
   // If we have PascalCase properties, convert to camelCase for consistency
-  if (outputConfig && outputConfig.DefaultOutputFormat) {
+  if (outputConfig && needsConversion) {
     outputConfig = {
-      defaultOutputFormat: outputConfig.DefaultOutputFormat,
-      includeInvalidRecords: outputConfig.IncludeInvalidRecords,
-      destinations: (outputConfig.Destinations || []).map((dest: any) => ({
+      defaultOutputFormat: outputConfig.DefaultOutputFormat || outputConfig.defaultOutputFormat,
+      includeInvalidRecords: outputConfig.IncludeInvalidRecords ?? outputConfig.includeInvalidRecords,
+      destinations: (outputConfig.Destinations || outputConfig.destinations || []).map((dest: any) => ({
         id: dest.Id,
         name: dest.Name,
         description: dest.Description,

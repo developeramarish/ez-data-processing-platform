@@ -92,6 +92,7 @@ const DataSourceFormEnhanced: React.FC = () => {
         description: values.description,
         connectionString: buildConnectionString(values),
         isActive: values.isActive ?? true,
+        filePattern: values.filePattern || '*.*',
         configurationSettings: JSON.stringify({
           connectionConfig: {
             type: values.connectionType,
@@ -101,6 +102,7 @@ const DataSourceFormEnhanced: React.FC = () => {
             password: values.connectionPassword,
             path: values.connectionPath,
             url: values.connectionUrl,
+            filePattern: values.filePattern || '*.*',
             // Kafka-specific fields
             brokers: values.kafkaBrokers,
             topic: values.kafkaTopic,
@@ -131,6 +133,11 @@ const DataSourceFormEnhanced: React.FC = () => {
           },
           outputConfig: outputConfig
         }),
+        output: {
+          defaultOutputFormat: outputConfig?.defaultOutputFormat || 'original',
+          includeInvalidRecords: outputConfig?.includeInvalidRecords || false,
+          destinations: outputConfig?.destinations || []
+        },
         fileFormat: values.fileType,
         retentionDays: values.retentionDays
       };
