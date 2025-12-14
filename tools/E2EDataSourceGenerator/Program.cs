@@ -45,12 +45,13 @@ try
     Console.WriteLine($"  ✅ Removed {existingE2E.Count} existing E2E datasources\n");
 
     // Generate E2E-004 datasource
-    Console.WriteLine("[2/3] 📊 Generating E2E-004 datasource with 4 destinations...");
+    Console.WriteLine("[2/4] 📊 Generating E2E-004 datasource with 4 destinations...");
     var e2e004 = E2E004Template.CreateE2E004MultiDestination();
     await e2e004.SaveAsync();
     Console.WriteLine($"  ✓ Created: {e2e004.Name}");
     Console.WriteLine($"  ✓ FilePattern: {e2e004.FilePattern}");
     Console.WriteLine($"  ✓ Path: {e2e004.FilePath}");
+    Console.WriteLine($"  ✓ Cron: {e2e004.CronExpression}");
     Console.WriteLine($"  ✓ Output Destinations: {e2e004.Output?.Destinations?.Count ?? 0}");
     foreach (var dest in e2e004.Output?.Destinations ?? new List<OutputDestination>())
     {
@@ -58,8 +59,23 @@ try
     }
     Console.WriteLine($"  ✅ E2E-004 generated successfully\n");
 
+    // Generate E2E-005 datasource
+    Console.WriteLine("[3/4] 📊 Generating E2E-005 datasource for scheduled polling test...");
+    var e2e005 = E2E005Template.CreateE2E005ScheduledPolling();
+    await e2e005.SaveAsync();
+    Console.WriteLine($"  ✓ Created: {e2e005.Name}");
+    Console.WriteLine($"  ✓ FilePattern: {e2e005.FilePattern}");
+    Console.WriteLine($"  ✓ Path: {e2e005.FilePath}");
+    Console.WriteLine($"  ✓ Cron: {e2e005.CronExpression} (Every 1 minute)");
+    Console.WriteLine($"  ✓ Output Destinations: {e2e005.Output?.Destinations?.Count ?? 0}");
+    foreach (var dest in e2e005.Output?.Destinations ?? new List<OutputDestination>())
+    {
+        Console.WriteLine($"    - {dest.Name} ({dest.Type}, {dest.OutputFormat})");
+    }
+    Console.WriteLine($"  ✅ E2E-005 generated successfully\n");
+
     // Summary
-    Console.WriteLine("[3/3] 📊 Generation Summary:");
+    Console.WriteLine("[4/4] 📊 Generation Summary:");
     var e2eCount = await DB.Find<DataProcessingDataSource>()
         .Match(ds => ds.Name != null && ds.Name.StartsWith("E2E-"))
         .ExecuteAsync();
@@ -71,10 +87,11 @@ try
 
     Console.WriteLine("Next steps:");
     Console.WriteLine("  1. Open http://localhost:3000/datasources");
-    Console.WriteLine("  2. Find E2E-004 datasource");
-    Console.WriteLine("  3. Click UPDATE to trigger DataSourceUpdatedEvent");
-    Console.WriteLine("  4. Place test CSV file in /mnt/external-test-data/E2E-004/");
-    Console.WriteLine("  5. Wait for scheduled execution\n");
+    Console.WriteLine("  2. Find E2E-004 and E2E-005 datasources");
+    Console.WriteLine("  3. Click UPDATE on each to trigger DataSourceUpdatedEvent");
+    Console.WriteLine("  4. E2E-004: Place test CSV in /mnt/external-test-data/E2E-004/");
+    Console.WriteLine("  5. E2E-005: Place test CSV in /mnt/external-test-data/E2E-005/");
+    Console.WriteLine("  6. E2E-004 executes every 5 minutes, E2E-005 every 1 minute\n");
 }
 catch (Exception ex)
 {

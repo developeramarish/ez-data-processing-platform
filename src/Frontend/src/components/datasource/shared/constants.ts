@@ -15,6 +15,7 @@ export const DATASOURCE_CATEGORIES = [
 ] as const;
 
 export const SCHEDULE_FREQUENCY_OPTIONS = [
+  { value: 'Custom', label: '⚙️ מותאם אישית (Cron)' },
   { value: 'Manual', label: 'ידני - רק עם הפעלה ידנית' },
   { value: 'Every5Minutes', label: '🕐 כל 5 דקות' },
   { value: 'Every10Minutes', label: '🕐 כל 10 דקות' },
@@ -29,8 +30,7 @@ export const SCHEDULE_FREQUENCY_OPTIONS = [
   { value: 'DailyNoon', label: '☀️ יומי - כל יום בצהריים' },
   { value: 'Weekdays8AM', label: '💼 ימי חול ב-08:00' },
   { value: 'Weekly', label: '📅 שבועי - פעם בשבוע' },
-  { value: 'Monthly', label: '📆 חודשי - ראשון לחודש' },
-  { value: 'Custom', label: '⚙️ מותאם אישית (Cron)' }
+  { value: 'Monthly', label: '📆 חודשי - ראשון לחודש' }
 ];
 
 export const FILE_TYPE_OPTIONS = [
