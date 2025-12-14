@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Button, Tag, Space, Typography, Row, Col, Select, DatePicker, Collapse, Descriptions, message, Spin, Statistic, Pagination } from 'antd';
+import { Card, Button, Tag, Space, Typography, Row, Col, Select, DatePicker, Collapse, Descriptions, message, Spin, Statistic, Pagination, Popconfirm } from 'antd';
 import {
   ExclamationCircleOutlined,
   ExportOutlined,
@@ -10,6 +10,7 @@ import {
   EyeInvisibleOutlined,
   BarChartOutlined,
   DatabaseOutlined,
+  ClearOutlined,
 } from '@ant-design/icons';
 import { invalidRecordsApiClient, InvalidRecord, Statistics } from '../../services/invalidrecords-api-client';
 import dayjs, { Dayjs } from 'dayjs';
@@ -180,6 +181,45 @@ const InvalidRecordsManagement: React.FC = () => {
     }
   };
 
+  const handleDeleteAll = async () => {
+    try {
+      setLoading(true);
+      // Fetch all record IDs matching current filters
+      const allRecords = await invalidRecordsApiClient.getList({
+        page: 1,
+        pageSize: 1000, // Get all records
+        dataSourceId: selectedDataSource === 'all' ? undefined : selectedDataSource,
+        errorType: selectedErrorType === 'all' ? undefined : selectedErrorType,
+      });
+
+      if (allRecords.data.length === 0) {
+        message.info('No records to delete');
+        return;
+      }
+
+      const recordIds = allRecords.data.map(r => r.id);
+
+      // Call bulk delete API
+      const response = await fetch('http://localhost:5007/api/v1/invalid-records/bulk/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recordIds, requestedBy: 'User' })
+      });
+
+      if (response.ok) {
+        message.success(`Successfully deleted ${recordIds.length} records`);
+        await Promise.all([fetchRecords(), fetchStatistics()]);
+        setCurrentPage(1);
+      } else {
+        message.error('Failed to delete records');
+      }
+    } catch (error: any) {
+      message.error(error.message || 'Failed to delete all records');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleExport = async () => {
     try {
       setLoading(true);
@@ -331,6 +371,23 @@ const InvalidRecordsManagement: React.FC = () => {
           </Title>
         </div>
         <Space>
+          <Popconfirm
+            title="מחק את כל הרשומות?"
+            description={`פעולה זו תמחק ${totalCount} רשומות לא תקינות. האם להמשיך?`}
+            onConfirm={handleDeleteAll}
+            okText="מחק הכל"
+            cancelText="ביטול"
+            okButtonProps={{ danger: true }}
+          >
+            <Button
+              danger
+              icon={<ClearOutlined />}
+              disabled={totalCount === 0}
+              loading={loading}
+            >
+              מחק הכל ({totalCount})
+            </Button>
+          </Popconfirm>
           <Button
             icon={<ExportOutlined />}
             onClick={handleExport}
