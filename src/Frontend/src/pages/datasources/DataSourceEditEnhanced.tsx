@@ -295,6 +295,9 @@ const DataSourceEditEnhanced: React.FC = () => {
         ConnectionString: buildConnectionString(values) || dataSource.FilePath,
         IsActive: values.isActive ?? dataSource.IsActive,
         FilePattern: values.filePattern ?? existingConfig.connectionConfig?.filePattern ?? dataSource.FilePattern ?? '*.*',
+        ScheduleFrequency: values.scheduleFrequency || mergedConfig.schedule.frequency,
+        CronExpression: cronExpressionToSave ?? mergedConfig.schedule.cronExpression,
+        ScheduleEnabled: values.scheduleEnabled ?? mergedConfig.schedule.enabled,
         ConfigurationSettings: JSON.stringify(mergedConfig),
         Output: {
           DefaultOutputFormat: outputConfig?.defaultOutputFormat || 'original',

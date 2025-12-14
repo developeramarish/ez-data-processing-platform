@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Typography, Button, Space, Table, Card, Alert, Spin, Tag, Popconfirm, message, Select } from 'antd';
+import { Typography, Button, Space, Table, Card, Alert, Spin, Tag, Popconfirm, message, Select, Tooltip } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { PlusOutlined, ReloadOutlined, EditOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
+import { PlusOutlined, ReloadOutlined, EditOutlined, DeleteOutlined, EyeOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 
 const { Title, Paragraph } = Typography;
@@ -36,6 +36,8 @@ interface DataSource {
     required?: string[];
   };
   SchemaVersion?: number;
+  ScheduleFrequency?: string;
+  ScheduleEnabled?: boolean;
 }
 
 interface PagedResult<T> {
@@ -71,6 +73,33 @@ const DataSourceList: React.FC = () => {
     field: 'CreatedAt',
     columnKey: 'CreatedAt'
   });
+  const [triggeringMap, setTriggeringMap] = useState<Record<string, boolean>>({});
+
+  // Handle manual trigger
+  const handleManualTrigger = async (id: string, name: string) => {
+    setTriggeringMap(prev => ({ ...prev, [id]: true }));
+    try {
+      const response = await fetch(`http://localhost:5004/api/v1/scheduling/datasources/${id}/trigger`, {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        message.success(`הפעלה ידנית עבור "${name}" בוצעה בהצלחה!`);
+      } else {
+        const errorData = await response.json().catch(() => null);
+        message.error(errorData?.message || `שגיאה בהפעלה ידנית עבור "${name}"`);
+      }
+    } catch (err) {
+      console.error('Error triggering manual execution:', err);
+      message.error('שגיאה בחיבור לשרת התזמון');
+    } finally {
+      setTriggeringMap(prev => ({ ...prev, [id]: false }));
+    }
+  };
 
   // Handle status change
   const handleStatusChange = async (id: string, isActive: boolean) => {
@@ -252,40 +281,73 @@ const DataSourceList: React.FC = () => {
     {
       title: 'פעולות',
       key: 'actions',
-      width: 160,
-      render: (_, record: DataSource) => (
-        <Space size="small">
-          <Button
-            type="link"
-            size="small"
-            icon={<EyeOutlined />}
-            onClick={() => navigate(`/datasources/${record.ID}`)}
-          >
-            צפה
-          </Button>
-          <Button
-            type="link"
-            size="small"
-            icon={<EditOutlined />}
-            onClick={() => navigate(`/datasources/${record.ID}/edit`)}
-          >
-            ערוך
-          </Button>
-          <Popconfirm
-            title="מחק מקור נתונים?"
-            onConfirm={() => handleDelete(record.ID, record.Name)}
-          >
+      width: 200,
+      render: (_, record: DataSource) => {
+        // Check ScheduleFrequency from top-level field or parse from ConfigurationSettings
+        let scheduleFrequency = record.ScheduleFrequency;
+        let scheduleEnabled = record.ScheduleEnabled;
+
+        // Fallback: parse ConfigurationSettings if top-level fields are not available
+        if (!scheduleFrequency && record.ConfigurationSettings) {
+          try {
+            const config = JSON.parse(record.ConfigurationSettings);
+            scheduleFrequency = config?.schedule?.frequency;
+            scheduleEnabled = config?.schedule?.enabled;
+          } catch (e) {
+            // Ignore parse errors
+          }
+        }
+
+        const showManualTrigger = scheduleFrequency === 'Manual' || scheduleEnabled === false;
+
+        return (
+          <Space size="small">
             <Button
               type="link"
               size="small"
-              danger
-              icon={<DeleteOutlined />}
+              icon={<EyeOutlined />}
+              onClick={() => navigate(`/datasources/${record.ID}`)}
             >
-              מחק
+              צפה
             </Button>
-          </Popconfirm>
-        </Space>
-      ),
+            {showManualTrigger && (
+              <Tooltip title="הפעלה ידנית - עיבוד קבצים חדשים כעת">
+                <Button
+                  type="link"
+                  size="small"
+                  icon={<ThunderboltOutlined />}
+                  loading={triggeringMap[record.ID]}
+                  onClick={() => handleManualTrigger(record.ID, record.Name)}
+                  style={{ color: '#52c41a' }}
+                >
+                  הפעל
+                </Button>
+              </Tooltip>
+            )}
+            <Button
+              type="link"
+              size="small"
+              icon={<EditOutlined />}
+              onClick={() => navigate(`/datasources/${record.ID}/edit`)}
+            >
+              ערוך
+            </Button>
+            <Popconfirm
+              title="מחק מקור נתונים?"
+              onConfirm={() => handleDelete(record.ID, record.Name)}
+            >
+              <Button
+                type="link"
+                size="small"
+                danger
+                icon={<DeleteOutlined />}
+              >
+                מחק
+              </Button>
+            </Popconfirm>
+          </Space>
+        );
+      },
     },
   ];
 
