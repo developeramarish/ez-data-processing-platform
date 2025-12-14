@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Card, Typography, Space, Button, Alert, Spin, Tabs, Row, Col, Statistic } from 'antd';
+import { Card, Typography, Space, Button, Alert, Spin, Tabs, Row, Col, Statistic, message } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeftOutlined, EditOutlined, FileOutlined, ApiOutlined, ClockCircleOutlined, SafetyOutlined, BellOutlined, InfoCircleOutlined, FileTextOutlined, LineChartOutlined, ExportOutlined } from '@ant-design/icons';
+import { ArrowLeftOutlined, EditOutlined, FileOutlined, ApiOutlined, ClockCircleOutlined, SafetyOutlined, BellOutlined, InfoCircleOutlined, FileTextOutlined, LineChartOutlined, ExportOutlined, ThunderboltOutlined } from '@ant-design/icons';
 
 // Import detail tab components
 import {
@@ -35,6 +35,7 @@ const DataSourceDetailsEnhanced: React.FC = () => {
   const [parsedConfig, setParsedConfig] = useState<any>(null);
   const [schemas, setSchemas] = useState<any[]>([]);
   const [loadingSchemas, setLoadingSchemas] = useState<boolean>(false);
+  const [triggering, setTriggering] = useState<boolean>(false);
 
   const fetchSchemas = async () => {
     setLoadingSchemas(true);
@@ -105,6 +106,33 @@ const DataSourceDetailsEnhanced: React.FC = () => {
     fetchSchemas();
   }, [fetchDataSource]);
 
+  const handleManualTrigger = async () => {
+    if (!id) return;
+
+    setTriggering(true);
+    try {
+      const response = await fetch(`http://localhost:5004/api/v1/scheduling/datasources/${id}/trigger`, {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        message.success('הפעלה ידנית בוצעה בהצלחה! קבצים חדשים יתגלו ויעובדו כעת.');
+      } else {
+        const errorData = await response.json().catch(() => null);
+        message.error(errorData?.message || 'שגיאה בהפעלה ידנית');
+      }
+    } catch (err) {
+      console.error('Error triggering manual execution:', err);
+      message.error('שגיאה בחיבור לשרת התזמון');
+    } finally {
+      setTriggering(false);
+    }
+  };
+
   const getCategoryLabel = (category: string) => {
     const categoryMap: { [key: string]: string } = {
       'financial': t('datasources.categories.financial'),
@@ -171,6 +199,9 @@ const DataSourceDetailsEnhanced: React.FC = () => {
   const validationRules = parsedConfig?.validationRules || {};
   const notificationSettings = parsedConfig?.notificationSettings || {};
 
+  // Check if manual trigger button should be shown
+  const showManualTrigger = schedule.frequency === 'Manual' || !schedule.enabled;
+
   // Handle both camelCase and PascalCase (C# may serialize with PascalCase)
   // Get output config from parsed config or fallback to dataSource.Output
   let outputConfig = parsedConfig?.outputConfig || parsedConfig?.OutputConfig || dataSource?.Output || null;
@@ -224,6 +255,17 @@ const DataSourceDetailsEnhanced: React.FC = () => {
         </div>
         <Space>
           <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/datasources')}>{t('common.back')}</Button>
+          {showManualTrigger && (
+            <Button
+              type="default"
+              icon={<ThunderboltOutlined />}
+              onClick={handleManualTrigger}
+              loading={triggering}
+              style={{ backgroundColor: '#52c41a', color: 'white', borderColor: '#52c41a' }}
+            >
+              הפעל עכשיו
+            </Button>
+          )}
           <Button type="primary" icon={<EditOutlined />} onClick={() => navigate(`/datasources/${id}/edit`)}>{t('common.edit')}</Button>
         </Space>
       </div>
