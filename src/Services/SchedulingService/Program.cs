@@ -119,10 +119,12 @@ if (app.Environment.IsDevelopment())
         c.SwaggerEndpoint("/swagger/v1/swagger.json", "Scheduling Service API v1");
         c.RoutePrefix = string.Empty; // Swagger UI at root
     });
-    app.UseCors("AllowAll");
 }
 
 app.UseHttpsRedirection();
+
+// CORS must be BEFORE UseRouting
+app.UseCors("AllowAll");
 
 // Add request logging - Disabled temporarily due to Serilog dependency issue
 // app.UseDataProcessingRequestLogging();
