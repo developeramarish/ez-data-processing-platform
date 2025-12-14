@@ -65,3 +65,10 @@ backups/
 
 # Test data directory (external mount)
 test-data/
+# Test artifacts
+e2e-*.json
+e2e-*.csv
+kafka-*.txt
+nul
+*.ps1.tmp
+tools/extract-kafka-messages.ps1
