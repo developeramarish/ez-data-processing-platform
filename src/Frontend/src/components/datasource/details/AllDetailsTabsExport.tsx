@@ -105,11 +105,11 @@ export const FileDetailsTab: React.FC<{ fileConfig: any; getFileTypeDisplay: () 
 // Schedule Details Tab
 export const ScheduleDetailsTab: React.FC<{ schedule: any }> = ({ schedule }) => (
   <Descriptions column={2} bordered>
-    <Descriptions.Item label="תדירות"><Tag color="blue">{schedule.frequency || 'Manual'}</Tag></Descriptions.Item>
+    <Descriptions.Item label="תדירות"><Tag color="blue">{schedule.frequency || 'לא הוגדר'}</Tag></Descriptions.Item>
     <Descriptions.Item label="סטטוס תזמון">
       <Tag color={schedule.enabled ? 'green' : 'orange'}>{schedule.enabled ? 'מופעל' : 'מושבת'}</Tag>
     </Descriptions.Item>
-    {schedule.cronExpression && (
+    {schedule.cronExpression && schedule.frequency !== 'Manual' && (
       <Descriptions.Item label="ביטוי Cron" span={2}>
         <Space direction="vertical" style={{ width: '100%' }}>
           <Text code style={{ fontSize: '13px' }}>{schedule.cronExpression}</Text>

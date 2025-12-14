@@ -97,6 +97,17 @@ public class UpdateDataSourceRequest
     public string? CronExpression { get; set; }
 
     /// <summary>
+    /// Schedule frequency (Manual, Hourly, Daily, Weekly, Every5Minutes, etc.)
+    /// </summary>
+    [StringLength(50, ErrorMessage = "תדירות התזמון לא יכולה להיות ארוכה מ-50 תווים")]
+    public string? ScheduleFrequency { get; set; }
+
+    /// <summary>
+    /// Whether scheduling is enabled for this data source
+    /// </summary>
+    public bool? ScheduleEnabled { get; set; }
+
+    /// <summary>
     /// Updated JSON schema document for validating file content
     /// </summary>
     public object? JsonSchema { get; set; }

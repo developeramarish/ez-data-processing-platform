@@ -831,7 +831,19 @@ public class DataSourceService : IDataSourceService
                 entity.PollingRate = pollingRate;
             }
         }
-        
+
+        // Map ScheduleFrequency
+        if (!string.IsNullOrEmpty(request.ScheduleFrequency))
+        {
+            entity.ScheduleFrequency = request.ScheduleFrequency;
+        }
+
+        // Map ScheduleEnabled
+        if (request.ScheduleEnabled.HasValue)
+        {
+            entity.ScheduleEnabled = request.ScheduleEnabled.Value;
+        }
+
         // Map JsonSchema - convert object to BsonDocument
         if (request.JsonSchema != null)
         {

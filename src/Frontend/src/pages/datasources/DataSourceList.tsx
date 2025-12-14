@@ -88,7 +88,7 @@ const DataSourceList: React.FC = () => {
       });
 
       if (response.ok) {
-        message.success(`הפעלה ידנית עבור "${name}" בוצעה בהצלחה!`);
+        message.success(`הפעלה ידנית עבור "${name}" בוצעה בהצלחה!`, 2);
       } else {
         const errorData = await response.json().catch(() => null);
         message.error(errorData?.message || `שגיאה בהפעלה ידנית עבור "${name}"`);
@@ -310,20 +310,6 @@ const DataSourceList: React.FC = () => {
             >
               צפה
             </Button>
-            {showManualTrigger && (
-              <Tooltip title="הפעלה ידנית - עיבוד קבצים חדשים כעת">
-                <Button
-                  type="link"
-                  size="small"
-                  icon={<ThunderboltOutlined />}
-                  loading={triggeringMap[record.ID]}
-                  onClick={() => handleManualTrigger(record.ID, record.Name)}
-                  style={{ color: '#52c41a' }}
-                >
-                  הפעל
-                </Button>
-              </Tooltip>
-            )}
             <Button
               type="link"
               size="small"
@@ -345,6 +331,20 @@ const DataSourceList: React.FC = () => {
                 מחק
               </Button>
             </Popconfirm>
+            {showManualTrigger && (
+              <Tooltip title="הפעלה ידנית - עיבוד קבצים חדשים כעת">
+                <Button
+                  type="link"
+                  size="small"
+                  icon={<ThunderboltOutlined />}
+                  loading={triggeringMap[record.ID]}
+                  onClick={() => handleManualTrigger(record.ID, record.Name)}
+                  style={{ color: '#52c41a' }}
+                >
+                  הפעל
+                </Button>
+              </Tooltip>
+            )}
           </Space>
         );
       },

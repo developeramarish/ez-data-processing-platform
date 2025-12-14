@@ -120,8 +120,8 @@ const DataSourceDetailsEnhanced: React.FC = () => {
       });
 
       if (response.ok) {
-        message.success('הפעלה ידנית בוצעה בהצלחה! קבצים חדשים יתגלו ויעובדו כעת.');
-      } else {
+        message.success('הפעלה ידנית בוצעה בהצלחה! קבצים חדשים יתגלו ויעובדו כעת.', 2);
+      } else{
         const errorData = await response.json().catch(() => null);
         message.error(errorData?.message || 'שגיאה בהפעלה ידנית');
       }
