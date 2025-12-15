@@ -38,6 +38,7 @@ const InvalidRecordsManagement: React.FC = () => {
   const [dataSources, setDataSources] = useState<DataSource[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [statistics, setStatistics] = useState<Statistics | null>(null);
+  const [filteredStatistics, setFilteredStatistics] = useState<Statistics | null>(null);
   const [totalCount, setTotalCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -67,6 +68,65 @@ const InvalidRecordsManagement: React.FC = () => {
       setStatistics(stats);
     } catch (error) {
       console.error('Failed to fetch statistics:', error);
+    }
+  };
+
+  // Fetch filtered statistics based on current filters
+  const fetchFilteredStatistics = async () => {
+    try {
+      // Calculate date range for filtered statistics
+      let startDate, endDate;
+      if (dateRange && dateRange[0] && dateRange[1]) {
+        startDate = dateRange[0].toISOString();
+        endDate = dateRange[1].toISOString();
+      } else {
+        const intervalRange = getDateRangeFromInterval(selectedTimeRange);
+        if (intervalRange) {
+          [startDate, endDate] = intervalRange;
+        }
+      }
+
+      // Fetch all filtered records to calculate statistics
+      const allFilteredRecords = await invalidRecordsApiClient.getList({
+        page: 1,
+        pageSize: 1000,
+        dataSourceId: selectedDataSource === 'all' ? undefined : selectedDataSource,
+        errorType: selectedErrorType === 'all' ? undefined : selectedErrorType,
+        startDate,
+        endDate,
+      });
+
+      // Calculate filtered statistics from records
+      const filteredStats: Statistics = {
+        totalInvalidRecords: allFilteredRecords.totalCount,
+        reviewedRecords: allFilteredRecords.data.filter(r => r.isReviewed).length,
+        ignoredRecords: allFilteredRecords.data.filter(r => r.isIgnored).length,
+        byDataSource: {},
+        byErrorType: {},
+        bySeverity: {}
+      };
+
+      // Group by datasource
+      allFilteredRecords.data.forEach(r => {
+        filteredStats.byDataSource[r.dataSourceName] =
+          (filteredStats.byDataSource[r.dataSourceName] || 0) + 1;
+      });
+
+      // Group by error type
+      allFilteredRecords.data.forEach(r => {
+        filteredStats.byErrorType[r.errorType] =
+          (filteredStats.byErrorType[r.errorType] || 0) + 1;
+      });
+
+      // Group by severity
+      allFilteredRecords.data.forEach(r => {
+        filteredStats.bySeverity[r.severity] =
+          (filteredStats.bySeverity[r.severity] || 0) + 1;
+      });
+
+      setFilteredStatistics(filteredStats);
+    } catch (error) {
+      console.error('Failed to fetch filtered statistics:', error);
     }
   };
 
@@ -157,6 +217,7 @@ const InvalidRecordsManagement: React.FC = () => {
 
   useEffect(() => {
     fetchRecords();
+    fetchFilteredStatistics();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDataSource, selectedErrorType, selectedTimeRange, dateRange, currentPage]);
 
@@ -168,14 +229,14 @@ const InvalidRecordsManagement: React.FC = () => {
 
   const handleEditSuccess = async () => {
     // Refresh both records list and statistics after successful edit
-    await Promise.all([fetchRecords(), fetchStatistics()]);
+    await Promise.all([fetchRecords(), fetchStatistics(), fetchFilteredStatistics()]);
   };
 
   const handleDelete = async (recordId: string) => {
     try {
       await invalidRecordsApiClient.deleteRecord(recordId);
       message.success('Record deleted successfully');
-      await Promise.all([fetchRecords(), fetchStatistics()]);
+      await Promise.all([fetchRecords(), fetchStatistics(), fetchFilteredStatistics()]);
     } catch (error: any) {
       message.error(error.message || 'Failed to delete record');
     }
@@ -208,7 +269,7 @@ const InvalidRecordsManagement: React.FC = () => {
 
       if (response.ok) {
         message.success(`Successfully deleted ${recordIds.length} records`);
-        await Promise.all([fetchRecords(), fetchStatistics()]);
+        await Promise.all([fetchRecords(), fetchStatistics(), fetchFilteredStatistics()]);
         setCurrentPage(1);
       } else {
         message.error('Failed to delete records');
@@ -372,27 +433,10 @@ const InvalidRecordsManagement: React.FC = () => {
         </div>
         <Space>
           <Popconfirm
-            title="אפס סטטיסטיקות?"
-            description={`פעולה זו תמחק את כל ${totalCount} הרשומות הלא תקינות ותאפס את הסטטיסטיקות ל-0. האם להמשיך?`}
+            title="מחק רשומות מסוננות?"
+            description={`פעולה זו תמחק ${totalCount} רשומות לא תקינות לפי הפילטרים הנוכחיים ותעדכן את הסטטיסטיקות. האם להמשיך?`}
             onConfirm={handleDeleteAll}
-            okText="אפס"
-            cancelText="ביטול"
-            okButtonProps={{ danger: true }}
-          >
-            <Button
-              icon={<ReloadOutlined />}
-              disabled={totalCount === 0}
-              loading={loading}
-              style={{ borderColor: '#fa8c16', color: '#fa8c16' }}
-            >
-              אפס סטטיסטיקות
-            </Button>
-          </Popconfirm>
-          <Popconfirm
-            title="מחק את כל הרשומות?"
-            description={`פעולה זו תמחק ${totalCount} רשומות לא תקינות. האם להמשיך?`}
-            onConfirm={handleDeleteAll}
-            okText="מחק הכל"
+            okText="מחק"
             cancelText="ביטול"
             okButtonProps={{ danger: true }}
           >
@@ -415,50 +459,102 @@ const InvalidRecordsManagement: React.FC = () => {
         </Space>
       </div>
 
-      {/* Statistics Dashboard */}
+      {/* Global Statistics Dashboard */}
       {statistics && (
-        <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-          <Col span={6}>
-            <Card>
-              <Statistic
-                title="סה״כ רשומות לא תקינות"
-                value={statistics.totalInvalidRecords}
-                prefix={<ExclamationCircleOutlined />}
-                valueStyle={{ color: '#ff4d4f' }}
-              />
-            </Card>
-          </Col>
-          <Col span={6}>
-            <Card>
-              <Statistic
-                title="רשומות שנבדקו"
-                value={statistics.reviewedRecords}
-                prefix={<CheckCircleOutlined />}
-                valueStyle={{ color: '#52c41a' }}
-              />
-            </Card>
-          </Col>
-          <Col span={6}>
-            <Card>
-              <Statistic
-                title="רשומות שהתעלמו"
-                value={statistics.ignoredRecords}
-                prefix={<EyeInvisibleOutlined />}
-                valueStyle={{ color: '#faad14' }}
-              />
-            </Card>
-          </Col>
-          <Col span={6}>
-            <Card>
-              <Statistic
-                title="סוגי שגיאות"
-                value={Object.keys(statistics.byErrorType).length}
-                prefix={<BarChartOutlined />}
-                valueStyle={{ color: '#1890ff' }}
-              />
-            </Card>
-          </Col>
-        </Row>
+        <>
+          <Title level={4} style={{ marginBottom: 16 }}>סטטיסטיקות כלליות</Title>
+          <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+            <Col span={6}>
+              <Card>
+                <Statistic
+                  title="סה״כ רשומות לא תקינות"
+                  value={statistics.totalInvalidRecords}
+                  prefix={<ExclamationCircleOutlined />}
+                  valueStyle={{ color: '#ff4d4f' }}
+                />
+              </Card>
+            </Col>
+            <Col span={6}>
+              <Card>
+                <Statistic
+                  title="רשומות שנבדקו"
+                  value={statistics.reviewedRecords}
+                  prefix={<CheckCircleOutlined />}
+                  valueStyle={{ color: '#52c41a' }}
+                />
+              </Card>
+            </Col>
+            <Col span={6}>
+              <Card>
+                <Statistic
+                  title="רשומות שהתעלמו"
+                  value={statistics.ignoredRecords}
+                  prefix={<EyeInvisibleOutlined />}
+                  valueStyle={{ color: '#faad14' }}
+                />
+              </Card>
+            </Col>
+            <Col span={6}>
+              <Card>
+                <Statistic
+                  title="סוגי שגיאות"
+                  value={Object.keys(statistics.byErrorType).length}
+                  prefix={<BarChartOutlined />}
+                  valueStyle={{ color: '#1890ff' }}
+                />
+              </Card>
+            </Col>
+          </Row>
+        </>
+      )}
+
+      {/* Filtered Statistics Dashboard */}
+      {filteredStatistics && (
+        <>
+          <Title level={4} style={{ marginBottom: 16 }}>סטטיסטיקות מסוננות (תצוגה נוכחית)</Title>
+          <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+            <Col span={6}>
+              <Card style={{ borderColor: '#1890ff', borderWidth: 2 }}>
+                <Statistic
+                  title="רשומות מוצגות"
+                  value={filteredStatistics.totalInvalidRecords}
+                  prefix={<SearchOutlined />}
+                  valueStyle={{ color: '#1890ff' }}
+                />
+              </Card>
+            </Col>
+            <Col span={6}>
+              <Card style={{ borderColor: '#52c41a', borderWidth: 2 }}>
+                <Statistic
+                  title="נבדקו (מסוננות)"
+                  value={filteredStatistics.reviewedRecords}
+                  prefix={<CheckCircleOutlined />}
+                  valueStyle={{ color: '#52c41a' }}
+                />
+              </Card>
+            </Col>
+            <Col span={6}>
+              <Card style={{ borderColor: '#faad14', borderWidth: 2 }}>
+                <Statistic
+                  title="התעלמו (מסוננות)"
+                  value={filteredStatistics.ignoredRecords}
+                  prefix={<EyeInvisibleOutlined />}
+                  valueStyle={{ color: '#faad14' }}
+                />
+              </Card>
+            </Col>
+            <Col span={6}>
+              <Card style={{ borderColor: '#1890ff', borderWidth: 2 }}>
+                <Statistic
+                  title="סוגי שגיאות (מסוננות)"
+                  value={Object.keys(filteredStatistics.byErrorType).length}
+                  prefix={<BarChartOutlined />}
+                  valueStyle={{ color: '#1890ff' }}
+                />
+              </Card>
+            </Col>
+          </Row>
+        </>
       )}
 
       {/* Search and Filter Controls */}
