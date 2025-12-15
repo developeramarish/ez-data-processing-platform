@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Form, Input, Button, message, Descriptions, Typography, Space, Tag } from 'antd';
+import { Modal, Form, Input, Button, message, Descriptions, Typography, Space } from 'antd';
 import { InvalidRecord } from '../../services/invalidrecords-api-client';
+import { translateValidationError } from '../../utils/validationErrorTranslator';
 
 const { Text, Title } = Typography;
-const { TextArea } = Input;
 
 interface EditRecordModalProps {
   visible: boolean;
@@ -46,24 +46,30 @@ const EditRecordModal: React.FC<EditRecordModalProps> = ({
     }
   }, [record, visible, form]);
 
-  // Extract field names from error messages
+  // Extract field names from error messages (supports Corvus error format: "#/FieldName ...")
   const extractFailedFields = (record: InvalidRecord): FieldError[] => {
     const fields: FieldError[] = [];
     const seenFields = new Set<string>();
 
     record.errors.forEach(error => {
-      let fieldName = error.field;
+      // Use translator to extract field name from Corvus error format
+      const translated = translateValidationError(error.message);
+      let fieldName = translated.fieldName;
 
-      // If field is "Unknown", try to extract from message
-      // Example: "Path '[2].Amount'" → "Amount"
-      if (!fieldName || fieldName === 'Unknown') {
+      // Fallback: try error.field if translator didn't find it
+      if (!fieldName || fieldName === 'unknown') {
+        fieldName = error.field;
+      }
+
+      // Fallback: try old Path format
+      if (!fieldName || fieldName === 'Unknown' || fieldName === 'unknown') {
         const pathMatch = error.message.match(/Path '\[?\d*\]?\.?(\w+)'/);
         if (pathMatch) {
           fieldName = pathMatch[1];
         }
       }
 
-      if (fieldName && fieldName !== 'Unknown' && !seenFields.has(fieldName)) {
+      if (fieldName && fieldName !== 'Unknown' && fieldName !== 'unknown' && !seenFields.has(fieldName)) {
         seenFields.add(fieldName);
 
         // Get original value from record.originalData
@@ -72,7 +78,7 @@ const EditRecordModal: React.FC<EditRecordModalProps> = ({
         fields.push({
           fieldName,
           originalValue,
-          errorMessage: error.message,
+          errorMessage: translated.shortMessage, // Use Hebrew short message
         });
       }
     });

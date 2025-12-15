@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Button, Tag, Space, Typography, Row, Col, Select, DatePicker, Collapse, Descriptions, message, Spin, Statistic, Pagination, Popconfirm } from 'antd';
+import { Card, Button, Tag, Space, Typography, Row, Col, Select, DatePicker, Collapse, Descriptions, message, Spin, Statistic, Pagination, Popconfirm, Table, Tooltip } from 'antd';
 import {
   ExclamationCircleOutlined,
   ExportOutlined,
@@ -11,10 +11,12 @@ import {
   BarChartOutlined,
   DatabaseOutlined,
   ClearOutlined,
+  WarningOutlined,
 } from '@ant-design/icons';
 import { invalidRecordsApiClient, InvalidRecord, Statistics } from '../../services/invalidrecords-api-client';
 import dayjs, { Dayjs } from 'dayjs';
 import EditRecordModal from '../../components/invalid-records/EditRecordModal';
+import { translateValidationError, extractErroredFields } from '../../utils/validationErrorTranslator';
 
 const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
@@ -338,12 +340,65 @@ const InvalidRecordsManagement: React.FC = () => {
     };
     const labels: Record<string, string> = {
       schema: 'אימות Schema',
-      format: 'שגיאת פורמט', 
+      format: 'שגיאת פורמט',
       required: 'שדה חובה חסר',
       range: 'שגיאת טווח',
       SchemaValidation: 'אימות Schema',
     };
     return <Tag color={colors[errorType] || 'red'}>{labels[errorType] || errorType}</Tag>;
+  };
+
+  // Render original record as a table with errored fields highlighted
+  const renderOriginalRecord = (record: InvalidRecord) => {
+    const erroredFields = extractErroredFields(record.errors);
+    const data = record.originalData || {};
+
+    return (
+      <Table
+        dataSource={Object.entries(data).map(([key, value]) => ({
+          key,
+          field: key,
+          value: typeof value === 'object' ? JSON.stringify(value) : String(value ?? ''),
+          hasError: erroredFields.has(key),
+        }))}
+        columns={[
+          {
+            title: 'שדה',
+            dataIndex: 'field',
+            key: 'field',
+            width: 150,
+            render: (text: string, row: any) => (
+              <span style={{
+                fontWeight: row.hasError ? 'bold' : 'normal',
+                color: row.hasError ? '#e74c3c' : 'inherit',
+              }}>
+                {row.hasError && <WarningOutlined style={{ marginLeft: 4, color: '#e74c3c' }} />}
+                {text}
+              </span>
+            ),
+          },
+          {
+            title: 'ערך',
+            dataIndex: 'value',
+            key: 'value',
+            render: (text: string, row: any) => (
+              <span style={{
+                color: row.hasError ? '#e74c3c' : 'inherit',
+                fontFamily: 'monospace',
+                direction: 'ltr',
+                display: 'inline-block',
+              }}>
+                {text}
+              </span>
+            ),
+          },
+        ]}
+        pagination={false}
+        size="small"
+        rowClassName={(row: any) => row.hasError ? 'errored-field-row' : ''}
+        style={{ direction: 'rtl' }}
+      />
+    );
   };
 
   const renderInvalidRecord = (record: InvalidRecord) => (
@@ -390,34 +445,26 @@ const InvalidRecordsManagement: React.FC = () => {
 
       <div style={{ marginTop: 12, color: '#e74c3c' }}>
         <Text strong>שגיאות אימות:</Text>
-        <ul style={{ marginTop: 8, paddingRight: 20 }}>
-          {record.errors.map((error, index) => (
-            <li key={index}>
-              <Space>
-                {renderErrorType(error.errorType)}
-                <Text>{error.message}</Text>
-              </Space>
-            </li>
-          ))}
-        </ul>
+        <div style={{ marginTop: 8 }}>
+          {record.errors.map((error, index) => {
+            const translated = translateValidationError(error.message);
+            return (
+              <Tag
+                key={index}
+                color="red"
+                style={{ marginBottom: 4, fontSize: '13px', padding: '4px 8px' }}
+              >
+                <WarningOutlined style={{ marginLeft: 4 }} />
+                {translated.shortMessage}
+              </Tag>
+            );
+          })}
+        </div>
       </div>
 
       <Collapse ghost style={{ marginTop: 10 }}>
         <Panel header="הצג נתוני רשומה מקורית" key="1">
-          <div 
-            style={{
-              backgroundColor: '#2d3748',
-              color: '#68d391',
-              padding: 12,
-              borderRadius: 6,
-              fontFamily: 'monospace',
-              fontSize: '12px',
-              direction: 'ltr',
-              textAlign: 'left',
-            }}
-          >
-            <pre>{JSON.stringify(record.originalData, null, 2)}</pre>
-          </div>
+          {renderOriginalRecord(record)}
         </Panel>
       </Collapse>
     </Card>
