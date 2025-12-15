@@ -12,6 +12,8 @@
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageVersion Include="Newtonsoft.Json.Schema" Version="4.0.1" />
     <PackageVersion Include="NJsonSchema" Version="11.5.2" />
+    <PackageVersion Include="Corvus.Json.ExtendedTypes" Version="4.3.9" />
+    <PackageVersion Include="Corvus.Json.Validator" Version="4.3.9" />
 
     <!-- Database & Caching -->
     <PackageVersion Include="MongoDB.Entities" Version="24.1.1" />

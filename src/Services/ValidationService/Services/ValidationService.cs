@@ -6,9 +6,12 @@ using Microsoft.Extensions.Logging;
 using MongoDB.Entities;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using Newtonsoft.Json.Schema;
+using Corvus.Json;
+using Corvus.Json.Validator;
 using System.Diagnostics;
 using System.Text;
+using JsonElement = System.Text.Json.JsonElement;
+using JsonDocument = System.Text.Json.JsonDocument;
 
 namespace DataProcessing.Validation.Services;
 
@@ -32,7 +35,7 @@ public class ValidationService : IValidationService
         _activitySource = activitySource;
     }
 
-    public async Task<ValidationResult> ValidateFileContentAsync(
+    public async Task<Models.ValidationResult> ValidateFileContentAsync(
         string dataSourceId,
         string fileName,
         byte[] fileContent,
@@ -96,7 +99,7 @@ public class ValidationService : IValidationService
                 .Where((r, i) => i < validationResults.Count && validationResults[i].IsValid)
                 .ToList();
 
-            return new ValidationResult
+            return new Models.ValidationResult
             {
                 ValidationResultId = validationResultId,
                 TotalRecords = totalRecords,
@@ -115,10 +118,10 @@ public class ValidationService : IValidationService
         }
     }
 
-    private Task<JSchema> GetValidationSchemaAsync(DataProcessingDataSource dataSource, string correlationId)
+    private Task<Corvus.Json.Validator.JsonSchema> GetValidationSchemaAsync(DataProcessingDataSource dataSource, string correlationId)
     {
         var schemaJson = dataSource.JsonSchema?.ToString();
-        
+
         _logger.LogInformation("Loading JSON Schema for data source: {DataSourceId}", dataSource.ID);
 
         // For now, use a default schema if none is specified
@@ -131,11 +134,15 @@ public class ValidationService : IValidationService
         }
         """;
 
-        var effectiveSchema = !string.IsNullOrEmpty(schemaJson) 
-            ? schemaJson 
+        var effectiveSchema = !string.IsNullOrEmpty(schemaJson)
+            ? schemaJson
             : defaultSchema;
 
-        return Task.FromResult(JSchema.Parse(effectiveSchema));
+        // Parse schema using Corvus.Json.Validator - dynamically generated validators are cached automatically
+        // Provide a canonical URI for the schema (required by Corvus.Json.Validator)
+        var canonicalUri = $"urn:datasource:{dataSource.ID}:schema";
+        var schema = Corvus.Json.Validator.JsonSchema.FromText(effectiveSchema, canonicalUri);
+        return Task.FromResult(schema);
     }
 
     private List<JObject> ExtractRecordsFromJson(JToken jsonData)
@@ -187,48 +194,67 @@ public class ValidationService : IValidationService
     }
 
     private Task<List<RecordValidationResult>> ValidateRecordsAsync(
-        List<JObject> records, 
-        JSchema schema, 
+        List<JObject> records,
+        Corvus.Json.Validator.JsonSchema schema,
         string correlationId)
     {
         return Task.Run(() =>
         {
             var results = new List<RecordValidationResult>();
 
-        for (int i = 0; i < records.Count; i++)
-        {
-            var record = records[i];
-            
-            try
+            for (int i = 0; i < records.Count; i++)
             {
-                var isValid = record.IsValid(schema, out IList<string> errors);
-                
-                results.Add(new RecordValidationResult
-                {
-                    RecordIndex = i,
-                    RecordData = record.ToString(Formatting.None),
-                    IsValid = isValid,
-                    ValidationErrors = errors.ToList()
-                });
+                var record = records[i];
 
-                if (!isValid)
+                try
                 {
-                    _logger.LogDebug("Record {RecordIndex} validation failed: {Errors}",
-                        i, string.Join(", ", errors));
+                    // Convert JObject to System.Text.Json.JsonElement for Corvus validation
+                    var recordJson = record.ToString(Formatting.None);
+                    using var jsonDoc = JsonDocument.Parse(recordJson);
+                    var jsonElement = jsonDoc.RootElement;
+
+                    // Validate using Corvus.Json.Validator (dynamic code gen with Roslyn, cached)
+                    var validationContext = schema.Validate(jsonElement, ValidationLevel.Detailed);
+                    var isValid = validationContext.IsValid;
+
+                    // Extract error messages from validation context
+                    // Results contains validation errors when IsValid is false
+                    var errors = new List<string>();
+                    if (!isValid)
+                    {
+                        foreach (var validationError in validationContext.Results)
+                        {
+                            // Each result in Results is already an error - use ToString()
+                            errors.Add(validationError.ToString());
+                        }
+                    }
+
+                    results.Add(new RecordValidationResult
+                    {
+                        RecordIndex = i,
+                        RecordData = recordJson,
+                        IsValid = isValid,
+                        ValidationErrors = errors
+                    });
+
+                    if (!isValid)
+                    {
+                        _logger.LogDebug("Record {RecordIndex} validation failed: {Errors}",
+                            i, string.Join(", ", errors));
+                    }
                 }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Error validating record {RecordIndex}: {Error}", i, ex.Message);
-                
-                results.Add(new RecordValidationResult
+                catch (Exception ex)
                 {
-                    RecordIndex = i,
-                    RecordData = record.ToString(Formatting.None),
-                    IsValid = false,
-                    ValidationErrors = new List<string> { $"Validation error: {ex.Message}" }
-                });
-            }
+                    _logger.LogWarning(ex, "Error validating record {RecordIndex}: {Error}", i, ex.Message);
+
+                    results.Add(new RecordValidationResult
+                    {
+                        RecordIndex = i,
+                        RecordData = record.ToString(Formatting.None),
+                        IsValid = false,
+                        ValidationErrors = new List<string> { $"Validation error: {ex.Message}" }
+                    });
+                }
             }
 
             return results;

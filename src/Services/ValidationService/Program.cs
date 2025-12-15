@@ -9,6 +9,9 @@ using System.Diagnostics;
 using Prometheus;
 using MassTransit;
 using Hazelcast;
+using Corvus.Json;
+using Corvus.Json.Validator;
+using System.Text.Json;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -216,5 +219,19 @@ app.UseDataProcessingHealthChecks();
 // Configure Prometheus metrics endpoint
 app.UseHttpMetrics();
 app.MapMetrics();
+
+// Pre-warm Corvus JSON Schema validator to avoid cold-start latency on first validation
+// This triggers Roslyn JIT compilation for schema validation code generation
+try
+{
+    var warmupSchema = Corvus.Json.Validator.JsonSchema.FromText("{\"type\":\"object\"}", "urn:warmup:schema");
+    using var warmupDoc = JsonDocument.Parse("{}");
+    _ = warmupSchema.Validate(warmupDoc.RootElement, ValidationLevel.Flag);
+    app.Logger.LogInformation("Corvus JSON Schema validator pre-warmed successfully");
+}
+catch (Exception ex)
+{
+    app.Logger.LogWarning(ex, "Failed to pre-warm Corvus JSON Schema validator - first validation may be slower");
+}
 
 app.Run();

@@ -6,6 +6,7 @@
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
     <DockerfileContext>..\..</DockerfileContext>
     <UserSecretsId>validation-service</UserSecretsId>
+    <PreserveCompilationContext>true</PreserveCompilationContext>
   </PropertyGroup>
 
   <ItemGroup>
@@ -17,7 +18,9 @@
     <PackageReference Include="MongoDB.Entities" />
     <PackageReference Include="Grpc.Net.Client" />
     <PackageReference Include="Swashbuckle.AspNetCore" />
-    <PackageReference Include="Newtonsoft.Json.Schema" />
+    <PackageReference Include="Newtonsoft.Json" />
+    <PackageReference Include="Corvus.Json.ExtendedTypes" />
+    <PackageReference Include="Corvus.Json.Validator" />
   </ItemGroup>
 
   <ItemGroup>
