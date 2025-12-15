@@ -372,6 +372,23 @@ const InvalidRecordsManagement: React.FC = () => {
         </div>
         <Space>
           <Popconfirm
+            title="אפס סטטיסטיקות?"
+            description={`פעולה זו תמחק את כל ${totalCount} הרשומות הלא תקינות ותאפס את הסטטיסטיקות ל-0. האם להמשיך?`}
+            onConfirm={handleDeleteAll}
+            okText="אפס"
+            cancelText="ביטול"
+            okButtonProps={{ danger: true }}
+          >
+            <Button
+              icon={<ReloadOutlined />}
+              disabled={totalCount === 0}
+              loading={loading}
+              style={{ borderColor: '#fa8c16', color: '#fa8c16' }}
+            >
+              אפס סטטיסטיקות
+            </Button>
+          </Popconfirm>
+          <Popconfirm
             title="מחק את כל הרשומות?"
             description={`פעולה זו תמחק ${totalCount} רשומות לא תקינות. האם להמשיך?`}
             onConfirm={handleDeleteAll}
