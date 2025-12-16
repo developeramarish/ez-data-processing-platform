@@ -72,3 +72,13 @@ kafka-*.txt
 nul
 *.ps1.tmp
 tools/extract-kafka-messages.ps1
+
+# Build output
+publish/
+src/publish/
+**/publish/
+
+# Temporary files
+*.stackdump
+temp_*.json
+*~.md.saved.bak
