@@ -1,7 +1,46 @@
 # Hazelcast - StatefulSet
 # Week 2: Day 4
-# Single-node distributed cache for development (1GB memory)
+# Single-node distributed cache for development
+# TTL configured for automatic cleanup (fallback safety)
 
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hazelcast-config
+  namespace: ez-platform
+data:
+  hazelcast.yaml: |
+    hazelcast:
+      cluster-name: data-processing-cluster
+      network:
+        join:
+          kubernetes:
+            enabled: true
+            namespace: ez-platform
+            service-name: hazelcast
+      map:
+        # File content cache - stores raw file data temporarily
+        file-content:
+          time-to-live-seconds: 300       # 5 minutes TTL (safety fallback)
+          max-idle-seconds: 180           # 3 minutes idle timeout
+          eviction:
+            eviction-policy: LRU
+            max-size-policy: USED_HEAP_SIZE
+            size: 256                     # 256MB max heap for this map
+          backup-count: 0                 # No backups (single node dev)
+
+        # Valid records cache - stores validated data temporarily
+        valid-records:
+          time-to-live-seconds: 300       # 5 minutes TTL (safety fallback)
+          max-idle-seconds: 180           # 3 minutes idle timeout
+          eviction:
+            eviction-policy: LRU
+            max-size-policy: USED_HEAP_SIZE
+            size: 256                     # 256MB max heap for this map
+          backup-count: 0                 # No backups (single node dev)
+
+---
 apiVersion: v1
 kind: Service
 metadata:
@@ -44,7 +83,9 @@ spec:
           name: hazelcast
         env:
         - name: JAVA_OPTS
-          value: "-Xms256m -Xmx512m"
+          value: "-Xms256m -Xmx512m -Dhazelcast.config=/config/hazelcast.yaml"
+        - name: HZ_NETWORK_RESTAPI_ENABLED
+          value: "true"
         - name: HZ_CLUSTERNAME
           value: "data-processing-cluster"
         - name: HZ_KUBERNETES_NAMESPACE
@@ -61,6 +102,8 @@ spec:
             cpu: "500m"
             memory: "768Mi"
         volumeMounts:
+        - name: hazelcast-config
+          mountPath: /config
         - name: hazelcast-data
           mountPath: /data
         livenessProbe:
@@ -75,6 +118,10 @@ spec:
             port: 5701
           initialDelaySeconds: 30
           periodSeconds: 5
+      volumes:
+      - name: hazelcast-config
+        configMap:
+          name: hazelcast-config
   volumeClaimTemplates:
   - metadata:
       name: hazelcast-data
