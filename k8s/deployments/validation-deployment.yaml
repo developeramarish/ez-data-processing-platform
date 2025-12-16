@@ -1,6 +1,6 @@
 # ValidationService - Kubernetes Deployment
 # Week 2: Day 1
-# Replicas: 3 (validation workload, medium scaling)
+# Replicas: 1 (development environment)
 
 apiVersion: apps/v1
 kind: Deployment
@@ -12,7 +12,7 @@ metadata:
     component: processing
     tier: backend
 spec:
-  replicas: 3
+  replicas: 1
   selector:
     matchLabels:
       app: validation
@@ -31,7 +31,7 @@ spec:
       containers:
       - name: validation
         image: ez-platform/validation:latest
-        imagePullPolicy: Always
+        imagePullPolicy: Never
         ports:
         - containerPort: 5003
           name: http
@@ -77,11 +77,11 @@ spec:
               key: otlp-endpoint
         resources:
           requests:
-            cpu: "1000m"
-            memory: "2Gi"
+            cpu: "100m"
+            memory: "256Mi"
           limits:
-            cpu: "3000m"
-            memory: "6Gi"
+            cpu: "500m"
+            memory: "512Mi"
         livenessProbe:
           httpGet:
             path: /health

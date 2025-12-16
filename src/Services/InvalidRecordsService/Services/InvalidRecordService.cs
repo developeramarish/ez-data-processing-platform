@@ -154,12 +154,230 @@ public class InvalidRecordService : IInvalidRecordService
     {
         return record.ValidationErrors.Select(error => new ValidationErrorDto
         {
-            Field = record.FieldName ?? "Unknown",
+            Field = ExtractFieldNameFromError(error),
             Message = error,
             ErrorType = record.ErrorType,
-            ExpectedValue = record.ExpectedValue,
-            ActualValue = record.ActualValue
+            ExpectedValue = ExtractExpectedValueFromError(error),
+            ActualValue = ExtractActualValueFromError(error, record.OriginalRecord)
         }).ToList();
+    }
+
+    /// <summary>
+    /// Extracts expected value from Corvus JSON Schema validation error message.
+    /// Patterns:
+    /// - Maximum: "2000000 is greater than 1000000" → expected: "1000000"
+    /// - Minimum: "5 is less than 10" → expected: "10"
+    /// - Format: "should have been'date' but was ''" → expected: "date"
+    /// - Pattern: "TXN-ABCD1234 did not match '^TXN-\\d{8}$'" → expected: "^TXN-\\d{8}$"
+    /// - Enum: "did not validate against the enumeration" → expected: "valid enum value"
+    /// </summary>
+    private static string? ExtractExpectedValueFromError(string errorMessage)
+    {
+        if (string.IsNullOrEmpty(errorMessage))
+        {
+            return null;
+        }
+
+        // Pattern: Maximum validation - "X is greater than Y" → expected = Y
+        var maxMatch = System.Text.RegularExpressions.Regex.Match(
+            errorMessage,
+            @"(\d+(?:\.\d+)?)\s+is\s+greater\s+than\s+(\d+(?:\.\d+)?)");
+        if (maxMatch.Success)
+        {
+            return maxMatch.Groups[2].Value;  // The maximum allowed value
+        }
+
+        // Pattern: Minimum validation - "X is less than Y" → expected = Y
+        var minMatch = System.Text.RegularExpressions.Regex.Match(
+            errorMessage,
+            @"(\d+(?:\.\d+)?)\s+is\s+less\s+than\s+(\d+(?:\.\d+)?)");
+        if (minMatch.Success)
+        {
+            return minMatch.Groups[2].Value;  // The minimum required value
+        }
+
+        // Pattern: Format validation - "should have been'format' but was 'value'" → expected = format
+        var formatMatch = System.Text.RegularExpressions.Regex.Match(
+            errorMessage,
+            @"should\s+have\s+been\s*'([^']+)'");
+        if (formatMatch.Success)
+        {
+            return formatMatch.Groups[1].Value;  // The expected format
+        }
+
+        // Pattern: Pattern validation - "value did not match 'pattern'" → expected = pattern
+        var patternMatch = System.Text.RegularExpressions.Regex.Match(
+            errorMessage,
+            @"did\s+not\s+match\s+'([^']+)'");
+        if (patternMatch.Success)
+        {
+            return patternMatch.Groups[1].Value;  // The expected pattern
+        }
+
+        // Pattern: Enum validation - "did not validate against the enumeration"
+        if (errorMessage.Contains("enumeration"))
+        {
+            return "valid enum value";
+        }
+
+        // Pattern: Required property - "the required property 'X' was not present"
+        if (errorMessage.Contains("required property"))
+        {
+            return "required";
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Extracts actual value from Corvus JSON Schema validation error message.
+    /// Patterns:
+    /// - Maximum: "2000000 is greater than 1000000" → actual: "2000000"
+    /// - Minimum: "5 is less than 10" → actual: "5"
+    /// - Format: "should have been'date' but was 'not-a-date'" → actual: "not-a-date"
+    /// - Pattern: "TXN-ABCD1234 did not match..." → actual: "TXN-ABCD1234"
+    /// - Enum: look in originalData for the field value
+    /// </summary>
+    private static string? ExtractActualValueFromError(string errorMessage, BsonDocument? originalRecord)
+    {
+        if (string.IsNullOrEmpty(errorMessage))
+        {
+            return null;
+        }
+
+        // IMPORTANT: minLength/maxLength must be checked BEFORE numeric min/max
+        // to avoid the numeric regex matching "X of 1 is less than 2"
+        // Pattern: minLength/maxLength validation - extract value from error message
+        // Format: "minLength - VALUE of LENGTH is less than MIN" or "maxLength - VALUE of LENGTH is greater than MAX"
+        if (errorMessage.Contains("minLength") || errorMessage.Contains("maxLength"))
+        {
+            // Extract actual value from error message pattern: "minLength - VALUE of LENGTH"
+            var lengthMatch = System.Text.RegularExpressions.Regex.Match(
+                errorMessage,
+                @"(?:minLength|maxLength)\s+-\s+(.+?)\s+of\s+\d+\s+is\s+(?:less|greater)\s+than");
+            if (lengthMatch.Success)
+            {
+                var value = lengthMatch.Groups[1].Value.Trim();
+                return string.IsNullOrEmpty(value) ? "(empty)" : value;
+            }
+
+            // Fallback: try to get from original record
+            if (originalRecord != null)
+            {
+                var fieldName = ExtractFieldNameFromError(errorMessage);
+                if (fieldName != "Unknown" && originalRecord.TryGetElement(fieldName, out var element))
+                {
+                    var value = element.Value?.ToString();
+                    return string.IsNullOrEmpty(value) ? "(empty)" : value;
+                }
+            }
+        }
+
+        // Pattern: Maximum validation - "X is greater than Y" → actual = X
+        var maxMatch = System.Text.RegularExpressions.Regex.Match(
+            errorMessage,
+            @"(\d+(?:\.\d+)?)\s+is\s+greater\s+than\s+(\d+(?:\.\d+)?)");
+        if (maxMatch.Success)
+        {
+            return maxMatch.Groups[1].Value;  // The actual value that exceeded max
+        }
+
+        // Pattern: Minimum validation - "X is less than Y" → actual = X
+        var minMatch = System.Text.RegularExpressions.Regex.Match(
+            errorMessage,
+            @"(\d+(?:\.\d+)?)\s+is\s+less\s+than\s+(\d+(?:\.\d+)?)");
+        if (minMatch.Success)
+        {
+            return minMatch.Groups[1].Value;  // The actual value below minimum
+        }
+
+        // Pattern: Format validation - "should have been'format' but was 'value'" → actual = value
+        var formatMatch = System.Text.RegularExpressions.Regex.Match(
+            errorMessage,
+            @"but\s+was\s+'([^']*)'");
+        if (formatMatch.Success)
+        {
+            var actualValue = formatMatch.Groups[1].Value;
+            return string.IsNullOrEmpty(actualValue) ? "(empty)" : actualValue;
+        }
+
+        // Pattern: Pattern validation - "value did not match 'pattern'" → actual = value
+        // Check for empty pattern value first (double space before "did not match")
+        if (errorMessage.Contains("Invalid Validation pattern -  did not match"))
+        {
+            return "(empty)";  // Empty value for pattern validation
+        }
+
+        var patternMatch = System.Text.RegularExpressions.Regex.Match(
+            errorMessage,
+            @"^\#/\w+\s+Invalid Validation pattern\s+-\s+(\S+)\s+did\s+not\s+match");
+        if (patternMatch.Success)
+        {
+            return patternMatch.Groups[1].Value;  // The actual value that didn't match
+        }
+
+        // Pattern: Enum validation - extract field and get value from original data
+        if (errorMessage.Contains("enumeration") && originalRecord != null)
+        {
+            var fieldName = ExtractFieldNameFromError(errorMessage);
+            if (fieldName != "Unknown" && originalRecord.Contains(fieldName))
+            {
+                return originalRecord[fieldName]?.ToString();
+            }
+        }
+
+        // Pattern: Required property - value is missing
+        if (errorMessage.Contains("required property"))
+        {
+            return "(missing)";
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Extracts field name from Corvus JSON Schema validation error message.
+    /// Error formats:
+    /// - "#/TransactionId Invalid Validation pattern..." → "TransactionId"
+    /// - "#/Status Invalid Validation enum..." → "Status"
+    /// - "# Invalid Validation properties - the required property 'Date' was not present." → "Date"
+    /// </summary>
+    private static string ExtractFieldNameFromError(string errorMessage)
+    {
+        if (string.IsNullOrEmpty(errorMessage))
+        {
+            return "Unknown";
+        }
+
+        // Pattern 1: "#/FieldName Invalid..." - field name is after #/ and before space
+        if (errorMessage.StartsWith("#/"))
+        {
+            var endIndex = errorMessage.IndexOf(' ', 2);
+            if (endIndex > 2)
+            {
+                return errorMessage.Substring(2, endIndex - 2);
+            }
+        }
+
+        // Pattern 2: "the required property 'FieldName' was not present"
+        var requiredMatch = System.Text.RegularExpressions.Regex.Match(
+            errorMessage,
+            @"the required property '([^']+)' was not present");
+        if (requiredMatch.Success)
+        {
+            return requiredMatch.Groups[1].Value;
+        }
+
+        // Pattern 3: Check for common field references in the message
+        var fieldMatch = System.Text.RegularExpressions.Regex.Match(
+            errorMessage,
+            @"'([A-Z][a-zA-Z0-9_]*)'");
+        if (fieldMatch.Success)
+        {
+            return fieldMatch.Groups[1].Value;
+        }
+
+        return "Unknown";
     }
 
     /// <summary>

@@ -30,8 +30,8 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: ez-platform/frontend:latest
-        imagePullPolicy: Always
+        image: frontend:latest
+        imagePullPolicy: Never
         ports:
         - containerPort: 80
           name: http

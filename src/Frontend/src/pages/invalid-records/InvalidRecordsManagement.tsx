@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Button, Tag, Space, Typography, Row, Col, Select, DatePicker, Collapse, Descriptions, message, Spin, Statistic, Pagination, Popconfirm, Table, Tooltip } from 'antd';
+import { Card, Button, Tag, Space, Typography, Row, Col, Select, DatePicker, Collapse, Descriptions, message, Spin, Statistic, Pagination, Popconfirm, Tooltip } from 'antd';
 import {
   ExclamationCircleOutlined,
   ExportOutlined,
@@ -16,7 +16,10 @@ import {
 import { invalidRecordsApiClient, InvalidRecord, Statistics } from '../../services/invalidrecords-api-client';
 import dayjs, { Dayjs } from 'dayjs';
 import EditRecordModal from '../../components/invalid-records/EditRecordModal';
-import { translateValidationError, extractErroredFields } from '../../utils/validationErrorTranslator';
+import {
+  translateErrors,
+  extractErroredFields,
+} from '../../utils/validationErrorTranslator';
 
 const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
@@ -47,6 +50,82 @@ const InvalidRecordsManagement: React.FC = () => {
   const [selectedRecord, setSelectedRecord] = useState<InvalidRecord | null>(null);
   const pageSize = 10;
 
+  // Error type labels for Corvus JSON Schema validation errors
+  // These map to specific validation types extracted from error messages
+  const errorTypeConfig: Record<string, { label: string; color: string }> = {
+    SchemaValidation: { label: 'כל שגיאות Schema', color: 'red' },
+    minimum: { label: 'ערך קטן מהמותר', color: 'magenta' },
+    maximum: { label: 'ערך גדול מהמותר', color: 'volcano' },
+    format: { label: 'פורמט שגוי (תאריך/אימייל)', color: 'orange' },
+    pattern: { label: 'תבנית לא תקינה', color: 'geekblue' },
+    enum: { label: 'ערך לא ברשימה המותרת', color: 'cyan' },
+    required: { label: 'שדה חובה חסר', color: 'red' },
+    minLength: { label: 'טקסט קצר מדי', color: 'purple' },
+    maxLength: { label: 'טקסט ארוך מדי', color: 'gold' },
+    type: { label: 'סוג נתונים שגוי', color: 'lime' },
+  };
+
+  // Extract specific validation type from Corvus error message
+  // E.g., "Invalid Validation minimum" -> "minimum"
+  const extractValidationType = (errorMessage: string): string => {
+    const match = errorMessage.match(/Invalid Validation (\w+)/i);
+    return match ? match[1].toLowerCase() : 'SchemaValidation';
+  };
+
+  // Check if a record has errors of a specific validation type
+  const recordHasValidationType = (record: InvalidRecord, validationType: string): boolean => {
+    if (validationType === 'all' || validationType === 'SchemaValidation') return true;
+    return record.errors.some(err => extractValidationType(err.message) === validationType);
+  };
+
+  // Check if errorType is a specific validation type (not backend-supported)
+  const isSpecificValidationType = (errorType: string): boolean => {
+    return errorType !== 'all' && errorType !== 'SchemaValidation';
+  };
+
+  // Get available error types from actual records
+  const getAvailableErrorTypes = (): string[] => {
+    const typesSet = new Set<string>();
+    // Always include SchemaValidation as the default
+    typesSet.add('SchemaValidation');
+
+    // Extract specific validation types from all records' error messages
+    invalidRecords.forEach(record => {
+      record.errors.forEach(err => {
+        const validationType = extractValidationType(err.message);
+        if (errorTypeConfig[validationType]) {
+          typesSet.add(validationType);
+        }
+      });
+    });
+
+    return Array.from(typesSet);
+  };
+
+  // Calculate counts per specific validation type from loaded records
+  const getErrorTypeCountsFromRecords = (): Record<string, number> => {
+    const counts: Record<string, number> = {
+      SchemaValidation: invalidRecords.length, // All records are schema validation errors
+    };
+
+    // Count records by specific validation type
+    invalidRecords.forEach(record => {
+      record.errors.forEach(err => {
+        const validationType = extractValidationType(err.message);
+        if (validationType !== 'SchemaValidation') {
+          counts[validationType] = (counts[validationType] || 0) + 1;
+        }
+      });
+    });
+
+    return counts;
+  };
+
+  const renderErrorType = (errorType: string) => {
+    const config = errorTypeConfig[errorType];
+    return <Tag color={config?.color || 'red'}>{config?.label || errorType}</Tag>;
+  };
+
   // Fetch datasources for filter dropdown
   const fetchDataSources = async () => {
     try {
@@ -67,7 +146,28 @@ const InvalidRecordsManagement: React.FC = () => {
   const fetchStatistics = async () => {
     try {
       const stats = await invalidRecordsApiClient.getStatistics();
-      setStatistics(stats);
+
+      // Fetch records to extract specific validation types for byErrorType
+      // The backend only stores "SchemaValidation" but we want to show specific types
+      const allRecords = await invalidRecordsApiClient.getList({
+        page: 1,
+        pageSize: 1000,
+      });
+
+      // Extract specific validation types from error messages
+      const byErrorType: Record<string, number> = {};
+      allRecords.data.forEach(r => {
+        r.errors.forEach(err => {
+          const validationType = extractValidationType(err.message);
+          byErrorType[validationType] = (byErrorType[validationType] || 0) + 1;
+        });
+      });
+
+      // Override backend byErrorType with extracted specific types
+      setStatistics({
+        ...stats,
+        byErrorType
+      });
     } catch (error) {
       console.error('Failed to fetch statistics:', error);
     }
@@ -89,39 +189,52 @@ const InvalidRecordsManagement: React.FC = () => {
       }
 
       // Fetch all filtered records to calculate statistics
+      // Don't filter by specific validation types on the backend
       const allFilteredRecords = await invalidRecordsApiClient.getList({
         page: 1,
         pageSize: 1000,
         dataSourceId: selectedDataSource === 'all' ? undefined : selectedDataSource,
-        errorType: selectedErrorType === 'all' ? undefined : selectedErrorType,
+        errorType: undefined, // Don't filter by errorType for statistics - we need to count specific types
         startDate,
         endDate,
       });
 
+      // Apply client-side filtering for specific validation types (same as fetchRecords)
+      let recordsForStats = allFilteredRecords.data;
+      if (isSpecificValidationType(selectedErrorType)) {
+        recordsForStats = allFilteredRecords.data.filter(record =>
+          recordHasValidationType(record, selectedErrorType)
+        );
+      }
+
       // Calculate filtered statistics from records
       const filteredStats: Statistics = {
-        totalInvalidRecords: allFilteredRecords.totalCount,
-        reviewedRecords: allFilteredRecords.data.filter(r => r.isReviewed).length,
-        ignoredRecords: allFilteredRecords.data.filter(r => r.isIgnored).length,
+        totalInvalidRecords: recordsForStats.length,
+        reviewedRecords: recordsForStats.filter(r => r.isReviewed).length,
+        ignoredRecords: recordsForStats.filter(r => r.isIgnored).length,
         byDataSource: {},
         byErrorType: {},
         bySeverity: {}
       };
 
       // Group by datasource
-      allFilteredRecords.data.forEach(r => {
+      recordsForStats.forEach(r => {
         filteredStats.byDataSource[r.dataSourceName] =
           (filteredStats.byDataSource[r.dataSourceName] || 0) + 1;
       });
 
-      // Group by error type
-      allFilteredRecords.data.forEach(r => {
-        filteredStats.byErrorType[r.errorType] =
-          (filteredStats.byErrorType[r.errorType] || 0) + 1;
+      // Group by specific validation types (not record-level errorType)
+      // Extract specific validation types from each record's error messages
+      recordsForStats.forEach(r => {
+        r.errors.forEach(err => {
+          const validationType = extractValidationType(err.message);
+          filteredStats.byErrorType[validationType] =
+            (filteredStats.byErrorType[validationType] || 0) + 1;
+        });
       });
 
       // Group by severity
-      allFilteredRecords.data.forEach(r => {
+      recordsForStats.forEach(r => {
         filteredStats.bySeverity[r.severity] =
           (filteredStats.bySeverity[r.severity] || 0) + 1;
       });
@@ -176,17 +289,29 @@ const InvalidRecordsManagement: React.FC = () => {
         }
       }
 
+      // For specific validation types (minimum, maximum, etc.), don't filter on backend
+      // Backend only supports 'SchemaValidation', so we filter client-side
+      const apiErrorType = isSpecificValidationType(selectedErrorType)
+        ? undefined  // Don't filter by errorType for specific validation types
+        : (selectedErrorType === 'all' ? undefined : selectedErrorType);
+
       const result = await invalidRecordsApiClient.getList({
         page: currentPage,
-        pageSize,
+        pageSize: isSpecificValidationType(selectedErrorType) ? 1000 : pageSize, // Get more for client-side filtering
         dataSourceId: selectedDataSource === 'all' ? undefined : selectedDataSource,
-        errorType: selectedErrorType === 'all' ? undefined : selectedErrorType,
+        errorType: apiErrorType,
         startDate,
         endDate,
       });
 
-      setInvalidRecords(result.data);
-      setTotalCount(result.totalCount);
+      // Apply client-side filtering for specific validation types
+      let filteredData = result.data;
+      if (isSpecificValidationType(selectedErrorType)) {
+        filteredData = result.data.filter(record => recordHasValidationType(record, selectedErrorType));
+      }
+
+      setInvalidRecords(filteredData);
+      setTotalCount(isSpecificValidationType(selectedErrorType) ? filteredData.length : result.totalCount);
     } catch (error: any) {
       message.error(error.message || 'Failed to load invalid records');
       setInvalidRecords([]);
@@ -247,12 +372,27 @@ const InvalidRecordsManagement: React.FC = () => {
   const handleDeleteAll = async () => {
     try {
       setLoading(true);
-      // Fetch all record IDs matching current filters
+
+      // Calculate date range for filtering (same as fetchRecords)
+      let startDate, endDate;
+      if (dateRange && dateRange[0] && dateRange[1]) {
+        startDate = dateRange[0].toISOString();
+        endDate = dateRange[1].toISOString();
+      } else {
+        const intervalRange = getDateRangeFromInterval(selectedTimeRange);
+        if (intervalRange) {
+          [startDate, endDate] = intervalRange;
+        }
+      }
+
+      // Fetch all record IDs matching ALL current filters (including date range)
       const allRecords = await invalidRecordsApiClient.getList({
         page: 1,
         pageSize: 1000, // Get all records
         dataSourceId: selectedDataSource === 'all' ? undefined : selectedDataSource,
         errorType: selectedErrorType === 'all' ? undefined : selectedErrorType,
+        startDate,
+        endDate,
       });
 
       if (allRecords.data.length === 0) {
@@ -330,74 +470,67 @@ const InvalidRecordsManagement: React.FC = () => {
     }
   };
 
-  const renderErrorType = (errorType: string) => {
-    const colors: Record<string, string> = {
-      schema: 'red',
-      format: 'orange',
-      required: 'volcano',
-      range: 'magenta',
-      SchemaValidation: 'red',
-    };
-    const labels: Record<string, string> = {
-      schema: 'אימות Schema',
-      format: 'שגיאת פורמט',
-      required: 'שדה חובה חסר',
-      range: 'שגיאת טווח',
-      SchemaValidation: 'אימות Schema',
-    };
-    return <Tag color={colors[errorType] || 'red'}>{labels[errorType] || errorType}</Tag>;
-  };
-
-  // Render original record as a table with errored fields highlighted
+  // Render original record as JSON with errored fields highlighted
   const renderOriginalRecord = (record: InvalidRecord) => {
     const erroredFields = extractErroredFields(record.errors);
     const data = record.originalData || {};
 
+    // Render JSON with highlighted errored fields
+    const renderJsonValue = (value: any, indent: number = 2): React.ReactNode => {
+      if (typeof value === 'string') return `"${value}"`;
+      if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+      if (value === null) return 'null';
+      return JSON.stringify(value);
+    };
+
     return (
-      <Table
-        dataSource={Object.entries(data).map(([key, value]) => ({
-          key,
-          field: key,
-          value: typeof value === 'object' ? JSON.stringify(value) : String(value ?? ''),
-          hasError: erroredFields.has(key),
-        }))}
-        columns={[
-          {
-            title: 'שדה',
-            dataIndex: 'field',
-            key: 'field',
-            width: 150,
-            render: (text: string, row: any) => (
-              <span style={{
-                fontWeight: row.hasError ? 'bold' : 'normal',
-                color: row.hasError ? '#e74c3c' : 'inherit',
-              }}>
-                {row.hasError && <WarningOutlined style={{ marginLeft: 4, color: '#e74c3c' }} />}
-                {text}
+      <pre
+        style={{
+          backgroundColor: '#1e1e1e',
+          color: '#d4d4d4',
+          padding: 16,
+          borderRadius: 8,
+          overflow: 'auto',
+          maxHeight: 400,
+          fontSize: 13,
+          lineHeight: 1.6,
+          direction: 'ltr',
+          textAlign: 'left',
+          margin: 0,
+        }}
+      >
+        <code>
+          {'{'}
+          {'\n'}
+          {Object.entries(data).map(([key, value], index, arr) => {
+            const hasError = erroredFields.has(key);
+            const isLast = index === arr.length - 1;
+            return (
+              <span key={key}>
+                {'  '}
+                <span style={{ color: hasError ? '#ff6b6b' : '#9cdcfe' }}>
+                  {hasError && <WarningOutlined style={{ marginRight: 4, color: '#ff6b6b' }} />}
+                  "{key}"
+                </span>
+                <span style={{ color: '#d4d4d4' }}>: </span>
+                <span style={{
+                  color: hasError ? '#ff6b6b' : (
+                    typeof value === 'string' ? '#ce9178' :
+                    typeof value === 'number' ? '#b5cea8' :
+                    typeof value === 'boolean' ? '#569cd6' : '#d4d4d4'
+                  ),
+                  fontWeight: hasError ? 'bold' : 'normal',
+                }}>
+                  {renderJsonValue(value)}
+                </span>
+                {!isLast && ','}
+                {'\n'}
               </span>
-            ),
-          },
-          {
-            title: 'ערך',
-            dataIndex: 'value',
-            key: 'value',
-            render: (text: string, row: any) => (
-              <span style={{
-                color: row.hasError ? '#e74c3c' : 'inherit',
-                fontFamily: 'monospace',
-                direction: 'ltr',
-                display: 'inline-block',
-              }}>
-                {text}
-              </span>
-            ),
-          },
-        ]}
-        pagination={false}
-        size="small"
-        rowClassName={(row: any) => row.hasError ? 'errored-field-row' : ''}
-        style={{ direction: 'rtl' }}
-      />
+            );
+          })}
+          {'}'}
+        </code>
+      </pre>
     );
   };
 
@@ -446,19 +579,21 @@ const InvalidRecordsManagement: React.FC = () => {
       <div style={{ marginTop: 12, color: '#e74c3c' }}>
         <Text strong>שגיאות אימות:</Text>
         <div style={{ marginTop: 8 }}>
-          {record.errors.map((error, index) => {
-            const translated = translateValidationError(error.message);
-            return (
+          {translateErrors(record.errors).map((translated, index) => (
+            <Tooltip
+              key={index}
+              title={translated.detailedMessage}
+              placement="top"
+            >
               <Tag
-                key={index}
                 color="red"
-                style={{ marginBottom: 4, fontSize: '13px', padding: '4px 8px' }}
+                style={{ marginBottom: 4, fontSize: '13px', padding: '4px 8px', cursor: 'help' }}
               >
                 <WarningOutlined style={{ marginLeft: 4 }} />
                 {translated.shortMessage}
               </Tag>
-            );
-          })}
+            </Tooltip>
+          ))}
         </div>
       </div>
 
@@ -648,10 +783,18 @@ const InvalidRecordsManagement: React.FC = () => {
                 onChange={setSelectedErrorType}
               >
                 <Option value="all">כל השגיאות</Option>
-                <Option value="SchemaValidation">אימות Schema</Option>
-                <Option value="FormatError">שגיאת פורמט</Option>
-                <Option value="RequiredField">שדה חובה חסר</Option>
-                <Option value="RangeError">שגיאת טווח</Option>
+                {(() => {
+                  const errorTypeCounts = getErrorTypeCountsFromRecords();
+                  return getAvailableErrorTypes().map(type => {
+                    const config = errorTypeConfig[type];
+                    const count = errorTypeCounts[type] || 0;
+                    return (
+                      <Option key={type} value={type}>
+                        {config?.label || type} {count > 0 && `(${count})`}
+                      </Option>
+                    );
+                  });
+                })()}
               </Select>
             </Space>
           </Col>

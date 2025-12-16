@@ -73,7 +73,7 @@ interface BulkOperationResult {
   }>;
 }
 
-const API_BASE_URL = process.env.REACT_APP_INVALIDRECORDS_API_URL || 'http://localhost:5007/api/v1/invalid-records';
+const API_BASE_URL = process.env.REACT_APP_INVALIDRECORDS_API_URL || '/api/v1/invalid-records';
 
 export class InvalidRecordsApiClient {
   private async request<T>(

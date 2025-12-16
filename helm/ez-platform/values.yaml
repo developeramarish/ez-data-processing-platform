@@ -124,8 +124,9 @@ services:
     enabled: true
     replicas: 2
     image:
-      repository: ez-platform/frontend
+      repository: frontend
       tag: latest
+      pullPolicy: Never
     service:
       type: LoadBalancer
       port: 80

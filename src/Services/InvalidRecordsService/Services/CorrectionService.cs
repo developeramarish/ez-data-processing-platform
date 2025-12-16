@@ -4,8 +4,6 @@ using InvalidRecordsService.Models.Requests;
 using InvalidRecordsService.Models.Responses;
 using InvalidRecordsService.Repositories;
 using MassTransit;
-using MongoDB.Bson;
-using MongoDB.Bson.Serialization;
 using System.Text;
 
 namespace InvalidRecordsService.Services;
@@ -45,9 +43,8 @@ public class CorrectionService : ICorrectionService
                 };
             }
 
-            // 2. Convert corrected data to BsonDocument for storage
+            // 2. Serialize corrected data to JSON for revalidation
             var correctedDataJson = System.Text.Json.JsonSerializer.Serialize(request.CorrectedData);
-            var correctedDataBson = BsonDocument.Parse(correctedDataJson);
 
             // 3. Update record using repository (marks as reviewed/corrected)
             await _repository.UpdateStatusAsync(recordId, request.CorrectedBy, "Data corrected", ignore: false);
@@ -59,17 +56,25 @@ public class CorrectionService : ICorrectionService
             // 4. If AutoReprocess is enabled, publish ValidationRequestEvent for actual revalidation
             if (request.AutoReprocess)
             {
-                await PublishRevalidationRequest(record, correctedDataBson);
+                // Pass the original JSON string directly to avoid BsonDocument.ToJson() extended JSON format issues
+                await PublishRevalidationRequest(record, correctedDataJson);
 
                 _logger.LogInformation(
                     "Published ValidationRequestEvent for reprocessing record {RecordId}",
                     recordId);
             }
 
+            // 5. Delete the invalid record after successful correction and reprocess
+            // The corrected data has been sent for revalidation, so remove from invalid records list
+            await _repository.DeleteAsync(recordId);
+            _logger.LogInformation(
+                "Deleted invalid record {RecordId} after successful correction",
+                recordId);
+
             return new CorrectionResult
             {
                 Success = true,
-                Message = "Record corrected successfully",
+                Message = "Record corrected and deleted successfully",
                 ValidationResultId = null  // Would be set if reprocessed
             };
         }
@@ -212,15 +217,14 @@ public class CorrectionService : ICorrectionService
 
     private async Task PublishRevalidationRequest(
         DataProcessingInvalidRecord record,
-        BsonDocument correctedData)
+        string correctedDataJson)
     {
         _logger.LogInformation(
             "Publishing revalidation request for invalid record {RecordId}",
             record.ID);
 
-        // Convert corrected data to JSON bytes
-        var jsonContent = correctedData.ToJson();
-        var fileContent = Encoding.UTF8.GetBytes(jsonContent);
+        // Use the JSON string directly - avoids BsonDocument.ToJson() extended JSON format issues
+        var fileContent = Encoding.UTF8.GetBytes(correctedDataJson);
 
         // Create ValidationRequestEvent for reprocessing
         var validationRequest = new ValidationRequestEvent
@@ -229,7 +233,7 @@ public class CorrectionService : ICorrectionService
             Timestamp = DateTime.UtcNow,
             PublishedBy = "InvalidRecordsService-Reprocess",
             DataSourceId = record.DataSourceId,
-            FileName = $"{record.FileName}_CORRECTED",
+            FileName = $"{record.FileName}_CORRECTED_{DateTime.UtcNow:yyyyMMddHHmmss}_{Guid.NewGuid().ToString("N")[..8]}",
             FileContent = fileContent,
             FileContentType = "application/json",
             FileSizeBytes = fileContent.Length,

@@ -330,12 +330,13 @@ public class ValidationCompletedEventConsumer : IConsumer<ValidationCompletedEve
     {
         try
         {
-            var fileContentMap = await _hazelcastClient.GetMapAsync<string, string>("file-content");
+            // FIX: valid records are stored in "valid-records" map, not "file-content"
+            var validRecordsMap = await _hazelcastClient.GetMapAsync<string, string>("valid-records");
 
             // Remove valid records
             if (!string.IsNullOrEmpty(validRecordsKey))
             {
-                await fileContentMap.RemoveAsync(validRecordsKey);
+                await validRecordsMap.RemoveAsync(validRecordsKey);
                 _logger.LogDebug("Removed valid records from Hazelcast: {Key}", validRecordsKey);
             }
         }

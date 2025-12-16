@@ -67,7 +67,7 @@ This document outlines the complete deployment plan for the EZ Data Processing P
 | Kubernetes Deployments | ✅ 100% | Week 2 | Complete |
 | Service Integration & Frontend | ✅ 100% | Week 3 (Days 1-3) | Complete |
 | Event-Driven Architecture + RabbitMQ | ✅ 100% | Week 3 (Day 4) | Complete |
-| E2E Test Suite | ✅ 100% | Week 3 (Days 5-10) | **6/6 COMPLETE** ✅ |
+| E2E Test Suite | ✅ 100% | Week 3 (Days 5-14) | **6/6 COMPLETE** ✅ |
 | Invalid Records Management | ✅ 100% | Week 3 (Days 7-8) | **COMPLETE** |
 | Reprocess Flow Implementation | ✅ 100% | Week 3 (Days 8-9) | **COMPLETE** |
 | Manual Trigger Feature | ✅ 100% | Week 3 (Day 10) | **COMPLETE** |
@@ -75,8 +75,8 @@ This document outlines the complete deployment plan for the EZ Data Processing P
 | Integration Tests (Critical) | ⏳ 0% | Week 4 | Pending |
 | Production Validation | ⏳ 0% | Week 5 | Pending |
 
-**Current Phase:** Week 3 Day 10 Complete - E2E Tests 5/6 (83%), Manual Trigger + Schedule Column Live, BUG-017 Fixed
-**Last Updated:** December 14, 2025 (Session 15 - E2E-005 + Manual Trigger + BUG-017 + CORS Fixed)
+**Current Phase:** Week 3 Complete - E2E Tests 6/6 (100%) ✅ ALL COMPLETE
+**Last Updated:** December 16, 2025 (Session 18 - Memory Optimization + Invalid Records Frontend Fixes)
 
 ---
 
@@ -439,12 +439,33 @@ Elasticsearch:   3-node StatefulSet
   - **Completed:** December 11, 2025 (Evening - Session 13)
   - **Documentation:** [SESSION-13-REPROCESS-COMPLETE.md](./SESSION-13-REPROCESS-COMPLETE.md), [REPROCESS-DEBUG-HANDOFF.md](./REPROCESS-DEBUG-HANDOFF.md)
 
-**Days 10+: Remaining E2E Tests 🔄 NEXT (Ready to Execute)**
+**Days 10-14: Remaining E2E Tests ✅ ALL COMPLETE**
 - E2E-002: Large file processing (100+ records) - **COMPLETE** ✅
 - E2E-003: Invalid records handling - **COMPLETE** ✅
-- E2E-004: Multiple output destinations (Kafka + Folder) - **PENDING**
-- E2E-005: Scheduled polling verification - **PENDING**
-- E2E-006: Error recovery and retry logic - **PENDING**
+- E2E-004: Multiple output destinations (Kafka + Folder) - **COMPLETE** ✅ (Session 16)
+- E2E-005: Scheduled polling verification - **COMPLETE** ✅ (Session 15)
+- E2E-006: Error recovery and retry logic - **COMPLETE** ✅ (Session 17)
+
+**Days 15-16: Bug Fixes & Optimization ✅ COMPLETE**
+- **Session 17 (December 15, 2025):**
+  - E2E-006 Error Recovery tests complete (6/6 E2E = 100%)
+  - BUG-013: Replaced Newtonsoft.Json.Schema with Corvus.Json.Validator (license issue)
+  - Hebrew validation error translations added
+  - Errored fields highlighting in Invalid Records UI
+
+- **Session 18 (December 16, 2025):**
+  - **Hazelcast Cache Cleanup Bugs Fixed:**
+    - OutputService: Wrong map name ("file-content" → "valid-records")
+    - ValidationService: Missing cleanup after processing
+  - **Memory Optimization:**
+    - Hazelcast: 4GB → 512MB (reduced 8x)
+    - ValidationService: 2Gi-6Gi → 256Mi-512Mi, replicas 3→1
+  - **Invalid Records Frontend Fixes:**
+    - Nginx proxy for InvalidRecordsService API
+    - Statistics error type count consistency (global vs filtered)
+    - Edit modal: Show format examples (date → "2025-12-16")
+    - Edit modal: Handle missing required fields
+    - API URLs: localhost → relative paths for K8s
 
 ### Week 4 Milestone
 ✅ **Critical path testing complete**
@@ -499,6 +520,11 @@ Elasticsearch:   3-node StatefulSet
 - [SESSION-11-E2E-003-INGRESS.md](./SESSION-11-E2E-003-INGRESS.md) - E2E-003 Complete + Ingress Configuration (Day 7)
 - [SESSION-12-FINAL-SUMMARY.md](./SESSION-12-FINAL-SUMMARY.md) - Invalid Records Feature Implementation (Days 8-9)
 - [SESSION-13-REPROCESS-COMPLETE.md](./SESSION-13-REPROCESS-COMPLETE.md) - Reprocess Flow Debugging & Resolution (Day 9)
+- Session 14 - E2E-002 Complete
+- Session 15 - E2E-005 Complete + Manual Trigger + BUG-017 Fixed
+- Session 16 - E2E-004 Complete + Filtered Statistics
+- Session 17 - E2E-006 Complete + BUG-013 (Corvus.Json.Validator) + Hebrew Translations
+- Session 18 - Hazelcast Cache Cleanup + Memory Optimization + Frontend Fixes
 
 ### Testing Documents
 - [TEST-PLAN-MASTER.md](./Testing/TEST-PLAN-MASTER.md)
@@ -547,139 +573,56 @@ Elasticsearch:   3-node StatefulSet
 ---
 
 **Document Status:** ✅ Active
-**Last Updated:** December 11, 2025 19:00 (Session 13 Complete - Reprocess Flow Production Ready)
-**Current Progress:** 90% Complete (Week 3 Day 9 of 5 weeks)
-**Next Phase:** Week 3 E2E Testing Completion - E2E-004, E2E-005, E2E-006 (Final 3 scenarios)
+**Last Updated:** December 16, 2025 18:30 (Session 18 Complete - Memory Optimization + Frontend Fixes)
+**Current Progress:** 95% Complete (Week 3 Day 16 of 5 weeks) - E2E 100% Complete
+**Next Phase:** Week 4 Integration Testing - Critical Path Tests
 
-**Major Achievements (Sessions 6-13):**
+**Major Achievements (Sessions 6-18):**
 - Complete 4-stage pipeline verified end-to-end (FileDiscovery → FileProcessor → Validation → Output)
-- 12+ critical production bugs fixed across multiple sessions
+- **ALL 6 E2E TEST SCENARIOS COMPLETE (100%)** ✅
+- 15+ critical production bugs fixed across multiple sessions
 - Invalid Records Management feature 100% complete with statistics, filters, grouping, export
 - **Reprocess Flow PRODUCTION READY** - Edit failed fields, revalidate, auto-delete if valid, send to output
-- Output file generation working with configurable templates
+- Output file generation working with configurable templates (Folder + Kafka)
+- Multi-destination output verified (E2E-004)
+- Scheduled polling verified (E2E-005)
+- Error recovery and retry logic verified (E2E-006)
+- BUG-013: Switched to Corvus.Json.Validator (open-source license)
+- Hebrew validation error translations with detailed messages
+- **Memory Optimization:** Hazelcast 4GB→512MB, ValidationService 6Gi→512Mi
+- **Hazelcast Cache Cleanup:** Fixed OutputService and ValidationService cache bugs
 - All services standardized for database configuration
-- E2E-001, E2E-002, E2E-003 fully verified (3/6 complete - 50%)
 - Ingress configuration production-ready with path-based routing
-- Docker cache debugging lesson learned (always use --no-cache for code changes)
+- Frontend nginx proxy for all backend services
 
 ---
 
-## 🎯 Next Steps (Week 3 Completion)
+## 🎯 Next Steps (Week 4 - Integration Testing)
 
-### Immediate Priority: Complete Remaining E2E Tests (3/6 → 6/6)
-
-**E2E-004: Multi-Destination Output** (Estimated: 2-3 hours)
-**Goal:** Verify OutputService can write to multiple destinations simultaneously
-
-**Setup:**
-1. Configure E2E-004 datasource with 2 output destinations:
-   - Destination 1: Folder → `/mnt/external-test-data/output/E2E-004-folder`
-   - Destination 2: Kafka → Topic: `e2e-004-kafka-output`
-2. Create test file: `e2e-004-multi-dest.csv` (10 valid records)
-3. Place in `/mnt/external-test-data/E2E-004/`
-
-**Test Steps:**
-1. Trigger scheduled polling or manual file placement
-2. Monitor logs for both output handlers executing
-3. Verify file written to folder destination
-4. Verify messages published to Kafka topic (use kafka-console-consumer)
-5. Compare record counts: Input=10, Folder=10, Kafka=10
-
-**Success Criteria:**
-- ✅ Both destinations receive identical data
-- ✅ No errors in OutputService logs
-- ✅ File format matches template
-- ✅ Kafka messages parseable and valid
-
-**Estimated Duration:** 2-3 hours (including Kafka verification)
-
----
-
-**E2E-005: Scheduled Polling Verification** (Estimated: 1-2 hours)
-**Goal:** Verify SchedulingService triggers FileDiscovery at configured intervals
-
-**Setup:**
-1. Configure E2E-005 datasource with 1-minute polling interval
-2. Create schedule via frontend or API
-3. Place test files in input folder at known times
-
-**Test Steps:**
-1. Start schedule: `PUT /api/v1/scheduling/start/{scheduleId}`
-2. Wait for first poll (verify FileDiscovery logs at T+1min)
-3. Place new file in folder
-4. Wait for second poll (verify file discovered)
-5. Monitor complete pipeline execution
-6. Stop schedule: `PUT /api/v1/scheduling/stop/{scheduleId}`
-
-**Success Criteria:**
-- ✅ FileDiscovery runs at exact interval (±5 seconds)
-- ✅ New files discovered automatically
-- ✅ Schedule can be stopped/started via API
-- ✅ No missed polls or duplicate processing
-
-**Estimated Duration:** 1-2 hours (mostly waiting for schedule intervals)
-
----
-
-**E2E-006: Error Recovery and Retry Logic** (Estimated: 2-3 hours)
-**Goal:** Verify system handles failures gracefully and retries
-
-**Scenarios:**
-1. **Validation Failure:** File with invalid schema
-   - Expected: Invalid records captured, partial success status
-   - Verify: ValidationService creates invalid record entries
-
-2. **Output Failure:** Unreachable destination (folder permissions, Kafka down)
-   - Expected: OutputService retries 3 times, logs failure
-   - Verify: Retry logs show 3 attempts, final failure logged
-
-3. **Service Restart:** Kill validation pod mid-processing
-   - Expected: RabbitMQ redelivers message, processing completes
-   - Verify: Correlation ID preserved, no data loss
-
-4. **Hazelcast Cache Miss:** Invalid HazelcastKey reference
-   - Expected: Fallback to FileContent property
-   - Verify: Processing continues, warning logged
-
-**Test Steps:**
-1. Create scenarios for each failure type
-2. Trigger processing and simulate failure
-3. Monitor logs for retry attempts
-4. Verify system recovers or fails gracefully
-5. Check no data loss occurred
-
-**Success Criteria:**
-- ✅ All failures handled gracefully (no crashes)
-- ✅ Retry logic executes as configured (3 attempts for output)
-- ✅ RabbitMQ message redelivery works
-- ✅ Error messages clear and actionable
-- ✅ No silent failures (all errors logged)
-
-**Estimated Duration:** 2-3 hours (setting up failure scenarios)
-
----
-
-### Week 3 Completion Summary
-
-**When E2E-004, E2E-005, E2E-006 Complete:**
+### ✅ Week 3 E2E Testing COMPLETE
 
 **E2E Test Status:** 6/6 Complete (100%) ✅
-**Invalid Records:** 100% Complete ✅
-**Reprocess Flow:** Production Ready ✅
-**Services:** All 16/16 Running ✅
-**Ingress:** Production-Ready Configuration ✅
+| Test | Status | Session | Description |
+|------|--------|---------|-------------|
+| E2E-001 | ✅ Complete | Session 9 | Basic pipeline flow |
+| E2E-002 | ✅ Complete | Session 9 | Large file processing (100+ records) |
+| E2E-003 | ✅ Complete | Session 11 | Invalid records handling |
+| E2E-004 | ✅ Complete | Session 16 | Multi-destination output (Folder + Kafka) |
+| E2E-005 | ✅ Complete | Session 15 | Scheduled polling verification |
+| E2E-006 | ✅ Complete | Session 17 | Error recovery and retry logic |
 
-**Ready to Proceed to Week 4:**
-- Integration testing (critical paths)
-- Performance testing baseline
-- Monitoring dashboard validation
-- Documentation finalization
+**Additional Achievements:**
+- **Invalid Records:** 100% Complete ✅
+- **Reprocess Flow:** Production Ready ✅
+- **Services:** All 16/16 Running ✅
+- **Ingress:** Production-Ready Configuration ✅
+- **Memory Optimized:** Hazelcast 512MB, ValidationService 512Mi ✅
 
 ---
 
-### Remaining Work After E2E Tests
+### Week 4: Integration Testing (5 days)
 
-**Week 4: Integration Testing (5 days)**
+**Priority: Critical Path Tests**
 - ~20-30 integration tests for critical paths
 - Focus areas:
   * Service-to-service communication (MassTransit/RabbitMQ)
@@ -702,4 +645,4 @@ Elasticsearch:   3-node StatefulSet
 
 ### Current Blockers: NONE ✅
 
-**All systems operational and ready for remaining E2E tests**
+**All systems operational - Ready for Week 4 Integration Testing**

@@ -173,6 +173,12 @@ public class ValidationRequestEventConsumer : DataProcessingConsumerBase<Validat
             // Record message sent metric
             _metrics.RecordMessageSent("ValidationCompletedEvent", "Validation", true);
 
+            // Cleanup: Remove original file content from Hazelcast (no longer needed)
+            if (!string.IsNullOrEmpty(message.HazelcastKey))
+            {
+                await CleanupOriginalFileContentAsync(message.HazelcastKey, message.CorrelationId);
+            }
+
             activity?.SetValidationContext(
                 validationResult.TotalRecords,
                 validationResult.ValidRecords,
@@ -282,6 +288,30 @@ public class ValidationRequestEventConsumer : DataProcessingConsumerBase<Validat
                 "[{CorrelationId}] Failed to retrieve content from Hazelcast: {CacheKey}",
                 correlationId, cacheKey);
             throw;
+        }
+    }
+
+    /// <summary>
+    /// Cleanup original file content from Hazelcast after successful validation
+    /// This prevents memory buildup in the file-content map
+    /// </summary>
+    private async Task CleanupOriginalFileContentAsync(string cacheKey, string correlationId)
+    {
+        try
+        {
+            var fileContentMap = await _hazelcastClient.GetMapAsync<string, string>("file-content");
+            await fileContentMap.RemoveAsync(cacheKey);
+
+            Logger.LogDebug(
+                "[{CorrelationId}] Cleaned up original file content from Hazelcast: {CacheKey}",
+                correlationId, cacheKey);
+        }
+        catch (Exception ex)
+        {
+            // Non-fatal: don't fail the pipeline if cleanup fails
+            Logger.LogWarning(ex,
+                "[{CorrelationId}] Failed to cleanup original file content from Hazelcast: {CacheKey}",
+                correlationId, cacheKey);
         }
     }
 

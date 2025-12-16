@@ -1,6 +1,6 @@
 # Hazelcast - StatefulSet
 # Week 2: Day 4
-# 3-node distributed cache cluster (8GB memory each)
+# Single-node distributed cache for development (1GB memory)
 
 apiVersion: v1
 kind: Service
@@ -26,7 +26,7 @@ metadata:
   namespace: ez-platform
 spec:
   serviceName: hazelcast
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: hazelcast
@@ -44,7 +44,7 @@ spec:
           name: hazelcast
         env:
         - name: JAVA_OPTS
-          value: "-Xms4g -Xmx4g"
+          value: "-Xms256m -Xmx512m"
         - name: HZ_CLUSTERNAME
           value: "data-processing-cluster"
         - name: HZ_KUBERNETES_NAMESPACE
@@ -55,11 +55,11 @@ spec:
           value: "hazelcast"
         resources:
           requests:
-            cpu: "1000m"
-            memory: "8Gi"
+            cpu: "100m"
+            memory: "512Mi"
           limits:
-            cpu: "2000m"
-            memory: "10Gi"
+            cpu: "500m"
+            memory: "768Mi"
         volumeMounts:
         - name: hazelcast-data
           mountPath: /data
