@@ -1,0 +1,314 @@
+// CsvToJsonConverterTests.cs - Unit Tests for CsvToJsonConverter
+// UNIT-003: CSV Format Converter Tests
+// Version: 1.0
+// Date: December 17, 2025
+
+using System.Text;
+using DataProcessing.Shared.Converters;
+using FluentAssertions;
+using Microsoft.Extensions.Logging;
+using Moq;
+using System.Text.Json;
+using Xunit;
+
+namespace DataProcessing.Shared.Tests.Converters;
+
+/// <summary>
+/// Unit tests for CsvToJsonConverter
+/// Tests CSV parsing, type conversion, header handling,
+/// and edge cases like empty files and malformed data.
+/// </summary>
+public class CsvToJsonConverterTests
+{
+    private readonly Mock<ILogger<CsvToJsonConverter>> _mockLogger;
+    private readonly CsvToJsonConverter _converter;
+
+    public CsvToJsonConverterTests()
+    {
+        _mockLogger = new Mock<ILogger<CsvToJsonConverter>>();
+        _converter = new CsvToJsonConverter(_mockLogger.Object);
+    }
+
+    #region SourceFormat Tests
+
+    [Fact]
+    public void SourceFormat_ReturnsCsv()
+    {
+        // Assert
+        _converter.SourceFormat.Should().Be("csv");
+    }
+
+    #endregion
+
+    #region ConvertToJsonAsync Basic Tests
+
+    [Fact]
+    public async Task ConvertToJsonAsync_WithValidCsv_ReturnsJsonArray()
+    {
+        // Arrange
+        var csv = "Name,Age,Active\nJohn,30,true\nJane,25,false";
+        using var stream = CreateStream(csv);
+
+        // Act
+        var result = await _converter.ConvertToJsonAsync(stream);
+
+        // Assert
+        result.Should().NotBeNullOrEmpty();
+        var jsonArray = JsonSerializer.Deserialize<JsonElement[]>(result);
+        jsonArray.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public async Task ConvertToJsonAsync_WithNumericValues_ConvertsToNumbers()
+    {
+        // Arrange
+        var csv = "Id,Amount,Rate\n1,100,3.14\n2,200,2.71";
+        using var stream = CreateStream(csv);
+
+        // Act
+        var result = await _converter.ConvertToJsonAsync(stream);
+
+        // Assert
+        var jsonArray = JsonSerializer.Deserialize<JsonElement[]>(result);
+        jsonArray.Should().NotBeNull();
+
+        var firstRecord = jsonArray![0];
+        firstRecord.GetProperty("Id").GetInt32().Should().Be(1);
+        firstRecord.GetProperty("Amount").GetInt32().Should().Be(100);
+        firstRecord.GetProperty("Rate").GetDouble().Should().BeApproximately(3.14, 0.01);
+    }
+
+    [Fact]
+    public async Task ConvertToJsonAsync_WithBooleanValues_ConvertsToBooleans()
+    {
+        // Arrange
+        var csv = "Name,Active,Verified\nJohn,true,True\nJane,false,False";
+        using var stream = CreateStream(csv);
+
+        // Act
+        var result = await _converter.ConvertToJsonAsync(stream);
+
+        // Assert
+        var jsonArray = JsonSerializer.Deserialize<JsonElement[]>(result);
+        jsonArray.Should().NotBeNull();
+
+        var firstRecord = jsonArray![0];
+        firstRecord.GetProperty("Active").GetBoolean().Should().BeTrue();
+        firstRecord.GetProperty("Verified").GetBoolean().Should().BeTrue();
+
+        var secondRecord = jsonArray[1];
+        secondRecord.GetProperty("Active").GetBoolean().Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ConvertToJsonAsync_WithStringValues_KeepsAsStrings()
+    {
+        // Arrange
+        var csv = "Name,Email,Description\nJohn,john@test.com,A test user\nJane,jane@test.com,Another user";
+        using var stream = CreateStream(csv);
+
+        // Act
+        var result = await _converter.ConvertToJsonAsync(stream);
+
+        // Assert
+        var jsonArray = JsonSerializer.Deserialize<JsonElement[]>(result);
+        jsonArray.Should().NotBeNull();
+
+        var firstRecord = jsonArray![0];
+        firstRecord.GetProperty("Name").GetString().Should().Be("John");
+        firstRecord.GetProperty("Email").GetString().Should().Be("john@test.com");
+    }
+
+    #endregion
+
+    #region Edge Cases
+
+    [Fact]
+    public async Task ConvertToJsonAsync_WithEmptyValues_HandlesGracefully()
+    {
+        // Arrange
+        var csv = "Name,Age,City\nJohn,,New York\n,25,";
+        using var stream = CreateStream(csv);
+
+        // Act
+        var result = await _converter.ConvertToJsonAsync(stream);
+
+        // Assert
+        var jsonArray = JsonSerializer.Deserialize<JsonElement[]>(result);
+        jsonArray.Should().NotBeNull();
+        jsonArray.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public async Task ConvertToJsonAsync_WithSingleRecord_ReturnsArrayWithOneElement()
+    {
+        // Arrange
+        var csv = "Name,Age\nJohn,30";
+        using var stream = CreateStream(csv);
+
+        // Act
+        var result = await _converter.ConvertToJsonAsync(stream);
+
+        // Assert
+        var jsonArray = JsonSerializer.Deserialize<JsonElement[]>(result);
+        jsonArray.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public async Task ConvertToJsonAsync_WithHeaderOnly_ReturnsEmptyArray()
+    {
+        // Arrange
+        var csv = "Name,Age,City";
+        using var stream = CreateStream(csv);
+
+        // Act
+        var result = await _converter.ConvertToJsonAsync(stream);
+
+        // Assert
+        var jsonArray = JsonSerializer.Deserialize<JsonElement[]>(result);
+        jsonArray.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ConvertToJsonAsync_WithQuotedValues_HandlesCorrectly()
+    {
+        // Arrange
+        var csv = "Name,Description\nJohn,\"A description, with comma\"\nJane,\"Another \"\"quoted\"\" value\"";
+        using var stream = CreateStream(csv);
+
+        // Act
+        var result = await _converter.ConvertToJsonAsync(stream);
+
+        // Assert
+        var jsonArray = JsonSerializer.Deserialize<JsonElement[]>(result);
+        jsonArray.Should().NotBeNull();
+
+        var firstRecord = jsonArray![0];
+        firstRecord.GetProperty("Description").GetString().Should().Be("A description, with comma");
+    }
+
+    [Fact]
+    public async Task ConvertToJsonAsync_WithSpecialCharacters_PreservesContent()
+    {
+        // Arrange
+        var csv = "Name,Symbol\nAlpha,α\nBeta,β";
+        using var stream = CreateStream(csv);
+
+        // Act
+        var result = await _converter.ConvertToJsonAsync(stream);
+
+        // Assert
+        var jsonArray = JsonSerializer.Deserialize<JsonElement[]>(result);
+        jsonArray.Should().NotBeNull();
+
+        var firstRecord = jsonArray![0];
+        firstRecord.GetProperty("Symbol").GetString().Should().Be("α");
+    }
+
+    #endregion
+
+    #region IsValidFormatAsync Tests
+
+    [Fact]
+    public async Task IsValidFormatAsync_WithValidCsv_ReturnsTrue()
+    {
+        // Arrange
+        var csv = "Name,Age,City\nJohn,30,NYC";
+        using var stream = CreateStream(csv);
+
+        // Act
+        var result = await _converter.IsValidFormatAsync(stream);
+
+        // Assert
+        result.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task IsValidFormatAsync_WithNoCommas_ReturnsFalse()
+    {
+        // Arrange
+        var csv = "This is not a CSV file";
+        using var stream = CreateStream(csv);
+
+        // Act
+        var result = await _converter.IsValidFormatAsync(stream);
+
+        // Assert
+        result.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task IsValidFormatAsync_WithEmptyStream_ReturnsFalse()
+    {
+        // Arrange
+        using var stream = CreateStream("");
+
+        // Act
+        var result = await _converter.IsValidFormatAsync(stream);
+
+        // Assert
+        result.Should().BeFalse();
+    }
+
+    #endregion
+
+    #region ExtractMetadataAsync Tests
+
+    [Fact]
+    public async Task ExtractMetadataAsync_ReturnsCorrectMetadata()
+    {
+        // Arrange
+        var csv = "Name,Age,City\nJohn,30,NYC";
+        using var stream = CreateStream(csv);
+
+        // Act
+        var result = await _converter.ExtractMetadataAsync(stream);
+
+        // Assert
+        result.Should().ContainKey("Delimiter");
+        result["Delimiter"].Should().Be(",");
+        result.Should().ContainKey("HasHeader");
+        result["HasHeader"].Should().Be(true);
+        result.Should().ContainKey("Headers");
+        result["Headers"].ToString().Should().Contain("Name");
+    }
+
+    #endregion
+
+    #region Transaction Data Tests (Realistic E2E Scenario)
+
+    [Fact]
+    public async Task ConvertToJsonAsync_WithTransactionData_ParsesCorrectly()
+    {
+        // Arrange - simulating E2E-001 test data format
+        var csv = @"TransactionId,CustomerId,CustomerName,TransactionDate,Amount,Currency,TransactionType,Status,Description
+TXN-20251201-000001,CUST-1001,John Smith,2025-12-01 10:30:00,1500.50,USD,Purchase,Completed,Monthly subscription
+TXN-20251201-000002,CUST-1002,Jane Doe,2025-12-01 11:45:00,250.00,EUR,Refund,Pending,Product return";
+        using var stream = CreateStream(csv);
+
+        // Act
+        var result = await _converter.ConvertToJsonAsync(stream);
+
+        // Assert
+        var jsonArray = JsonSerializer.Deserialize<JsonElement[]>(result);
+        jsonArray.Should().HaveCount(2);
+
+        var firstTxn = jsonArray![0];
+        firstTxn.GetProperty("TransactionId").GetString().Should().Be("TXN-20251201-000001");
+        firstTxn.GetProperty("CustomerId").GetString().Should().Be("CUST-1001");
+        firstTxn.GetProperty("Amount").GetDouble().Should().BeApproximately(1500.50, 0.01);
+        firstTxn.GetProperty("Currency").GetString().Should().Be("USD");
+        firstTxn.GetProperty("Status").GetString().Should().Be("Completed");
+    }
+
+    #endregion
+
+    #region Helper Methods
+
+    private static MemoryStream CreateStream(string content)
+    {
+        return new MemoryStream(Encoding.UTF8.GetBytes(content));
+    }
+
+    #endregion
+}

@@ -72,11 +72,12 @@ This document outlines the complete deployment plan for the EZ Data Processing P
 | Reprocess Flow Implementation | ✅ 100% | Week 3 (Days 8-9) | **COMPLETE** |
 | Manual Trigger Feature | ✅ 100% | Week 3 (Day 10) | **COMPLETE** |
 | Schedule Persistence (BUG-017) | ✅ 100% | Week 3 (Day 10) | **COMPLETE** |
-| Integration Tests (Critical) | ⏳ 0% | Week 4 | Pending |
+| Unit Tests (Critical) | ✅ 100% | Week 4 (Phase 1) | **25/25 COMPLETE** ✅ |
+| Integration Tests (Critical) | ✅ 100% | Week 4 (Phase 2) | **58/58 COMPLETE** ✅ |
 | Production Validation | ⏳ 0% | Week 5 | Pending |
 
-**Current Phase:** Week 3 Complete - E2E Tests 6/6 (100%) ✅ ALL COMPLETE
-**Last Updated:** December 16, 2025 (Session 18 - Memory Optimization + Invalid Records Frontend Fixes)
+**Current Phase:** Week 4 COMPLETE - Ready for Week 5 Production Validation
+**Last Updated:** December 17, 2025 (Session 21 - Integration Tests Complete: 83/83 Pass)
 
 ---
 
@@ -495,11 +496,119 @@ Cleanup Flow:
     - Enabled REST API for health probes
     - **File:** `k8s/infrastructure/hazelcast-statefulset.yaml`
 
-### Week 4 Milestone
-✅ **Critical path testing complete**
-- Integration tests passing
-- Unit tests passing
-- 70%+ coverage achieved
+### Week 4 Milestone ✅ COMPLETE
+**Day 1: Test Infrastructure Setup ✅ COMPLETE**
+- Task Orchestrator MCP server connected (Docker-based)
+- Project created: "EZ Platform Week 4 Integration Testing"
+- 6 Features (test categories) created with 20 total tasks:
+
+**Test Framework Architecture:**
+```
+tests/IntegrationTests/
+├── IntegrationTests.csproj          # .NET 10, xUnit, FluentAssertions, Confluent.Kafka
+├── TestConfiguration.cs             # Centralized service URLs and topic names
+├── GlobalUsings.cs                  # Common using statements
+├── Fixtures/
+│   ├── ApiClientFixture.cs          # HTTP client for service APIs (IClassFixture)
+│   ├── KafkaFixture.cs              # Kafka producer/consumer for message flow tests
+│   └── MongoDbFixture.cs            # MongoDB client for persistence tests
+├── ServiceIntegration/
+│   ├── KafkaFlowTests.cs            # INT-001 to INT-004: Message flow between services
+│   └── ServiceHealthTests.cs        # INT-005 to INT-008: Health, config, connectivity
+├── DataPersistence/
+│   └── DataPersistenceTests.cs      # INT-009 to INT-014: MongoDB persistence
+├── Caching/
+│   └── HazelcastCacheTests.cs       # INT-015 to INT-018: Cache operations
+├── OutputHandlers/
+│   └── OutputHandlerTests.cs        # INT-019 to INT-022: Folder/Kafka output
+└── ErrorHandling/
+    └── ErrorHandlingTests.cs        # INT-023 to INT-025: Resilience, retry, recovery
+```
+
+**Day 2: Phase 1 - Unit Tests ✅ COMPLETE (25 tests)**
+- All unit tests pass without K8s dependencies
+- Schema validation edge cases covered
+- Output handler selection logic verified
+- Transformation pipeline logic verified
+
+**Days 3-4: Phase 2 - Integration Tests ✅ COMPLETE (58 tests)**
+
+**Critical Infrastructure Knowledge Gained:**
+
+### 🔑 Kafka External Access from Localhost (Port-Forwarding)
+**Problem:** Kafka clients outside K8s cluster couldn't connect via port-forward.
+**Root Cause:** Kafka advertises its internal cluster address (kafka-0.kafka-headless:9092) which is unreachable from localhost.
+
+**Solution - Dual Listener Configuration:**
+```yaml
+# k8s/infrastructure/kafka-statefulset.yaml
+KAFKA_CFG_LISTENERS: "INTERNAL://:9092,EXTERNAL://:9094"
+KAFKA_CFG_ADVERTISED_LISTENERS: "INTERNAL://kafka-0.kafka-headless.ez-platform.svc.cluster.local:9092,EXTERNAL://localhost:9094"
+KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: "INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT"
+KAFKA_CFG_INTER_BROKER_LISTENER_NAME: "INTERNAL"
+```
+
+**Port-Forward Command:**
+```bash
+kubectl port-forward svc/kafka 9094:9094 -n ez-platform
+```
+
+**Client Connection (C#):**
+```csharp
+BootstrapServers = "localhost:9094"  # External listener port
+```
+
+### 🔑 MongoDB directConnection for Replica Set Bypass
+**Problem:** MongoDB replica set expects connections via internal DNS names.
+**Solution:** Add `?directConnection=true` to connection string:
+```csharp
+ConnectionString = "mongodb://localhost:27017?directConnection=true"
+```
+
+### 🔑 Kafka Consumer Race Condition Fix
+**Problem:** Tests sometimes missed messages produced immediately before consumption.
+**Solution:** Use `AutoOffsetReset.Earliest` + key-based message isolation:
+```csharp
+var config = new ConsumerConfig
+{
+    AutoOffsetReset = AutoOffsetReset.Earliest,  // Read from beginning
+    GroupId = $"integration-test-{topic}-{Guid.NewGuid():N}"  // Unique per test
+};
+```
+
+### 🔑 REST API Issues Fixed
+| Issue | Fix | File |
+|-------|-----|------|
+| InvalidRecords API 404 | `/api/v1/invalidrecords` → `/api/v1/invalid-records` (hyphenated) | ApiClientFixture.cs:98 |
+| Datasource duplicate key | Add unique GUID suffix: `$"DS-{Guid.NewGuid():N[..8]}"` | ServiceHealthTests.cs, ErrorHandlingTests.cs |
+| Delete API 400 Bad Request | `deletedBy` from body → query param: `?deletedBy=IntegrationTest` | ApiClientFixture.cs:88 |
+| Property name case | `"ID"` (uppercase) not `"Id"` in JSON response | Multiple test files |
+
+**Final Test Results:**
+| Feature | Tests | Status |
+|---------|-------|--------|
+| Service Integration Tests (INT-001 to INT-008) | 16 | ✅ Pass |
+| Data Persistence Tests (INT-009 to INT-014) | 12 | ✅ Pass |
+| Caching & Performance Tests (INT-015 to INT-018) | 8 | ✅ Pass |
+| Output Handler Tests (INT-019 to INT-022) | 8 | ✅ Pass |
+| Error Handling Tests (INT-023 to INT-025) | 14 | ✅ Pass |
+| Unit Tests - Critical Logic (UNIT-001 to UNIT-005) | 25 | ✅ Pass |
+| **TOTAL** | **83** | **✅ 100% Pass** |
+
+**Port-Forward Requirements for Tests:**
+```bash
+# Required port-forwards for integration tests
+kubectl port-forward svc/datasource-management 5001:80 -n ez-platform
+kubectl port-forward svc/validation 5003:80 -n ez-platform
+kubectl port-forward svc/output 5009:80 -n ez-platform
+kubectl port-forward svc/invalidrecords 5006:80 -n ez-platform
+kubectl port-forward svc/filediscovery 5007:80 -n ez-platform
+kubectl port-forward svc/kafka 9094:9094 -n ez-platform  # External listener
+kubectl port-forward svc/mongodb 27017:27017 -n ez-platform
+kubectl port-forward svc/hazelcast 5701:5701 -n ez-platform
+```
+
+**Completed:** December 17, 2025 (Session 21 - 83/83 tests pass)
 
 ### Week 5 Milestone
 ✅ **Production validation complete**
@@ -554,6 +663,8 @@ Cleanup Flow:
 - Session 17 - E2E-006 Complete + BUG-013 (Corvus.Json.Validator) + Hebrew Translations
 - Session 18 - Hazelcast Cache Cleanup + Memory Optimization + Frontend Fixes
 - Session 19 - Hazelcast TTL Configuration (Automatic Cache Cleanup)
+- Session 20 - Week 4 Test Setup: Task Orchestrator + 33 Tests + Data Strategy
+- Session 21 - Week 4 Integration Tests COMPLETE: 83/83 Pass + Kafka External Access + API Fixes
 
 ### Testing Documents
 - [TEST-PLAN-MASTER.md](./Testing/TEST-PLAN-MASTER.md)
@@ -563,6 +674,23 @@ Cleanup Flow:
 - [TEST-EXECUTION-LOG.md](./Testing/TEST-EXECUTION-LOG.md)
 - [DEFECT-LOG.md](./Testing/DEFECT-LOG.md)
 - [TEST-SIGN-OFF.md](./Testing/TEST-SIGN-OFF.md)
+
+### Week 4 Test Tracking (Task Orchestrator MCP)
+**Primary Test Tracking:** Task Orchestrator via MCP server
+
+| Tracking Location | Purpose | Updated By |
+|-------------------|---------|------------|
+| **Task Orchestrator** | Real-time test progress (33 tasks) | Claude/Developer |
+| **Task Sections** | Test results, logs, evidence | Claude |
+| **MVP-DEPLOYMENT-PLAN.md** | Master progress summary | Claude |
+| **TEST-EXECUTION-LOG.md** | Daily test execution details | Claude |
+| **DEFECT-LOG.md** | Any bugs found during testing | Claude |
+
+**Task Orchestrator Commands:**
+- `get_overview` - View all test progress
+- `get_task` - View specific test details + results
+- `update_task` - Update test status (pending → in_progress → completed)
+- `add_section` - Add test results to task
 
 ### Deployment Documents
 - [K8S-ARCHITECTURE.md](./Deployment/K8S-ARCHITECTURE.md)
@@ -605,13 +733,14 @@ Cleanup Flow:
 ---
 
 **Document Status:** ✅ Active
-**Last Updated:** December 17, 2025 (Session 19 - Hazelcast TTL Configuration)
-**Current Progress:** 95% Complete (Week 3 Day 17 of 5 weeks) - E2E 100% Complete
-**Next Phase:** Week 4 Integration Testing - Critical Path Tests
+**Last Updated:** December 17, 2025 (Session 21 - Week 4 Integration Tests COMPLETE)
+**Current Progress:** 85% Complete (Week 4 COMPLETE) - E2E 100%, Unit 100%, Integration 100%
+**Next Phase:** Week 5 - Production Validation (Load Testing, Failover Testing, Documentation)
 
-**Major Achievements (Sessions 6-19):**
+**Major Achievements (Sessions 6-21):**
 - Complete 4-stage pipeline verified end-to-end (FileDiscovery → FileProcessor → Validation → Output)
 - **ALL 6 E2E TEST SCENARIOS COMPLETE (100%)** ✅
+- **ALL 83 INTEGRATION/UNIT TESTS COMPLETE (100%)** ✅
 - 15+ critical production bugs fixed across multiple sessions
 - Invalid Records Management feature 100% complete with statistics, filters, grouping, export
 - **Reprocess Flow PRODUCTION READY** - Edit failed fields, revalidate, auto-delete if valid, send to output
@@ -627,10 +756,13 @@ Cleanup Flow:
 - All services standardized for database configuration
 - Ingress configuration production-ready with path-based routing
 - Frontend nginx proxy for all backend services
+- **Kafka External Listener:** Dual listener config for localhost access via port-forward (Session 21)
+- **MongoDB directConnection:** Replica set bypass for local testing (Session 21)
+- **Integration Test Framework:** xUnit + FluentAssertions + Confluent.Kafka + MongoDB.Driver (Session 21)
 
 ---
 
-## 🎯 Next Steps (Week 4 - Integration Testing)
+## 🎯 Next Steps (Week 5 - Production Validation)
 
 ### ✅ Week 3 E2E Testing COMPLETE
 
@@ -644,38 +776,55 @@ Cleanup Flow:
 | E2E-005 | ✅ Complete | Session 15 | Scheduled polling verification |
 | E2E-006 | ✅ Complete | Session 17 | Error recovery and retry logic |
 
-**Additional Achievements:**
+### ✅ Week 4 Integration Testing COMPLETE
+
+**Test Status:** 83/83 Complete (100%) ✅
+| Category | Tests | Status | Description |
+|----------|-------|--------|-------------|
+| Service Integration | 16 | ✅ Pass | Kafka flow, health endpoints, API CRUD |
+| Data Persistence | 12 | ✅ Pass | MongoDB operations, CRUD lifecycle |
+| Caching & Performance | 8 | ✅ Pass | Hazelcast operations, TTL behavior |
+| Output Handlers | 8 | ✅ Pass | Folder/Kafka output verification |
+| Error Handling | 14 | ✅ Pass | Resilience, retry, recovery scenarios |
+| Unit Tests | 25 | ✅ Pass | Schema validation, transformation logic |
+
+**All Achievements (Weeks 1-4):**
+- **E2E Tests:** 6/6 Complete ✅
+- **Unit Tests:** 25/25 Complete ✅
+- **Integration Tests:** 58/58 Complete ✅
 - **Invalid Records:** 100% Complete ✅
 - **Reprocess Flow:** Production Ready ✅
 - **Services:** All 16/16 Running ✅
 - **Ingress:** Production-Ready Configuration ✅
 - **Memory Optimized:** Hazelcast 512MB, ValidationService 512Mi ✅
+- **Test Framework:** xUnit + FluentAssertions + Confluent.Kafka ✅
 
 ---
 
-### Week 4: Integration Testing (5 days)
+### Week 5: Production Validation (5 days)
 
-**Priority: Critical Path Tests**
-- ~20-30 integration tests for critical paths
-- Focus areas:
-  * Service-to-service communication (MassTransit/RabbitMQ)
-  * Data transformation accuracy (CSV → JSON, format preservation)
-  * Hazelcast caching behavior
-  * MongoDB query performance
-  * Output handler logic (Folder, Kafka)
-- Target: 70%+ critical path coverage
-
-**Week 5: Production Validation (5 days)**
-- Load testing (100-1000 files)
+**Priority: Load & Stress Testing**
+- Load testing (100-1000 files simultaneously)
 - Failover testing (pod restarts, network partitions)
 - Security validation (CORS, authentication stubs)
-- Performance baseline (latency, throughput)
-- Helm chart finalization
-- Deployment runbooks
-- GO/NO-GO decision
+- Performance baseline (latency, throughput metrics)
+- Memory stress testing (prolonged operation)
+
+**Deployment Readiness**
+- Helm chart finalization and validation
+- Deployment runbooks and procedures
+- Rollback procedures documentation
+- Operations team handoff documentation
+- Troubleshooting guide completion
+
+**Final Sign-off**
+- GO/NO-GO decision meeting
+- Production environment preparation
+- Final documentation review
+- Stakeholder sign-off
 
 ---
 
 ### Current Blockers: NONE ✅
 
-**All systems operational - Ready for Week 4 Integration Testing**
+**All systems operational - Ready for Week 5 Production Validation**

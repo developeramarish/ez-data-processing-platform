@@ -24,7 +24,7 @@ $portForwards = @(
     @{Name="Grafana"; Port=3001; Service="ezplatform-grafana"; TargetPort=3000},
     @{Name="Prometheus"; Port=9090; Service="prometheus-system"; TargetPort=9090},
     @{Name="MongoDB"; Port=27017; Service="mongodb"; TargetPort=27017},
-    @{Name="Kafka"; Port=9092; Service="kafka"; TargetPort=9092},
+    @{Name="Kafka"; Port=9094; Service="kafka-external"; TargetPort=9094},
     @{Name="RabbitMQ"; Port=5672; Service="rabbitmq"; TargetPort=5672},
     @{Name="Hazelcast"; Port=5701; Service="hazelcast"; TargetPort=5701}
 )
