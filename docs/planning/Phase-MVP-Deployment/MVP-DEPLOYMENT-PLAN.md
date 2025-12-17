@@ -74,10 +74,10 @@ This document outlines the complete deployment plan for the EZ Data Processing P
 | Schedule Persistence (BUG-017) | ✅ 100% | Week 3 (Day 10) | **COMPLETE** |
 | Unit Tests (Critical) | ✅ 100% | Week 4 (Phase 1) | **25/25 COMPLETE** ✅ |
 | Integration Tests (Critical) | ✅ 100% | Week 4 (Phase 2) | **58/58 COMPLETE** ✅ |
-| Production Validation | ⏳ 0% | Week 5 | Pending |
+| Production Validation | 🔄 10% | Week 5 | **Logs ✅, Tracing 🔄** |
 
-**Current Phase:** Week 4 COMPLETE - Ready for Week 5 Production Validation
-**Last Updated:** December 17, 2025 (Session 21 - Integration Tests Complete: 83/83 Pass)
+**Current Phase:** Week 5 IN PROGRESS - Production Validation (Observability Verification)
+**Last Updated:** December 17, 2025 (Session 22 - Logs Storage Complete: 8/8 Services)
 
 ---
 
@@ -665,6 +665,7 @@ kubectl port-forward svc/hazelcast 5701:5701 -n ez-platform
 - Session 19 - Hazelcast TTL Configuration (Automatic Cache Cleanup)
 - Session 20 - Week 4 Test Setup: Task Orchestrator + 33 Tests + Data Strategy
 - Session 21 - Week 4 Integration Tests COMPLETE: 83/83 Pass + Kafka External Access + API Fixes
+- Session 22 - Week 5 Production Validation: Logs Storage & Elasticsearch Verification COMPLETE (8/8 services)
 
 ### Testing Documents
 - [TEST-PLAN-MASTER.md](./Testing/TEST-PLAN-MASTER.md)
@@ -733,11 +734,11 @@ kubectl port-forward svc/hazelcast 5701:5701 -n ez-platform
 ---
 
 **Document Status:** ✅ Active
-**Last Updated:** December 17, 2025 (Session 21 - Week 4 Integration Tests COMPLETE)
-**Current Progress:** 85% Complete (Week 4 COMPLETE) - E2E 100%, Unit 100%, Integration 100%
-**Next Phase:** Week 5 - Production Validation (Load Testing, Failover Testing, Documentation)
+**Last Updated:** December 17, 2025 (Session 22 - Week 5 Production Validation Started)
+**Current Progress:** 88% Complete (Week 5 IN PROGRESS) - E2E 100%, Unit 100%, Integration 100%, Logs ✅
+**Current Phase:** Week 5 - Production Validation (Logs ✅, Tracing 🔄, Metrics, Load Testing, Failover)
 
-**Major Achievements (Sessions 6-21):**
+**Major Achievements (Sessions 6-22):**
 - Complete 4-stage pipeline verified end-to-end (FileDiscovery → FileProcessor → Validation → Output)
 - **ALL 6 E2E TEST SCENARIOS COMPLETE (100%)** ✅
 - **ALL 83 INTEGRATION/UNIT TESTS COMPLETE (100%)** ✅
@@ -759,6 +760,8 @@ kubectl port-forward svc/hazelcast 5701:5701 -n ez-platform
 - **Kafka External Listener:** Dual listener config for localhost access via port-forward (Session 21)
 - **MongoDB directConnection:** Replica set bypass for local testing (Session 21)
 - **Integration Test Framework:** xUnit + FluentAssertions + Confluent.Kafka + MongoDB.Driver (Session 21)
+- **OTEL Logs Verification:** All 8/8 services sending logs to Elasticsearch via OTEL Collector (Session 22)
+- **OutputService Serilog Fix:** Removed `builder.Host.UseSerilog()` which was bypassing OTEL logging (Session 22)
 
 ---
 
@@ -801,30 +804,44 @@ kubectl port-forward svc/hazelcast 5701:5701 -n ez-platform
 
 ---
 
-### Week 5: Production Validation (5 days)
+### Week 5: Production Validation (5 days) 🔄 IN PROGRESS
 
-**Priority: Load & Stress Testing**
-- Load testing (100-1000 files simultaneously)
-- Failover testing (pod restarts, network partitions)
-- Security validation (CORS, authentication stubs)
-- Performance baseline (latency, throughput metrics)
-- Memory stress testing (prolonged operation)
+**Observability Verification:**
+| Feature | Status | Services | Details |
+|---------|--------|----------|---------|
+| Logs Storage (Elasticsearch) | ✅ Complete | 8/8 | All services sending logs via OTEL Collector |
+| Distributed Tracing (Jaeger) | 🔄 Next | - | Verify trace propagation across services |
+| Metrics (Prometheus) | ⏳ Pending | - | System and business metrics verification |
 
-**Deployment Readiness**
-- Helm chart finalization and validation
-- Deployment runbooks and procedures
-- Rollback procedures documentation
-- Operations team handoff documentation
-- Troubleshooting guide completion
+**Session 22 Progress (December 17, 2025):**
+- **Logs Storage & Elasticsearch Verification: COMPLETE** ✅
+  - **Root Cause Fixed:** OutputService had `builder.Host.UseSerilog()` which replaced the entire logging infrastructure, bypassing OTEL's `.WithLogging()` hook
+  - **Solution:** Removed the problematic line, kept only `AddDataProcessingLogging()` which correctly adds Serilog as a provider
+  - **All 8 Services Verified:**
+    - FileDiscoveryService ✅
+    - FileProcessorService ✅
+    - ValidationService ✅
+    - OutputService ✅ (fixed)
+    - SchedulingService ✅
+    - MetricsConfigurationService ✅
+    - InvalidRecordsService ✅
+    - DatasourceManagementService ✅
+  - **Documentation Updated:** `docs/MONITORING-INFRASTRUCTURE.md` - Added troubleshooting section for Serilog/OTEL conflicts
 
-**Final Sign-off**
-- GO/NO-GO decision meeting
-- Production environment preparation
-- Final documentation review
-- Stakeholder sign-off
+**Remaining Tasks:**
+- [ ] Distributed Tracing Verification (Jaeger)
+- [ ] Metrics Verification (Prometheus System + Business)
+- [ ] Load testing (100-1000 files simultaneously)
+- [ ] Failover testing (pod restarts, network partitions)
+- [ ] Security validation (CORS, authentication stubs)
+- [ ] Performance baseline (latency, throughput metrics)
+- [ ] Memory stress testing (prolonged operation)
+- [ ] Helm chart finalization
+- [ ] Deployment runbooks
+- [ ] GO/NO-GO decision
 
 ---
 
 ### Current Blockers: NONE ✅
 
-**All systems operational - Ready for Week 5 Production Validation**
+**Week 5 Progress:** 1/10 features complete (Logs ✅) - Next: Distributed Tracing

@@ -389,6 +389,36 @@ rate(http_server_request_duration_seconds_count{http_response_status_code=~"5.."
 
 ## Troubleshooting
 
+### Services Not Sending Logs to Elasticsearch
+
+1. **Check for `builder.Host.UseSerilog()` in Program.cs:**
+   ```csharp
+   // ❌ WRONG - This replaces the entire logging infrastructure and bypasses OTEL
+   builder.Host.UseSerilog();
+
+   // ✅ CORRECT - Use AddDataProcessingLogging which adds Serilog as a provider
+   builder.Services.AddDataProcessingLogging(configuration, environment, serviceName);
+   // Note: Do NOT use builder.Host.UseSerilog() as it replaces logging infrastructure and bypasses OTEL
+   ```
+
+   **Root Cause:** `UseSerilog()` replaces the entire logging infrastructure, preventing OTEL's `.WithLogging()` from hooking into ILoggerFactory.
+
+2. **Check for static `Log.*` calls:**
+   ```csharp
+   // ❌ Static calls bypass ILogger/OTEL - only go to Serilog sinks
+   Log.Information("Starting service...");
+
+   // ✅ ILogger injection goes through all providers including OTEL
+   _logger.LogInformation("Starting service...");
+   ```
+
+3. **Verify logs in Elasticsearch:**
+   ```bash
+   kubectl exec elasticsearch-pod -n ez-platform -- curl -s "localhost:9200/dataprocessing-logs/_search" \
+     -H "Content-Type: application/json" \
+     -d '{"query":{"match_phrase":{"service.name":"DataProcessing.YourService"}}}'
+   ```
+
 ### Services Not Sending Metrics
 
 1. **Check OTel Collector is running:**

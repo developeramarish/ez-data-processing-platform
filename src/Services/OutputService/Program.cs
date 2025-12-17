@@ -6,28 +6,23 @@
 using Hazelcast;
 using MassTransit;
 using MongoDB.Entities;
-using OpenTelemetry.Metrics;
-using OpenTelemetry.Resources;
-using OpenTelemetry.Trace;
 using Serilog;
+using System.Diagnostics;
 using Confluent.Kafka;
 using DataProcessing.Output.Consumers;
 using DataProcessing.Output.Handlers;
 using DataProcessing.Output.Services;
 using DataProcessing.Shared.Configuration;
 using DataProcessing.Shared.Converters;
+using DataProcessing.Shared.Monitoring;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Configure Serilog
-Log.Logger = new LoggerConfiguration()
-    .ReadFrom.Configuration(builder.Configuration)
-    .Enrich.FromLogContext()
-    .WriteTo.Console()
-    .CreateLogger();
-
-builder.Host.UseSerilog();
+// Configure structured logging with Serilog (OTEL log export configured in AddDataProcessingOpenTelemetry)
+var serviceName = "DataProcessing.Output";
+builder.Services.AddDataProcessingLogging(builder.Configuration, builder.Environment, serviceName);
+// Note: Do NOT use builder.Host.UseSerilog() as it replaces logging infrastructure and bypasses OTEL
 
 // Configure MongoDB
 var mongoConnectionString = builder.Configuration.GetConnectionString("MongoDB") ?? "localhost";
@@ -86,6 +81,9 @@ builder.Services.AddScoped<JsonToExcelReconstructor>();
 // Register Format Reconstructor Service
 builder.Services.AddScoped<FormatReconstructorService>();
 
+// Register Business Metrics for OTEL routing to Prometheus Business
+builder.Services.AddBusinessMetrics();
+
 Log.Information("Registered output handlers and format reconstructors");
 
 // Configure MassTransit with RabbitMQ transport
@@ -132,38 +130,11 @@ Log.Information(
     "MassTransit configured with RabbitMQ: Server={Server}",
     builder.Configuration.GetValue<string>("RabbitMQ:Host"));
 
-// Configure OpenTelemetry
-var otlpEndpoint = builder.Configuration["OpenTelemetry:OtlpEndpoint"] ?? "http://localhost:4317";
+// Configure OpenTelemetry (metrics, traces, and logs via OTLP)
+builder.Services.AddDataProcessingOpenTelemetry(builder.Configuration, serviceName);
 
-builder.Services.AddOpenTelemetry()
-    .WithTracing(tracing =>
-    {
-        tracing
-            .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("OutputService"))
-            .AddAspNetCoreInstrumentation()
-            .AddHttpClientInstrumentation()
-            .AddSource("MassTransit")
-            .AddOtlpExporter(options =>
-            {
-                options.Endpoint = new Uri(otlpEndpoint);
-                options.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.Grpc;
-            });
-    })
-    .WithMetrics(metrics =>
-    {
-        metrics
-            .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("OutputService"))
-            .AddAspNetCoreInstrumentation()
-            .AddRuntimeInstrumentation()
-            .AddMeter("MassTransit")
-            .AddOtlpExporter(options =>
-            {
-                options.Endpoint = new Uri(otlpEndpoint);
-                options.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.Grpc;
-            });
-    });
-
-Log.Information("OpenTelemetry configured with OTLP endpoint: {Endpoint}", otlpEndpoint);
+Log.Information("OpenTelemetry configured with OTLP endpoint: {Endpoint}",
+    builder.Configuration["OpenTelemetry:OtlpEndpoint"] ?? "http://localhost:4317");
 
 // Configure health checks using shared configuration
 builder.Services.AddDataProcessingHealthChecks(builder.Configuration, "DataProcessing.Output");
