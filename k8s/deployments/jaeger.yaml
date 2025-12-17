@@ -9,7 +9,15 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-    - name: grpc-otlp
+    - name: otlp-grpc
+      port: 4317
+      targetPort: 4317
+      protocol: TCP
+    - name: otlp-http
+      port: 4318
+      targetPort: 4318
+      protocol: TCP
+    - name: grpc-collector
       port: 14250
       targetPort: 14250
       protocol: TCP
@@ -52,7 +60,13 @@ spec:
       - name: jaeger
         image: jaegertracing/all-in-one:latest
         ports:
-          - name: grpc-otlp
+          - name: otlp-grpc
+            containerPort: 4317
+            protocol: TCP
+          - name: otlp-http
+            containerPort: 4318
+            protocol: TCP
+          - name: grpc-collector
             containerPort: 14250
             protocol: TCP
           - name: http-collector

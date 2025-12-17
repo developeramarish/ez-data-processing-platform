@@ -33,13 +33,14 @@ data:
           include:
             match_type: regexp
             metric_names:
-              - '^http_.*'
-              - '^process_.*'
-              - '^dotnet_.*'
-              - '^runtime_.*'
-              - '^aspnetcore_.*'
-              - '^kestrel_.*'
-              - '^system_.*'
+              - '^http[._].*'
+              - '^process[._].*'
+              - '^dotnet[._].*'
+              - '^runtime[._].*'
+              - '^aspnetcore[._].*'
+              - '^kestrel[._].*'
+              - '^system[._].*'
+              - '^dns[._].*'
 
       filter/business_metrics:
         metrics:
@@ -103,7 +104,7 @@ data:
           mode: ecs
 
       otlp/jaeger:
-        endpoint: jaeger:14250
+        endpoint: jaeger:4317
         tls:
           insecure: true
 
