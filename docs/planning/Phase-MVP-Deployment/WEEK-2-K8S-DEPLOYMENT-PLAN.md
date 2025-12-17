@@ -46,7 +46,7 @@ Services (9):
 Infrastructure:
 ├── MongoDB         (3-node StatefulSet, 20GB each)
 ├── Kafka           (3-node StatefulSet, 10GB each)
-├── Hazelcast       (3-node StatefulSet, 8GB RAM each)
+├── Hazelcast       (1-node StatefulSet, 512MB RAM, TTL-enabled)
 ├── Prometheus      (1 replica, 50GB storage)
 ├── Grafana         (1 replica, 10GB storage)
 └── Elasticsearch   (3-node StatefulSet, 30GB each)
@@ -143,10 +143,14 @@ Infrastructure:
 
 **Hazelcast StatefulSet:**
 - File: `k8s/infrastructure/hazelcast-statefulset.yaml`
-- 3 replicas (cluster)
-- 8GB memory per pod
+- 1 replica (single-node dev/staging)
+- 512MB memory per pod (optimized for dev)
 - Kubernetes discovery enabled
-- ConfigMap for Hazelcast configuration
+- ConfigMap for Hazelcast configuration with TTL:
+  - `file-content` map: 5 min TTL, 3 min idle timeout, 256MB max, LRU eviction
+  - `valid-records` map: 5 min TTL, 3 min idle timeout, 256MB max, LRU eviction
+- REST API enabled for health probes
+- TTL provides fallback safety if explicit cleanup fails
 
 **Prometheus Deployment:**
 - File: `k8s/infrastructure/prometheus-deployment.yaml`

@@ -272,10 +272,29 @@ Frontend:                    2 replicas (3000)
 ```
 MongoDB:         3-node StatefulSet
 Kafka:           3-node StatefulSet
-Hazelcast:       3-node StatefulSet (8GB each)
+Hazelcast:       1-node StatefulSet (512MB) - Dev/Staging
 Prometheus:      1 replica
 Grafana:         1 replica
 Elasticsearch:   3-node StatefulSet
+```
+
+**Hazelcast Cache Configuration:**
+```
+Maps:
+  file-content:    Temporary file data (FileProcessor → ValidationService)
+  valid-records:   Validated records (ValidationService → OutputService)
+
+TTL Settings (Fallback Safety):
+  time-to-live-seconds: 300    # 5 minutes - auto-expire if not explicitly cleaned
+  max-idle-seconds: 180        # 3 minutes - expire if not accessed
+  eviction-policy: LRU         # Least Recently Used eviction
+  max-size-policy: 256MB       # Per-map heap limit
+
+Cleanup Flow:
+  1. FileProcessor writes to file-content map
+  2. ValidationService reads & cleans file-content, writes to valid-records
+  3. OutputService reads & cleans valid-records
+  4. TTL auto-cleans any orphaned entries (fallback safety)
 ```
 
 ---
@@ -467,6 +486,15 @@ Elasticsearch:   3-node StatefulSet
     - Edit modal: Handle missing required fields
     - API URLs: localhost → relative paths for K8s
 
+- **Session 19 (December 17, 2025):**
+  - **Hazelcast TTL Configuration (Automatic Cache Cleanup):**
+    - Added ConfigMap with `hazelcast.yaml` for map configurations
+    - `file-content` map: 5 min TTL, 3 min idle timeout, 256MB max, LRU eviction
+    - `valid-records` map: 5 min TTL, 3 min idle timeout, 256MB max, LRU eviction
+    - TTL provides fallback safety if explicit cleanup fails
+    - Enabled REST API for health probes
+    - **File:** `k8s/infrastructure/hazelcast-statefulset.yaml`
+
 ### Week 4 Milestone
 ✅ **Critical path testing complete**
 - Integration tests passing
@@ -525,6 +553,7 @@ Elasticsearch:   3-node StatefulSet
 - Session 16 - E2E-004 Complete + Filtered Statistics
 - Session 17 - E2E-006 Complete + BUG-013 (Corvus.Json.Validator) + Hebrew Translations
 - Session 18 - Hazelcast Cache Cleanup + Memory Optimization + Frontend Fixes
+- Session 19 - Hazelcast TTL Configuration (Automatic Cache Cleanup)
 
 ### Testing Documents
 - [TEST-PLAN-MASTER.md](./Testing/TEST-PLAN-MASTER.md)
@@ -541,6 +570,9 @@ Elasticsearch:   3-node StatefulSet
 - [HELM-CHART-SPECIFICATION.md](./Deployment/HELM-CHART-SPECIFICATION.md)
 - [PRODUCTION-READINESS-CHECKLIST.md](./Deployment/PRODUCTION-READINESS-CHECKLIST.md)
 - [ROLLBACK-PROCEDURES.md](./Deployment/ROLLBACK-PROCEDURES.md)
+
+### Infrastructure Documents
+- [INFRASTRUCTURE-HAZELCAST.md](./INFRASTRUCTURE-HAZELCAST.md) - Hazelcast cache configuration, TTL settings, cleanup strategy
 
 ---
 
@@ -573,11 +605,11 @@ Elasticsearch:   3-node StatefulSet
 ---
 
 **Document Status:** ✅ Active
-**Last Updated:** December 16, 2025 18:30 (Session 18 Complete - Memory Optimization + Frontend Fixes)
-**Current Progress:** 95% Complete (Week 3 Day 16 of 5 weeks) - E2E 100% Complete
+**Last Updated:** December 17, 2025 (Session 19 - Hazelcast TTL Configuration)
+**Current Progress:** 95% Complete (Week 3 Day 17 of 5 weeks) - E2E 100% Complete
 **Next Phase:** Week 4 Integration Testing - Critical Path Tests
 
-**Major Achievements (Sessions 6-18):**
+**Major Achievements (Sessions 6-19):**
 - Complete 4-stage pipeline verified end-to-end (FileDiscovery → FileProcessor → Validation → Output)
 - **ALL 6 E2E TEST SCENARIOS COMPLETE (100%)** ✅
 - 15+ critical production bugs fixed across multiple sessions
@@ -591,6 +623,7 @@ Elasticsearch:   3-node StatefulSet
 - Hebrew validation error translations with detailed messages
 - **Memory Optimization:** Hazelcast 4GB→512MB, ValidationService 6Gi→512Mi
 - **Hazelcast Cache Cleanup:** Fixed OutputService and ValidationService cache bugs
+- **Hazelcast TTL Configuration:** Auto-cleanup with 5 min TTL, 3 min idle timeout, LRU eviction
 - All services standardized for database configuration
 - Ingress configuration production-ready with path-based routing
 - Frontend nginx proxy for all backend services
