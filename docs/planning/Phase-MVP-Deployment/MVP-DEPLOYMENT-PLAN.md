@@ -77,7 +77,7 @@ This document outlines the complete deployment plan for the EZ Data Processing P
 | Production Validation | 🔄 40% | Week 5 | **Logs ✅, Metrics ✅, BusinessMetrics ✅** |
 
 **Current Phase:** Week 5 IN PROGRESS - Production Validation + UX Improvements
-**Last Updated:** December 18, 2025 (Session 24 - Alerts UX Complete, BusinessMetrics Integration)
+**Last Updated:** December 18, 2025 (Session 25 - Alert Editing Fixes)
 
 ---
 
@@ -668,6 +668,7 @@ kubectl port-forward svc/hazelcast 5701:5701 -n ez-platform
 - Session 22 - Week 5 Production Validation: Logs Storage & Elasticsearch Verification COMPLETE (8/8 services)
 - Session 23 - BusinessMetrics/BusinessContext Integration + OTEL Observability Fixes + Grafana Dashboards
 - Session 24 - Alerts UX Improvements: Cascading Filters, 3-Category Dropdowns, Hebrew Translations
+- Session 25 - Alert Editing Fixes: Template dropdown + Edit button for alerts without templateId
 
 ### Testing Documents
 - [TEST-PLAN-MASTER.md](./Testing/TEST-PLAN-MASTER.md)
@@ -868,6 +869,21 @@ kubectl port-forward svc/hazelcast 5701:5701 -n ez-platform
     - `src/Frontend/src/components/metrics/PromQLExpressionHelperDialog.tsx` - PromQL examples
     - `src/Frontend/src/components/layout/AppSidebar.tsx` - Navigation updates
     - Frontend deployed as `frontend:v13`
+
+**Session 25 Progress (December 18, 2025):**
+- **Alert Editing Fixes: COMPLETE** ✅
+  - **Root Cause Analysis:**
+    - Alert rules created via DemoGenerator had `templateId: null` (no template)
+    - When editing alerts without templateId:
+      1. Template dropdown showed no selected value (because no template was set)
+      2. Edit button "did nothing" - form fields were hidden due to `{selectedTemplate && (...)}` condition
+  - **Solution Implemented:**
+    - Auto-select "ביטוי מותאם אישית" (Custom Expression) template when editing alerts without templateId
+    - Populate the custom expression parameter with the existing rule's expression
+    - This ensures the form fields are visible and the template dropdown shows a selected value
+  - **Key Files Modified:**
+    - `src/Frontend/src/components/metrics/AlertRuleBuilder.tsx` - handleEditRule() enhanced with fallback logic
+  - **Frontend deployed as `frontend:v17`**
 
 **Remaining Tasks:**
 - [ ] Distributed Tracing Verification (Jaeger)

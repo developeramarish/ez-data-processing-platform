@@ -54,6 +54,11 @@ const AlertRuleBuilder: React.FC<AlertRuleBuilderProps> = ({
   const [rules, setRules] = useState<AlertRule[]>(value);
   const [isEditing, setIsEditing] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number>(-1);
+
+  // Sync rules from parent value (for initial load and edit mode)
+  useEffect(() => {
+    setRules(value);
+  }, [value]);
   
   // Form state
   const [selectedTemplate, setSelectedTemplate] = useState<AlertExpressionTemplate | null>(null);
@@ -167,21 +172,45 @@ const AlertRuleBuilder: React.FC<AlertRuleBuilderProps> = ({
 
   const handleEditRule = (index: number) => {
     const rule = rules[index];
+    if (!rule) {
+      return;
+    }
+
     setIsEditing(true);
     setEditingIndex(index);
-    
+
     setAlertName(rule.name);
     setAlertDescription(rule.description);
     setSeverity(rule.severity);
     setForDuration(rule.for || '5m');
     setKeepFiringFor(rule.keepFiringFor || '');
     setIsEnabled(rule.isEnabled);
-    
+
+    // Set the expression from the existing rule first
+    if (rule.expression) {
+      setGeneratedExpression(rule.expression);
+      setExpressionValid(validatePromQLExpression(rule.expression));
+    }
+
     if (rule.templateId) {
       const template = ALERT_EXPRESSION_TEMPLATES.find(t => t.id === rule.templateId);
       if (template) {
         setSelectedTemplate(template);
         setParameters(rule.templateParameters || {});
+      } else {
+        // Fallback to custom_expression if template not found
+        const customTemplate = ALERT_EXPRESSION_TEMPLATES.find(t => t.id === 'custom_expression');
+        if (customTemplate) {
+          setSelectedTemplate(customTemplate);
+          setParameters({ expression: rule.expression || '' });
+        }
+      }
+    } else {
+      // No templateId - use custom_expression template with the existing expression
+      const customTemplate = ALERT_EXPRESSION_TEMPLATES.find(t => t.id === 'custom_expression');
+      if (customTemplate) {
+        setSelectedTemplate(customTemplate);
+        setParameters({ expression: rule.expression || '' });
       }
     }
   };
