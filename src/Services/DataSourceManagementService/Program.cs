@@ -1,5 +1,6 @@
 using DataProcessing.Shared.Entities;
 using DataProcessing.Shared.Monitoring;
+using DataProcessing.Shared.Configuration;
 using DataProcessing.DataSourceManagement.Infrastructure;
 using DataProcessing.DataSourceManagement.Repositories;
 using DataProcessing.DataSourceManagement.Services;
@@ -7,6 +8,7 @@ using MongoDB.Entities;
 using MongoDB.Driver;
 using MongoDB.Bson;
 using System.Reflection;
+using System.Diagnostics;
 using MassTransit;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -38,11 +40,17 @@ services.AddControllers()
 services.AddEndpointsApiExplorer();
 
 // Configure logging
-services.AddLogging(builder =>
+services.AddLogging(loggingBuilder =>
 {
-    builder.AddConsole();
-    builder.AddDebug();
+    loggingBuilder.AddConsole();
+    loggingBuilder.AddDebug();
 });
+
+// Configure OpenTelemetry (metrics, traces, and logs via OTLP)
+var serviceName = "DataProcessing.DataSourceManagement";
+var activitySource = new ActivitySource(serviceName);
+services.AddSingleton(activitySource);
+services.AddDataProcessingOpenTelemetry(configuration, serviceName);
 
 // Configure metrics
 services.AddSingleton<DataProcessingMetrics>();

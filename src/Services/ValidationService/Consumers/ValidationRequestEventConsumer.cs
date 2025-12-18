@@ -527,24 +527,61 @@ public class ValidationRequestEventConsumer : DataProcessingConsumerBase<Validat
     /// <summary>
     /// Retrieves metric definitions from MetricsConfigurationService via MassTransit Request/Response
     /// Queries both global metrics (apply to all datasources) and datasource-specific metrics
-    /// Uses IMemoryCache with sliding expiration to reduce database queries
+    /// Uses two-level caching: Local IMemoryCache (fast) + Hazelcast distributed cache (shared across instances)
     /// </summary>
     private async Task<List<MetricDefinition>> GetMetricDefinitionsAsync(
         string dataSourceId,
         string correlationId)
     {
-        // Check cache first
         var cacheKey = $"metrics:definitions:{dataSourceId}";
+        var cacheDurationMinutes = _configuration.GetValue("MetricConfiguration:CacheDurationMinutes", 10);
 
-        if (_metricDefinitionsCache.TryGetValue(cacheKey, out List<MetricDefinition>? cachedMetrics))
+        // Level 1: Check local memory cache first (fastest)
+        if (_metricDefinitionsCache.TryGetValue(cacheKey, out List<MetricDefinition>? localCachedMetrics))
         {
             Logger.LogDebug(
-                "[{CorrelationId}] Retrieved {Count} metric configurations from cache for DataSourceId: {DataSourceId}",
-                correlationId, cachedMetrics!.Count, dataSourceId);
+                "[{CorrelationId}] Retrieved {Count} metric configurations from LOCAL cache for DataSourceId: {DataSourceId}",
+                correlationId, localCachedMetrics!.Count, dataSourceId);
 
-            return cachedMetrics;
+            return localCachedMetrics;
         }
 
+        // Level 2: Check Hazelcast distributed cache
+        try
+        {
+            var distributedCacheMap = await _hazelcastClient.GetMapAsync<string, string>("metric-definitions-cache");
+            var cachedJson = await distributedCacheMap.GetAsync(cacheKey);
+
+            if (!string.IsNullOrEmpty(cachedJson))
+            {
+                var distributedCachedMetrics = JsonConvert.DeserializeObject<List<MetricDefinition>>(cachedJson);
+
+                if (distributedCachedMetrics != null && distributedCachedMetrics.Count > 0)
+                {
+                    Logger.LogDebug(
+                        "[{CorrelationId}] Retrieved {Count} metric configurations from HAZELCAST cache for DataSourceId: {DataSourceId}",
+                        correlationId, distributedCachedMetrics.Count, dataSourceId);
+
+                    // Store in local cache for faster subsequent access
+                    var localCacheOptions = new MemoryCacheEntryOptions
+                    {
+                        SlidingExpiration = TimeSpan.FromMinutes(Math.Min(cacheDurationMinutes, 5)), // Shorter local TTL
+                        Priority = CacheItemPriority.Normal
+                    };
+                    _metricDefinitionsCache.Set(cacheKey, distributedCachedMetrics, localCacheOptions);
+
+                    return distributedCachedMetrics;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex,
+                "[{CorrelationId}] Failed to retrieve from Hazelcast cache, falling back to MetricsConfigurationService",
+                correlationId);
+        }
+
+        // Level 3: Fetch from MetricsConfigurationService
         try
         {
             Logger.LogDebug(
@@ -601,19 +638,38 @@ public class ValidationRequestEventConsumer : DataProcessingConsumerBase<Validat
                 }).ToList()
             }).ToList();
 
-            // Store in cache with sliding expiration
-            var cacheDurationMinutes = _configuration.GetValue("MetricConfiguration:CacheDurationMinutes", 10);
+            // Store in Hazelcast distributed cache with TTL
+            try
+            {
+                var distributedCacheMap = await _hazelcastClient.GetMapAsync<string, string>("metric-definitions-cache");
+                var serializedMetrics = JsonConvert.SerializeObject(metricDefinitions);
+                await distributedCacheMap.SetAsync(
+                    cacheKey,
+                    serializedMetrics,
+                    TimeSpan.FromMinutes(cacheDurationMinutes));
+
+                Logger.LogDebug(
+                    "[{CorrelationId}] Stored {Count} metric configurations in HAZELCAST cache for {Duration} minutes",
+                    correlationId, metricDefinitions.Count, cacheDurationMinutes);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex,
+                    "[{CorrelationId}] Failed to store in Hazelcast cache, continuing with local cache only",
+                    correlationId);
+            }
+
+            // Store in local memory cache for faster subsequent access
             var cacheOptions = new MemoryCacheEntryOptions
             {
-                SlidingExpiration = TimeSpan.FromMinutes(cacheDurationMinutes),
+                SlidingExpiration = TimeSpan.FromMinutes(Math.Min(cacheDurationMinutes, 5)), // Shorter local TTL
                 Priority = CacheItemPriority.Normal
             };
-
             _metricDefinitionsCache.Set(cacheKey, metricDefinitions, cacheOptions);
 
             Logger.LogDebug(
-                "[{CorrelationId}] Cached {Count} metric configurations for {Duration} minutes (sliding expiration)",
-                correlationId, metricDefinitions.Count, cacheDurationMinutes);
+                "[{CorrelationId}] Stored {Count} metric configurations in LOCAL cache (sliding expiration)",
+                correlationId, metricDefinitions.Count);
 
             return metricDefinitions;
         }

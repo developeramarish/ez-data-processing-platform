@@ -41,13 +41,14 @@ data:
               - '^kestrel[._].*'
               - '^system[._].*'
               - '^dns[._].*'
+              - '^validation[._].*'
 
       filter/business_metrics:
         metrics:
           include:
             match_type: regexp
             metric_names:
-              - '^business_.*'
+              - '^business[._].*'
 
       resource:
         attributes:

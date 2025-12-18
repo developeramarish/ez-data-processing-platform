@@ -20,46 +20,50 @@ public class ValidationMetrics
 
     public ValidationMetrics(IMeterFactory meterFactory)
     {
-        var meter = meterFactory.Create("DataProcessing.Validation", "1.0.0");
+        // System metrics meter (routed to Prometheus System)
+        var systemMeter = meterFactory.Create("DataProcessing.Validation", "1.0.0");
 
-        // Counter: Total validated records
-        _recordsValidatedCounter = meter.CreateCounter<long>(
-            name: "validation.records.validated.total",
+        // Business metrics meter (routed to Prometheus Business via business_ prefix)
+        var businessMeter = meterFactory.Create("DataProcessing.Business.Metrics", "1.0.0");
+
+        // Counter: Total validated records (system metric)
+        _recordsValidatedCounter = systemMeter.CreateCounter<long>(
+            name: "validation_records_validated_total",
             unit: "records",
             description: "Total number of records validated"
         );
 
-        // Counter: Validation errors
-        _validationErrorsCounter = meter.CreateCounter<long>(
-            name: "validation.errors.total",
+        // Counter: Validation errors (system metric)
+        _validationErrorsCounter = systemMeter.CreateCounter<long>(
+            name: "validation_errors_total",
             unit: "errors",
             description: "Total number of validation errors encountered"
         );
 
-        // Histogram: Validation duration
-        _validationDurationHistogram = meter.CreateHistogram<double>(
-            name: "validation.duration",
+        // Histogram: Validation duration (system metric)
+        _validationDurationHistogram = systemMeter.CreateHistogram<double>(
+            name: "validation_duration",
             unit: "ms",
             description: "Duration of validation operations in milliseconds"
         );
 
-        // Histogram: Business metrics (sum, avg, etc.)
-        _businessMetricHistogram = meter.CreateHistogram<double>(
-            name: "business.metric.value",
+        // Histogram: Business metrics (routed to Prometheus Business)
+        _businessMetricHistogram = businessMeter.CreateHistogram<double>(
+            name: "business_metric_value",
             unit: "{value}",
             description: "Distribution of calculated business metric values"
         );
 
-        // Counter: Category-based items
-        _categoryItemsCounter = meter.CreateCounter<long>(
-            name: "business.category.items.total",
+        // Counter: Category-based items (routed to Prometheus Business)
+        _categoryItemsCounter = businessMeter.CreateCounter<long>(
+            name: "business_category_items_total",
             unit: "items",
             description: "Count of items per category"
         );
 
-        // Gauge: Active validations
-        _activeValidationsGauge = meter.CreateObservableGauge<int>(
-            name: "validation.active.count",
+        // Gauge: Active validations (system metric)
+        _activeValidationsGauge = systemMeter.CreateObservableGauge<int>(
+            name: "validation_active_count",
             observeValue: () => _activeValidations,
             unit: "validations",
             description: "Number of currently active validation operations"

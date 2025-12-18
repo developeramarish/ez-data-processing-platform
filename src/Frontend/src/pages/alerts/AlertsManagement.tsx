@@ -1,0 +1,1247 @@
+import React, { useState, useEffect } from 'react';
+import { Typography, Button, Space, Card, Spin, message, Table, Tag, Empty, Modal, Form, Input, Select, Alert as AntAlert, Collapse, Checkbox, Divider, Tabs, Switch, Row, Col, Tooltip } from 'antd';
+import { PlusOutlined, ReloadOutlined, EditOutlined, DeleteOutlined, BellOutlined, InfoCircleOutlined, SearchOutlined, SettingOutlined, CodeOutlined } from '@ant-design/icons';
+import metricsApi, { type MetricConfiguration } from '../../services/metrics-api-client';
+import PromQLExpressionHelperDialog, {
+  GLOBAL_BUSINESS_METRICS,
+  SYSTEM_METRICS,
+  BUSINESS_METRIC_CATEGORIES,
+  SYSTEM_METRIC_CATEGORIES,
+  type AvailableMetric
+} from '../../components/metrics/PromQLExpressionHelperDialog';
+
+const { Title, Paragraph, Text } = Typography;
+const { TextArea } = Input;
+const Alert = AntAlert; // Alias to avoid conflict with AlertRule interface
+const { Option } = Select;
+
+interface AlertRule {
+  id?: string;
+  name: string;
+  description?: string;
+  severity: 'critical' | 'warning' | 'info';
+  expression: string;
+  for?: string;
+  isEnabled: boolean;
+  notificationRecipients?: string[];
+  metricId: string;
+  metricName?: string;
+  metricDisplayName?: string;
+}
+
+interface AlertFormData {
+  name: string;
+  description?: string;
+  severity: 'critical' | 'warning' | 'info';
+  expression: string;
+  for?: string;
+  isEnabled: boolean;
+  notificationRecipients?: string;
+  // Separate metric selections for each category
+  datasourceMetricIds?: string[];
+  businessMetricIds?: string[];
+  systemMetricIds?: string[];
+}
+
+const AlertsManagement: React.FC = () => {
+  const [loading, setLoading] = useState(false);
+  const [allMetrics, setAllMetrics] = useState<MetricConfiguration[]>([]);
+  const [alerts, setAlerts] = useState<AlertRule[]>([]);
+  const [editingAlert, setEditingAlert] = useState<AlertRule | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [form] = Form.useForm();
+  const [settingsForm] = Form.useForm();
+  const [activeTab, setActiveTab] = useState('alerts');
+
+  // Filters for alerts table
+  const [severityFilter, setSeverityFilter] = useState<string | null>(null);
+  const [metricFilter, setMetricFilter] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);  // enabled/disabled
+  const [datasourceCategoryFilter, setDatasourceCategoryFilter] = useState<string | null>(null);
+  const [datasourceSupplierFilter, setDatasourceSupplierFilter] = useState<string | null>(null);
+
+  // Smart filters for metric selection in modal
+  const [modalCategoryFilter, setModalCategoryFilter] = useState<string | null>(null);
+  const [modalTypeFilter, setModalTypeFilter] = useState<string | null>(null);
+  const [modalDatasourceFilter, setModalDatasourceFilter] = useState<string | null>(null);
+  const [modalSearchQuery, setModalSearchQuery] = useState('');
+  // Category filters for business and system metrics
+  const [businessCategoryFilter, setBusinessCategoryFilter] = useState<string | null>(null);
+  const [systemCategoryFilter, setSystemCategoryFilter] = useState<string | null>(null);
+
+  // PromQL Helper Dialog state
+  const [showPromQLHelper, setShowPromQLHelper] = useState(false);
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      // Load all metrics to get their alert rules
+      const metrics = await metricsApi.getAll();
+      setAllMetrics(metrics);
+
+      // Extract all alert rules from metrics
+      const allAlerts: AlertRule[] = [];
+      metrics.forEach(metric => {
+        const metricAlerts = (metric as any).alertRules || [];
+        metricAlerts.forEach((alert: any, idx: number) => {
+          allAlerts.push({
+            id: alert.id || `${metric.id}-alert-${idx}`,
+            name: alert.name || `Alert ${idx + 1}`,
+            description: alert.description,
+            severity: alert.severity || 'warning',
+            expression: alert.expression || alert.condition,
+            for: alert.for || alert.duration,
+            isEnabled: alert.isEnabled !== false,
+            notificationRecipients: alert.notificationRecipients,
+            metricId: metric.id,
+            metricName: metric.name,
+            metricDisplayName: metric.displayName
+          });
+        });
+      });
+      setAlerts(allAlerts);
+    } catch (error) {
+      message.error('שגיאה בטעינת התרעות');
+      console.error('Error loading alerts:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateAlert = () => {
+    form.resetFields();
+    form.setFieldsValue({
+      severity: 'warning',
+      isEnabled: true,
+      for: '5m'
+    });
+    setEditingAlert(null);
+    resetModalFilters();
+    setIsModalOpen(true);
+  };
+
+  const handleEditAlert = (alert: AlertRule) => {
+    // Determine which type of metric this alert is for
+    const isDatasourceMetric = allMetrics.some(m => m.id === alert.metricId);
+    const isBusinessMetric = alert.metricId?.startsWith('business:');
+    const isSystemMetric = alert.metricId?.startsWith('system:');
+
+    form.setFieldsValue({
+      name: alert.name,
+      description: alert.description,
+      severity: alert.severity,
+      expression: alert.expression,
+      for: alert.for,
+      isEnabled: alert.isEnabled,
+      notificationRecipients: alert.notificationRecipients?.join(', '),
+      datasourceMetricIds: isDatasourceMetric ? [alert.metricId] : [],
+      businessMetricIds: isBusinessMetric ? [alert.metricId] : [],
+      systemMetricIds: isSystemMetric ? [alert.metricId] : []
+    });
+    setEditingAlert(alert);
+    setIsModalOpen(true);
+  };
+
+  const handleDeleteAlert = async (alert: AlertRule) => {
+    if (!window.confirm(`האם למחוק את ההתרעה "${alert.name}"?`)) {
+      return;
+    }
+
+    try {
+      // Find the metric and remove the alert from it
+      const metric = allMetrics.find(m => m.id === alert.metricId);
+      if (metric) {
+        const alertRules = ((metric as any).alertRules || []).filter((a: any) =>
+          (a.id || a.name) !== (alert.id || alert.name)
+        );
+
+        await metricsApi.update(metric.id, {
+          ...metric,
+          alertRules
+        } as any);
+
+        message.success(`ההתרעה "${alert.name}" נמחקה בהצלחה`);
+        loadData();
+      }
+    } catch (error) {
+      message.error('שגיאה במחיקת ההתרעה');
+      console.error('Error deleting alert:', error);
+    }
+  };
+
+  const handleSaveAlert = async (values: AlertFormData) => {
+    try {
+      const alertData = {
+        name: values.name,
+        description: values.description,
+        severity: values.severity,
+        expression: values.expression,
+        for: values.for,
+        isEnabled: values.isEnabled,
+        notificationRecipients: values.notificationRecipients
+          ? values.notificationRecipients.split(',').map(r => r.trim())
+          : []
+      };
+
+      // Combine all selected metrics from the 3 dropdowns
+      const allMetricIds = [
+        ...(values.datasourceMetricIds || []),
+        ...(values.businessMetricIds || []),
+        ...(values.systemMetricIds || [])
+      ];
+
+      if (allMetricIds.length === 0) {
+        message.error('יש לבחור לפחות Metric אחד');
+        return;
+      }
+
+      // For each selected datasource metric, add/update the alert
+      for (const metricId of (values.datasourceMetricIds || [])) {
+        const metric = allMetrics.find(m => m.id === metricId);
+        if (metric) {
+          let alertRules = [...((metric as any).alertRules || [])];
+
+          if (editingAlert && editingAlert.metricId === metricId) {
+            // Update existing alert
+            alertRules = alertRules.map((a: any) =>
+              (a.id || a.name) === (editingAlert.id || editingAlert.name) ? alertData : a
+            );
+          } else {
+            // Add new alert
+            alertRules.push(alertData);
+          }
+
+          await metricsApi.update(metric.id, {
+            ...metric,
+            alertRules
+          } as any);
+        }
+      }
+
+      // Note: Business and System metrics are global, alerts on them would need different handling
+      // For now, we store the alert configuration with the expression referencing the metric
+
+      message.success(editingAlert ? 'ההתרעה עודכנה בהצלחה' : 'ההתרעה נוצרה בהצלחה');
+      setIsModalOpen(false);
+      loadData();
+    } catch (error) {
+      message.error('שגיאה בשמירת ההתרעה');
+      console.error('Error saving alert:', error);
+    }
+  };
+
+  const getSeverityTag = (severity: string) => {
+    const severityMap: Record<string, { text: string; color: string }> = {
+      critical: { text: 'קריטי', color: 'red' },
+      warning: { text: 'אזהרה', color: 'orange' },
+      info: { text: 'מידע', color: 'blue' }
+    };
+    const info = severityMap[severity] || { text: severity, color: 'default' };
+    return <Tag color={info.color}>{info.text}</Tag>;
+  };
+
+  // Filter alerts with additional filters
+  const filteredAlerts = alerts.filter(alert => {
+    if (severityFilter && alert.severity !== severityFilter) return false;
+    if (metricFilter && alert.metricId !== metricFilter) return false;
+    if (statusFilter !== null) {
+      const isEnabled = statusFilter === 'enabled';
+      if (alert.isEnabled !== isEnabled) return false;
+    }
+    // Filter by datasource category/supplier through metric
+    if (datasourceCategoryFilter || datasourceSupplierFilter) {
+      const metric = allMetrics.find(m => m.id === alert.metricId);
+      if (metric) {
+        if (datasourceCategoryFilter && metric.category !== datasourceCategoryFilter) return false;
+        if (datasourceSupplierFilter && metric.dataSourceName !== datasourceSupplierFilter) return false;
+      }
+    }
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      return (
+        alert.name.toLowerCase().includes(query) ||
+        alert.expression.toLowerCase().includes(query) ||
+        (alert.description?.toLowerCase().includes(query)) ||
+        (alert.metricDisplayName?.toLowerCase().includes(query))
+      );
+    }
+    return true;
+  });
+
+  // Get unique categories for alert table filters (always show all)
+  const uniqueAlertCategories = [...new Set(
+    alerts.map(a => allMetrics.find(m => m.id === a.metricId)?.category).filter(Boolean)
+  )] as string[];
+
+  // Get unique datasources - filtered by category if selected (cascading filter)
+  const uniqueAlertDatasources = [...new Set(
+    alerts
+      .map(a => allMetrics.find(m => m.id === a.metricId))
+      .filter(Boolean)
+      .filter(m => !datasourceCategoryFilter || m!.category === datasourceCategoryFilter)
+      .map(m => m!.dataSourceName)
+      .filter(Boolean)
+  )] as string[];
+
+  // Get unique metrics for filter - filtered by datasource if selected, by category if selected (cascading filter)
+  const metricsWithAlerts = [...new Set(alerts.map(a => a.metricId))]
+    .map(id => allMetrics.find(m => m.id === id))
+    .filter(Boolean)
+    .filter(m => !datasourceCategoryFilter || m!.category === datasourceCategoryFilter)
+    .filter(m => !datasourceSupplierFilter || m!.dataSourceName === datasourceSupplierFilter) as MetricConfiguration[];
+
+  // Get unique values for smart filters in modal
+  const uniqueCategories = [...new Set(allMetrics.map(m => m.category).filter(Boolean))];
+  const uniqueTypes = [...new Set(allMetrics.map(m => (m as any).prometheusType).filter(Boolean))];
+  const uniqueDatasources = [...new Set(allMetrics.map(m => m.dataSourceName).filter(Boolean))];
+
+  // Filter metrics for modal selection
+  const filteredModalMetrics = allMetrics.filter(metric => {
+    if (modalCategoryFilter && metric.category !== modalCategoryFilter) return false;
+    if (modalTypeFilter && (metric as any).prometheusType !== modalTypeFilter) return false;
+    if (modalDatasourceFilter && metric.dataSourceName !== modalDatasourceFilter) return false;
+    if (modalSearchQuery) {
+      const query = modalSearchQuery.toLowerCase();
+      return (
+        metric.name.toLowerCase().includes(query) ||
+        metric.displayName.toLowerCase().includes(query) ||
+        (metric.description?.toLowerCase().includes(query)) ||
+        (metric.fieldPath?.toLowerCase().includes(query))
+      );
+    }
+    return true;
+  });
+
+  // Reset modal filters when opening
+  const resetModalFilters = () => {
+    setModalCategoryFilter(null);
+    setModalTypeFilter(null);
+    setModalDatasourceFilter(null);
+    setModalSearchQuery('');
+    setBusinessCategoryFilter(null);
+    setSystemCategoryFilter(null);
+  };
+
+  // Filter business metrics by category and search
+  const filteredBusinessMetrics = GLOBAL_BUSINESS_METRICS.filter(m => {
+    if (businessCategoryFilter && m.category !== businessCategoryFilter) return false;
+    if (modalSearchQuery) {
+      const query = modalSearchQuery.toLowerCase();
+      return m.name.toLowerCase().includes(query) ||
+             m.displayName.toLowerCase().includes(query) ||
+             (m.description?.toLowerCase().includes(query));
+    }
+    return true;
+  });
+
+  // Filter system metrics by category and search
+  const filteredSystemMetrics = SYSTEM_METRICS.filter(m => {
+    if (systemCategoryFilter && m.category !== systemCategoryFilter) return false;
+    if (modalSearchQuery) {
+      const query = modalSearchQuery.toLowerCase();
+      return m.name.toLowerCase().includes(query) ||
+             m.displayName.toLowerCase().includes(query) ||
+             (m.description?.toLowerCase().includes(query));
+    }
+    return true;
+  });
+
+  // Get selected metrics from form for PromQL helper - uses separate fields
+  const getSelectedMetricsForHelper = (): {
+    datasource: AvailableMetric[];
+    business: AvailableMetric[];
+    system: AvailableMetric[];
+  } => {
+    // Get selections from each separate dropdown
+    const datasourceIds: string[] = form.getFieldValue('datasourceMetricIds') || [];
+    const businessIds: string[] = form.getFieldValue('businessMetricIds') || [];
+    const systemIds: string[] = form.getFieldValue('systemMetricIds') || [];
+
+    // Datasource metrics
+    const datasourceMetrics = allMetrics
+      .filter(m => datasourceIds.includes(m.id))
+      .map(m => ({
+        name: m.name,
+        displayName: m.displayName,
+        description: m.description,
+        prometheusType: (m as any).prometheusType
+      }));
+
+    // Business metrics
+    const businessMetrics = GLOBAL_BUSINESS_METRICS.filter(m => businessIds.includes(m.name));
+
+    // System metrics
+    const systemMetrics = SYSTEM_METRICS.filter(m => systemIds.includes(m.name));
+
+    return { datasource: datasourceMetrics, business: businessMetrics, system: systemMetrics };
+  };
+
+  const columns = [
+    {
+      title: 'שם התרעה',
+      dataIndex: 'name',
+      key: 'name',
+      render: (text: string, record: AlertRule) => (
+        <Space direction="vertical" size={0}>
+          <Text strong>{text}</Text>
+          {record.description && (
+            <Text type="secondary" style={{ fontSize: 11 }}>{record.description}</Text>
+          )}
+        </Space>
+      )
+    },
+    {
+      title: 'Metric',
+      key: 'metric',
+      render: (_: any, record: AlertRule) => (
+        <Tag color="blue">{record.metricDisplayName || record.metricName}</Tag>
+      )
+    },
+    {
+      title: 'חומרה',
+      dataIndex: 'severity',
+      key: 'severity',
+      render: (severity: string) => getSeverityTag(severity)
+    },
+    {
+      title: 'ביטוי',
+      dataIndex: 'expression',
+      key: 'expression',
+      render: (text: string) => (
+        <Text code style={{ fontSize: 11, maxWidth: 300, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {text}
+        </Text>
+      )
+    },
+    {
+      title: 'סטטוס',
+      key: 'status',
+      render: (_: any, record: AlertRule) => (
+        <Tag color={record.isEnabled ? 'green' : 'default'}>
+          {record.isEnabled ? 'פעיל' : 'מושבת'}
+        </Tag>
+      )
+    },
+    {
+      title: 'פעולות',
+      key: 'actions',
+      width: 120,
+      render: (_: any, record: AlertRule) => (
+        <Space size="small">
+          <Button
+            type="text"
+            size="small"
+            icon={<EditOutlined />}
+            onClick={() => handleEditAlert(record)}
+            title="ערוך"
+          />
+          <Button
+            type="text"
+            size="small"
+            danger
+            icon={<DeleteOutlined />}
+            onClick={() => handleDeleteAlert(record)}
+            title="מחק"
+          />
+        </Space>
+      )
+    }
+  ];
+
+  // Generate expression helper from selected metrics - uses separate fields
+  const generateExpressionHelper = () => {
+    // Get selections from separate dropdowns
+    const datasourceIds: string[] = form.getFieldValue('datasourceMetricIds') || [];
+    const businessIds: string[] = form.getFieldValue('businessMetricIds') || [];
+    const systemIds: string[] = form.getFieldValue('systemMetricIds') || [];
+
+    // Parse selected metrics from different categories
+    const datasourceMetrics = allMetrics.filter(m => datasourceIds.includes(m.id));
+    const selectedBusinessMetrics = GLOBAL_BUSINESS_METRICS.filter(m => businessIds.includes(m.name));
+    const selectedSystemMetrics = SYSTEM_METRICS.filter(m => systemIds.includes(m.name));
+
+    const allSelectedMetrics = [
+      ...datasourceMetrics.map(m => ({ name: m.name, displayName: m.displayName, type: 'datasource', prometheusType: (m as any).prometheusType })),
+      ...selectedBusinessMetrics.map(m => ({ name: m.name, displayName: m.displayName, type: 'business', prometheusType: m.prometheusType })),
+      ...selectedSystemMetrics.map(m => ({ name: m.name, displayName: m.displayName, type: 'system', prometheusType: m.prometheusType }))
+    ];
+
+    if (allSelectedMetrics.length === 0) return null;
+
+    return (
+      <Collapse size="small" style={{ marginTop: 8 }}>
+        <Collapse.Panel header="עזרה ליצירת ביטוי" key="1">
+          <Space direction="vertical" size="small" style={{ width: '100%' }}>
+            <Text type="secondary">Metrics זמינים לשימוש בביטוי:</Text>
+            {allSelectedMetrics.map((metric, idx) => (
+              <Card
+                key={`${metric.type}-${idx}`}
+                size="small"
+                style={{
+                  backgroundColor: metric.type === 'business' ? '#f6ffed' :
+                    metric.type === 'system' ? '#fff7e6' : '#fafafa'
+                }}
+              >
+                <Space direction="vertical" size={0}>
+                  <Space>
+                    <Text strong>{metric.displayName}</Text>
+                    <Tag
+                      color={metric.type === 'business' ? 'green' :
+                        metric.type === 'system' ? 'orange' : 'blue'}
+                      style={{ fontSize: 9 }}
+                    >
+                      {metric.type === 'business' ? 'עסקי' :
+                        metric.type === 'system' ? 'מערכת' : 'מקור נתונים'}
+                    </Tag>
+                  </Space>
+                  <Text code copyable style={{ fontSize: 11 }}>{metric.name}</Text>
+                  {metric.prometheusType && (
+                    <Text type="secondary" style={{ fontSize: 10 }}>סוג: {metric.prometheusType}</Text>
+                  )}
+                </Space>
+              </Card>
+            ))}
+            <Divider style={{ margin: '8px 0' }} />
+            <Text type="secondary">דוגמאות לביטויים:</Text>
+            <Space direction="vertical" size={4}>
+              <Text code style={{ fontSize: 11 }}>{`${allSelectedMetrics[0]?.name || 'metric_name'} > 100`}</Text>
+              <Text code style={{ fontSize: 11 }}>{`rate(${allSelectedMetrics[0]?.name || 'metric_name'}[5m]) > 10`}</Text>
+              {allSelectedMetrics.length > 1 && (
+                <Text code style={{ fontSize: 11 }}>{`${allSelectedMetrics[0]?.name} > 100 OR ${allSelectedMetrics[1]?.name} > 50`}</Text>
+              )}
+            </Space>
+          </Space>
+        </Collapse.Panel>
+      </Collapse>
+    );
+  };
+
+  // Settings tab content
+  const renderSettingsTab = () => (
+    <div>
+      <Card style={{ marginBottom: 16 }}>
+        <Title level={4}>הגדרות התרעה גלובליות</Title>
+        <Form form={settingsForm} layout="vertical">
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                label="נמעני Email ברירת מחדל"
+                name="defaultEmails"
+              >
+                <Input placeholder="admin@company.com, data-team@company.com" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                label="Slack Webhook URL"
+                name="slackWebhook"
+              >
+                <Input placeholder="https://hooks.slack.com/services/..." />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                label="תדירות התרעות"
+                name="frequency"
+              >
+                <Select defaultValue="immediate">
+                  <Option value="immediate">מיידי</Option>
+                  <Option value="5min">כל 5 דקות</Option>
+                  <Option value="15min">כל 15 דקות</Option>
+                  <Option value="1hour">כל שעה</Option>
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                label="הפעל התרעות"
+                name="enabled"
+                valuePropName="checked"
+              >
+                <Switch defaultChecked />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Form.Item>
+            <Button type="primary">
+              שמור הגדרות
+            </Button>
+          </Form.Item>
+        </Form>
+      </Card>
+
+      {/* Email Templates */}
+      <Card>
+        <Title level={4}>תבניות התרעה</Title>
+        <Row gutter={16}>
+          <Col span={12}>
+            <Card size="small" title="תבנית Email">
+              <div style={{ backgroundColor: '#f5f5f5', padding: 12, borderRadius: 4 }}>
+                <Text style={{ fontFamily: 'monospace', fontSize: '12px' }}>
+                  נושא: [מערכת עיבוד נתונים] {'{alertName}'}<br />
+                  <br />
+                  שלום,<br />
+                  <br />
+                  התקבלה התרעה במערכת:<br />
+                  כלל: {'{alertName}'}<br />
+                  תנאי: {'{condition}'}<br />
+                  זמן: {'{timestamp}'}<br />
+                  <br />
+                  בברכה,<br />
+                  מערכת עיבוד נתונים
+                </Text>
+              </div>
+            </Card>
+          </Col>
+          <Col span={12}>
+            <Card size="small" title="תבנית Slack">
+              <div style={{ backgroundColor: '#f5f5f5', padding: 12, borderRadius: 4 }}>
+                <Text style={{ fontFamily: 'monospace', fontSize: '12px' }}>
+                  🚨 *התרעה: {'{alertName}'}*<br />
+                  📋 תנאי: {'{condition}'}<br />
+                  ⏰ זמן: {'{timestamp}'}<br />
+                  🔗 לינק לדשבורד
+                </Text>
+              </div>
+            </Card>
+          </Col>
+        </Row>
+      </Card>
+    </div>
+  );
+
+  // Alerts tab content
+  const renderAlertsTab = () => (
+    <Spin spinning={loading}>
+      {/* Info alert */}
+      <Alert
+        message="ניהול התרעות מרכזי"
+        description="דף זה מאפשר לנהל את כל ההתרעות במערכת. ניתן ליצור התרעות חדשות על מדדים קיימים, לשלב ביטויים ממספר מדדים, ולנהל את ההתרעות הקיימות."
+        type="info"
+        showIcon
+        icon={<InfoCircleOutlined />}
+        style={{ marginBottom: 16 }}
+      />
+
+      {/* Filters */}
+      <Card size="small" style={{ marginBottom: 16 }}>
+        <Space wrap>
+          <Input
+            placeholder="חיפוש..."
+            prefix={<SearchOutlined />}
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            style={{ width: 180 }}
+            allowClear
+          />
+          <Select
+            placeholder="סטטוס"
+            style={{ width: 120 }}
+            allowClear
+            value={statusFilter}
+            onChange={setStatusFilter}
+          >
+            <Option value="enabled">פעיל</Option>
+            <Option value="disabled">מושבת</Option>
+          </Select>
+          <Select
+            placeholder="חומרה"
+            style={{ width: 120 }}
+            allowClear
+            value={severityFilter}
+            onChange={setSeverityFilter}
+          >
+            <Option value="critical">קריטי</Option>
+            <Option value="warning">אזהרה</Option>
+            <Option value="info">מידע</Option>
+          </Select>
+          <Select
+            placeholder="קטגוריה"
+            style={{ width: 140 }}
+            allowClear
+            showSearch
+            optionFilterProp="children"
+            value={datasourceCategoryFilter}
+            onChange={(value) => {
+              setDatasourceCategoryFilter(value);
+              // Reset child filters when category changes (cascading)
+              setDatasourceSupplierFilter(null);
+              setMetricFilter(null);
+            }}
+          >
+            {uniqueAlertCategories.map(cat => (
+              <Option key={cat} value={cat}>{cat}</Option>
+            ))}
+          </Select>
+          <Select
+            placeholder="מקור נתונים"
+            style={{ width: 160 }}
+            allowClear
+            showSearch
+            optionFilterProp="children"
+            value={datasourceSupplierFilter}
+            onChange={(value) => {
+              setDatasourceSupplierFilter(value);
+              // Reset metric filter when datasource changes (cascading)
+              setMetricFilter(null);
+            }}
+          >
+            {uniqueAlertDatasources.map(ds => (
+              <Option key={ds} value={ds}>{ds}</Option>
+            ))}
+          </Select>
+          <Select
+            placeholder="Metric"
+            style={{ width: 160 }}
+            allowClear
+            showSearch
+            optionFilterProp="children"
+            value={metricFilter}
+            onChange={setMetricFilter}
+          >
+            {metricsWithAlerts.map(metric => (
+              <Option key={metric.id} value={metric.id}>{metric.displayName}</Option>
+            ))}
+          </Select>
+          {(severityFilter || metricFilter || searchQuery || statusFilter || datasourceCategoryFilter || datasourceSupplierFilter) && (
+            <Button
+              type="link"
+              onClick={() => {
+                setSeverityFilter(null);
+                setMetricFilter(null);
+                setSearchQuery('');
+                setStatusFilter(null);
+                setDatasourceCategoryFilter(null);
+                setDatasourceSupplierFilter(null);
+              }}
+            >
+              נקה מסננים
+            </Button>
+          )}
+        </Space>
+      </Card>
+
+      {/* Alerts table */}
+      <Card
+        title={
+          <Space>
+            <BellOutlined />
+            <span>התרעות ({filteredAlerts.length})</span>
+          </Space>
+        }
+      >
+        {filteredAlerts.length === 0 ? (
+          <Empty
+            description={alerts.length === 0 ? "אין התרעות מוגדרות" : "אין תוצאות מתאימות לסינון"}
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+          >
+            {alerts.length === 0 && (
+              <Button type="primary" icon={<PlusOutlined />} onClick={handleCreateAlert}>
+                צור התרעה ראשונה
+              </Button>
+            )}
+          </Empty>
+        ) : (
+          <Table
+            dataSource={filteredAlerts}
+            columns={columns}
+            rowKey="id"
+            pagination={{ pageSize: 20 }}
+            size="middle"
+          />
+        )}
+      </Card>
+    </Spin>
+  );
+
+  return (
+    <div>
+      <div className="page-header">
+        <div>
+          <Title level={2} style={{ margin: 0 }}>
+            ניהול התרעות
+          </Title>
+          <Paragraph className="page-subtitle">
+            הגדר וניהל התרעות על מדדים עסקיים ומדדי מערכת
+          </Paragraph>
+        </div>
+        <Space>
+          <Button
+            icon={<ReloadOutlined />}
+            onClick={loadData}
+            loading={loading}
+          >
+            רענן
+          </Button>
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={handleCreateAlert}
+          >
+            יצירת התרעה
+          </Button>
+        </Space>
+      </div>
+
+      <Tabs
+        activeKey={activeTab}
+        onChange={setActiveTab}
+        items={[
+          {
+            key: 'alerts',
+            label: (
+              <Space>
+                <BellOutlined />
+                התרעות
+              </Space>
+            ),
+            children: renderAlertsTab()
+          },
+          {
+            key: 'settings',
+            label: (
+              <Space>
+                <SettingOutlined />
+                הגדרות
+              </Space>
+            ),
+            children: renderSettingsTab()
+          }
+        ]}
+      />
+
+      {/* Create/Edit Modal */}
+      <Modal
+        title={editingAlert ? 'עריכת התרעה' : 'יצירת התרעה חדשה'}
+        open={isModalOpen}
+        onCancel={() => setIsModalOpen(false)}
+        footer={null}
+        width={700}
+      >
+        <Form
+          form={form}
+          layout="vertical"
+          onFinish={handleSaveAlert}
+        >
+          {/* Smart Filters for Metric Selection */}
+          <Card size="small" style={{ marginBottom: 16, backgroundColor: '#fafafa' }}>
+            <Space direction="vertical" style={{ width: '100%' }} size="small">
+              <Text type="secondary" style={{ fontSize: 12 }}>סינון Metrics:</Text>
+              <Row gutter={8}>
+                <Col span={6}>
+                  <Input
+                    placeholder="חיפוש חופשי..."
+                    prefix={<SearchOutlined />}
+                    value={modalSearchQuery}
+                    onChange={e => setModalSearchQuery(e.target.value)}
+                    allowClear
+                    size="small"
+                  />
+                </Col>
+                <Col span={5}>
+                  <Select
+                    placeholder="קטגוריה"
+                    style={{ width: '100%' }}
+                    allowClear
+                    value={modalCategoryFilter}
+                    onChange={setModalCategoryFilter}
+                    size="small"
+                  >
+                    {uniqueCategories.map(cat => (
+                      <Option key={cat} value={cat}>{cat}</Option>
+                    ))}
+                  </Select>
+                </Col>
+                <Col span={5}>
+                  <Select
+                    placeholder="סוג Prometheus"
+                    style={{ width: '100%' }}
+                    allowClear
+                    value={modalTypeFilter}
+                    onChange={setModalTypeFilter}
+                    size="small"
+                  >
+                    {uniqueTypes.map(type => (
+                      <Option key={type} value={type}>{type}</Option>
+                    ))}
+                  </Select>
+                </Col>
+                <Col span={5}>
+                  <Select
+                    placeholder="מקור נתונים"
+                    style={{ width: '100%' }}
+                    allowClear
+                    value={modalDatasourceFilter}
+                    onChange={setModalDatasourceFilter}
+                    size="small"
+                  >
+                    {uniqueDatasources.map(ds => (
+                      <Option key={ds} value={ds}>{ds}</Option>
+                    ))}
+                  </Select>
+                </Col>
+                <Col span={3}>
+                  {(modalCategoryFilter || modalTypeFilter || modalDatasourceFilter || modalSearchQuery) && (
+                    <Button type="link" size="small" onClick={resetModalFilters}>
+                      נקה
+                    </Button>
+                  )}
+                </Col>
+              </Row>
+              <Text type="secondary" style={{ fontSize: 11 }}>
+                מציג {filteredModalMetrics.length} מתוך {allMetrics.length} Metrics
+              </Text>
+            </Space>
+          </Card>
+
+          {/* 1. Datasource-specific Metrics Dropdown */}
+          <Form.Item
+            name="datasourceMetricIds"
+            label={<span style={{ color: '#1890ff', fontWeight: 500 }}>📊 מדדי מקור נתונים (Datasource Metrics)</span>}
+            extra={`מדדים ספציפיים למקורות נתונים - ${filteredModalMetrics.length} זמינים`}
+          >
+            <Select
+              mode="multiple"
+              placeholder="בחר מדדי מקור נתונים..."
+              showSearch
+              optionFilterProp="children"
+              style={{ width: '100%' }}
+              allowClear
+            >
+              {filteredModalMetrics.map(metric => (
+                <Option key={metric.id} value={metric.id}>
+                  <Space>
+                    <span>{metric.displayName} ({metric.name})</span>
+                    {metric.category && <Tag color="blue" style={{ fontSize: 10 }}>{metric.category}</Tag>}
+                    {metric.dataSourceName && <Tag style={{ fontSize: 10 }}>{metric.dataSourceName}</Tag>}
+                  </Space>
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
+
+          {/* 2. Global Business Metrics Dropdown */}
+          <Form.Item
+            name="businessMetricIds"
+            label={
+              <Space>
+                <span style={{ color: '#52c41a', fontWeight: 500 }}>📈 מדדים עסקיים (Business Metrics)</span>
+                <Select
+                  size="small"
+                  placeholder="סנן לפי קטגוריה"
+                  style={{ width: 140, fontSize: 10 }}
+                  allowClear
+                  value={businessCategoryFilter}
+                  onChange={setBusinessCategoryFilter}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {Object.entries(BUSINESS_METRIC_CATEGORIES).map(([key, label]) => (
+                    <Option key={key} value={key}>{label}</Option>
+                  ))}
+                </Select>
+              </Space>
+            }
+            extra={`מדדים עסקיים גלובליים - ${filteredBusinessMetrics.length} זמינים`}
+          >
+            <Select
+              mode="multiple"
+              placeholder="בחר מדדים עסקיים..."
+              showSearch
+              optionFilterProp="children"
+              style={{ width: '100%' }}
+              allowClear
+            >
+              {filteredBusinessMetrics.map(metric => (
+                <Option key={metric.name} value={metric.name}>
+                  <Tooltip
+                    title={
+                      <div>
+                        <div><strong>{metric.description}</strong></div>
+                        {metric.labels && metric.labels.length > 0 && (
+                          <div style={{ marginTop: 4 }}>
+                            <span>Labels: </span>
+                            {metric.labels.map((l, i) => (
+                              <Tag key={i} style={{ fontSize: 9, margin: 2 }}>{l}</Tag>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    }
+                    placement="left"
+                  >
+                    <Space>
+                      <span>{metric.displayName}</span>
+                      {metric.category && (
+                        <Tag color="green" style={{ fontSize: 9 }}>
+                          {BUSINESS_METRIC_CATEGORIES[metric.category] || metric.category}
+                        </Tag>
+                      )}
+                      {metric.prometheusType && <Tag style={{ fontSize: 9 }}>{metric.prometheusType}</Tag>}
+                    </Space>
+                  </Tooltip>
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
+
+          {/* 3. System Metrics Dropdown */}
+          <Form.Item
+            name="systemMetricIds"
+            label={
+              <Space>
+                <span style={{ color: '#fa8c16', fontWeight: 500 }}>⚙️ מדדי מערכת (System Metrics)</span>
+                <Select
+                  size="small"
+                  placeholder="סנן לפי קטגוריה"
+                  style={{ width: 140, fontSize: 10 }}
+                  allowClear
+                  value={systemCategoryFilter}
+                  onChange={setSystemCategoryFilter}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {Object.entries(SYSTEM_METRIC_CATEGORIES).map(([key, label]) => (
+                    <Option key={key} value={key}>{label}</Option>
+                  ))}
+                </Select>
+              </Space>
+            }
+            extra={`מדדי תשתית ומערכת - ${filteredSystemMetrics.length} זמינים`}
+          >
+            <Select
+              mode="multiple"
+              placeholder="בחר מדדי מערכת..."
+              showSearch
+              optionFilterProp="children"
+              style={{ width: '100%' }}
+              allowClear
+            >
+              {filteredSystemMetrics.map(metric => (
+                <Option key={metric.name} value={metric.name}>
+                  <Tooltip
+                    title={
+                      <div>
+                        <div><strong>{metric.description}</strong></div>
+                        {metric.labels && metric.labels.length > 0 && (
+                          <div style={{ marginTop: 4 }}>
+                            <span>Labels: </span>
+                            {metric.labels.map((l, i) => (
+                              <Tag key={i} style={{ fontSize: 9, margin: 2 }}>{l}</Tag>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    }
+                    placement="left"
+                  >
+                    <Space>
+                      <span>{metric.displayName}</span>
+                      {metric.category && (
+                        <Tag color="orange" style={{ fontSize: 9 }}>
+                          {SYSTEM_METRIC_CATEGORIES[metric.category] || metric.category}
+                        </Tag>
+                      )}
+                      {metric.prometheusType && <Tag style={{ fontSize: 9 }}>{metric.prometheusType}</Tag>}
+                    </Space>
+                  </Tooltip>
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
+
+          {generateExpressionHelper()}
+
+          <Form.Item
+            name="name"
+            label="שם ההתרעה"
+            rules={[{ required: true, message: 'יש להזין שם להתרעה' }]}
+          >
+            <Input placeholder="לדוגמה: ערך חריג בשדה סכום" />
+          </Form.Item>
+
+          <Form.Item
+            name="description"
+            label="תיאור"
+          >
+            <TextArea rows={2} placeholder="תיאור קצר של ההתרעה" />
+          </Form.Item>
+
+          <Form.Item
+            name="severity"
+            label="רמת חומרה"
+            rules={[{ required: true }]}
+          >
+            <Select>
+              <Option value="critical">קריטי - דורש טיפול מיידי</Option>
+              <Option value="warning">אזהרה - דורש תשומת לב</Option>
+              <Option value="info">מידע - לידיעה בלבד</Option>
+            </Select>
+          </Form.Item>
+
+          <Form.Item
+            name="expression"
+            label={
+              <Space>
+                <span>ביטוי PromQL</span>
+                <Tooltip title="פתח עוזר PromQL לבניית ביטויים אינטראקטיבית">
+                  <Button
+                    type="link"
+                    size="small"
+                    icon={<CodeOutlined />}
+                    onClick={() => setShowPromQLHelper(true)}
+                    style={{ padding: '0 4px' }}
+                  >
+                    עוזר PromQL
+                  </Button>
+                </Tooltip>
+              </Space>
+            }
+            rules={[{ required: true, message: 'יש להזין ביטוי' }]}
+            extra={
+              <Space direction="vertical" size={0}>
+                <Text type="secondary">ביטוי Prometheus לבדיקת ההתרעה</Text>
+                {(() => {
+                  // Get selections from separate dropdowns
+                  const datasourceIds: string[] = form.getFieldValue('datasourceMetricIds') || [];
+                  const businessIds: string[] = form.getFieldValue('businessMetricIds') || [];
+                  const systemIds: string[] = form.getFieldValue('systemMetricIds') || [];
+
+                  if (datasourceIds.length === 0 && businessIds.length === 0 && systemIds.length === 0) return null;
+
+                  // Parse metrics from all categories
+                  const datasourceMetrics = allMetrics.filter(m => datasourceIds.includes(m.id));
+                  const selectedBusinessMetrics = GLOBAL_BUSINESS_METRICS.filter(m => businessIds.includes(m.name));
+                  const selectedSystemMetrics = SYSTEM_METRICS.filter(m => systemIds.includes(m.name));
+
+                  const allSelectedMetrics = [
+                    ...datasourceMetrics.map(m => ({ name: m.name, type: 'datasource' })),
+                    ...selectedBusinessMetrics.map(m => ({ name: m.name, type: 'business' })),
+                    ...selectedSystemMetrics.map(m => ({ name: m.name, type: 'system' }))
+                  ];
+
+                  if (allSelectedMetrics.length > 0) {
+                    return (
+                      <Space wrap size={4} style={{ marginTop: 4 }}>
+                        <Text type="secondary" style={{ fontSize: 11 }}>Metrics זמינים (לחץ להוספה):</Text>
+                        {allSelectedMetrics.map((m, idx) => (
+                          <Tag
+                            key={`${m.type}-${idx}`}
+                            color={m.type === 'business' ? 'green' : m.type === 'system' ? 'orange' : 'blue'}
+                            style={{ fontSize: 10, cursor: 'pointer' }}
+                            onClick={() => {
+                              const currentExpr = form.getFieldValue('expression') || '';
+                              form.setFieldValue('expression', currentExpr + (currentExpr ? ' ' : '') + m.name);
+                            }}
+                          >
+                            {m.name}
+                          </Tag>
+                        ))}
+                      </Space>
+                    );
+                  }
+                  return null;
+                })()}
+              </Space>
+            }
+          >
+            <TextArea
+              rows={3}
+              placeholder="לדוגמה: metric_name > 100&#10;לחץ על 'עוזר PromQL' לבניית ביטוי אינטראקטיבית"
+              style={{ fontFamily: 'monospace' }}
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="for"
+            label="משך זמן לפני הפעלה (For)"
+            extra="כמה זמן הביטוי צריך להתקיים לפני שההתרעה תופעל"
+          >
+            <Input placeholder="לדוגמה: 5m, 1h" style={{ width: 120 }} />
+          </Form.Item>
+
+          <Form.Item
+            name="notificationRecipients"
+            label="נמענים להודעה"
+            extra="כתובות דוא״ל מופרדות בפסיקים"
+          >
+            <Input placeholder="user1@example.com, user2@example.com" />
+          </Form.Item>
+
+          <Form.Item
+            name="isEnabled"
+            valuePropName="checked"
+          >
+            <Checkbox>התרעה פעילה</Checkbox>
+          </Form.Item>
+
+          <Form.Item style={{ marginBottom: 0, textAlign: 'left' }}>
+            <Space>
+              <Button onClick={() => setIsModalOpen(false)}>
+                ביטול
+              </Button>
+              <Button type="primary" htmlType="submit">
+                {editingAlert ? 'עדכן' : 'צור'} התרעה
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* PromQL Expression Helper Dialog - shows only selected metrics */}
+      <PromQLExpressionHelperDialog
+        visible={showPromQLHelper}
+        onClose={() => setShowPromQLHelper(false)}
+        onSelect={(expression) => {
+          form.setFieldValue('expression', expression);
+          setShowPromQLHelper(false);
+        }}
+        currentExpression={form.getFieldValue('expression') || ''}
+        metricName={(() => {
+          // Get first selected metric name to use as placeholder replacement
+          const datasourceIds = form.getFieldValue('datasourceMetricIds') || [];
+          const businessIds = form.getFieldValue('businessMetricIds') || [];
+          const systemIds = form.getFieldValue('systemMetricIds') || [];
+
+          // Priority: datasource > business > system
+          if (datasourceIds.length > 0) {
+            const firstMetric = allMetrics.find(m => m.id === datasourceIds[0]);
+            return firstMetric?.name || 'metric';
+          }
+          if (businessIds.length > 0) {
+            return businessIds[0];
+          }
+          if (systemIds.length > 0) {
+            return systemIds[0];
+          }
+          return 'metric';
+        })()}
+        availableMetrics={(() => {
+          // Pass only SELECTED datasource metrics to the helper
+          const selected = getSelectedMetricsForHelper();
+          return selected.datasource;
+        })()}
+        selectedBusinessMetrics={(() => {
+          // Pass only SELECTED business metrics
+          const selected = getSelectedMetricsForHelper();
+          return selected.business;
+        })()}
+        selectedSystemMetrics={(() => {
+          // Pass only SELECTED system metrics
+          const selected = getSelectedMetricsForHelper();
+          return selected.system;
+        })()}
+        showSystemMetrics={false}  // Don't show all system metrics, only selected
+      />
+    </div>
+  );
+};
+
+export default AlertsManagement;

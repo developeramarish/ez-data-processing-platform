@@ -22,11 +22,10 @@ import SystemMonitoring from './pages/monitoring/SystemMonitoring';
 import SchemaManagement from './pages/schema/SchemaManagementEnhanced';
 import SchemaBuilder from './pages/schema/SchemaBuilderNew';
 import SchemaEditorPage from './pages/schema/SchemaEditorPage';
-import MetricsConfigurationListEnhanced from './pages/metrics/MetricsConfigurationListEnhanced';
 import MetricConfigurationWizard from './pages/metrics/MetricConfigurationWizard';
+import AlertsManagement from './pages/alerts/AlertsManagement';
 import InvalidRecordsManagement from './pages/invalid-records/InvalidRecordsManagement';
 import AIAssistant from './pages/ai-assistant/AIAssistant';
-import NotificationsManagement from './pages/notifications/NotificationsManagement';
 
 const { Content } = Layout;
 
@@ -99,15 +98,13 @@ const App: React.FC = () => {
                   <Route path="/schema" element={<SchemaManagement />} />
                   <Route path="/schema/builder" element={<SchemaBuilder />} />
                   <Route path="/schema/edit/:id" element={<SchemaEditorPage />} />
-                  <Route path="/metrics-config" element={<MetricsConfigurationListEnhanced />} />
-                  <Route path="/metrics" element={<MetricsConfigurationListEnhanced />} />
                   <Route path="/metrics/new" element={<MetricConfigurationWizard />} />
                   <Route path="/metrics/create" element={<MetricConfigurationWizard />} />
                   <Route path="/metrics/:id/edit" element={<MetricConfigurationWizard />} />
                   <Route path="/metrics/edit/:id" element={<MetricConfigurationWizard />} />
+                  <Route path="/alerts" element={<AlertsManagement />} />
                   <Route path="/invalid-records" element={<InvalidRecordsManagement />} />
                   <Route path="/ai-assistant" element={<AIAssistant />} />
-                  <Route path="/notifications" element={<NotificationsManagement />} />
                   <Route path="/validation" element={<ValidationResults />} />
                   <Route path="/monitoring" element={<SystemMonitoring />} />
                   <Route path="*" element={<Navigate to="/datasources" replace />} />

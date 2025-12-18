@@ -66,11 +66,11 @@ export const RelatedMetricsTab: React.FC<RelatedMetricsTabProps> = ({ dataSource
 
   const handleCreateMetric = () => {
     // Navigate to metric wizard with datasource pre-selected
-    navigate(`/metrics/create?dataSourceId=${dataSourceId}`);
+    navigate(`/metrics/new?dataSourceId=${dataSourceId}`);
   };
 
   const handleEditMetric = (metricId: string) => {
-    navigate(`/metrics/${metricId}/edit`);
+    navigate(`/metrics/edit/${metricId}?dataSourceId=${dataSourceId}`);
   };
 
   if (loading) {
@@ -192,8 +192,8 @@ export const RelatedMetricsTab: React.FC<RelatedMetricsTabProps> = ({ dataSource
           >
             צור Metric חדש למקור נתונים זה
           </Button>
-          <Button onClick={() => navigate('/metrics')}>
-            הצג את כל ה-Metrics
+          <Button onClick={() => navigate('/alerts')}>
+            ניהול התראות
           </Button>
         </Space>
 

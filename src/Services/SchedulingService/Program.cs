@@ -22,12 +22,11 @@ builder.Services.AddDataProcessingLogging(
     builder.Environment, 
     "DataProcessing.Scheduling");
 
-// Configure OpenTelemetry - Disabled temporarily due to package version conflict
-// var serviceName = "DataProcessing.Scheduling";
-// var activitySource = new ActivitySource(serviceName);
-// builder.Services.AddSingleton(activitySource);
-// builder.Services.AddDataProcessingOpenTelemetry(builder.Configuration, serviceName);
+// Configure OpenTelemetry (metrics, traces, and logs via OTLP)
 var serviceName = "DataProcessing.Scheduling";
+var activitySource = new ActivitySource(serviceName);
+builder.Services.AddSingleton(activitySource);
+builder.Services.AddDataProcessingOpenTelemetry(builder.Configuration, serviceName);
 
 // Configure MongoDB
 var connectionString = builder.Configuration.GetConnectionString("MongoDB") 
@@ -96,6 +95,7 @@ builder.Services.AddDataProcessingHealthChecks(builder.Configuration, serviceNam
 
 // Configure metrics
 builder.Services.AddSingleton<DataProcessingMetrics>();
+builder.Services.AddBusinessMetrics();
 
 // Configure CORS for development
 builder.Services.AddCors(options =>

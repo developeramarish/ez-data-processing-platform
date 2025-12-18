@@ -73,8 +73,11 @@ public static class OpenTelemetryConfiguration
                     // Business metrics meter - will be routed to Business Prometheus (business_* prefix)
                     .AddMeter("DataProcessing.Business.Metrics")
                     .AddMeter("DataProcessing.Business.*")
-                    
-                    // Additional custom meters
+
+                    // Service-specific meters (validation, processing, etc.)
+                    .AddMeter("DataProcessing.Validation")
+                    .AddMeter("DataProcessing.FileProcessor")
+                    .AddMeter("DataProcessing.Output")
                     .AddMeter($"{serviceName}.Metrics")
                     
                     // View to customize metric behavior
@@ -90,6 +93,26 @@ public static class OpenTelemetryConfiguration
                     options.Endpoint = new Uri(otlpEndpoint);
                     options.Protocol = OtlpExportProtocol.Grpc;
                 });
+
+                if (enableConsoleExporter)
+                {
+                    builder.AddConsoleExporter();
+                }
+            });
+        }
+
+        // Configure Logging
+        if (enableLogs)
+        {
+            openTelemetryBuilder.WithLogging(builder =>
+            {
+                builder
+                    .SetResourceBuilder(resourceBuilder)
+                    .AddOtlpExporter(options =>
+                    {
+                        options.Endpoint = new Uri(otlpEndpoint);
+                        options.Protocol = OtlpExportProtocol.Grpc;
+                    });
 
                 if (enableConsoleExporter)
                 {

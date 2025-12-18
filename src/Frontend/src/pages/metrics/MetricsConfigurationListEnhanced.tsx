@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Typography, Button, Space, Card, Spin, message, Tabs, Collapse, Tag, Empty, Modal } from 'antd';
+import { Typography, Button, Space, Card, Spin, message, Collapse, Tag, Empty, Modal, Alert } from 'antd';
 import { useNavigate } from 'react-router-dom';
-import { PlusOutlined, ReloadOutlined, EditOutlined, DeleteOutlined, GlobalOutlined, DatabaseOutlined, EyeOutlined, BellOutlined } from '@ant-design/icons';
+import { PlusOutlined, ReloadOutlined, EditOutlined, DeleteOutlined, DatabaseOutlined, EyeOutlined, BellOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import metricsApi, { type MetricConfiguration } from '../../services/metrics-api-client';
 
+// NOTE: Global/operational metrics tab removed - operational metrics are now hardcoded in BusinessMetrics.cs
+// This page now only shows field-extraction metrics that are tied to specific data sources
 const { Title, Paragraph, Text } = Typography;
 
 interface DataSource {
@@ -21,10 +23,9 @@ interface GroupedMetrics {
 const MetricsConfigurationListEnhanced: React.FC = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [globalMetrics, setGlobalMetrics] = useState<MetricConfiguration[]>([]);
+  // NOTE: globalMetrics removed - operational metrics are now hardcoded in BusinessMetrics.cs
   const [specificMetrics, setSpecificMetrics] = useState<MetricConfiguration[]>([]);
   const [dataSources, setDataSources] = useState<DataSource[]>([]);
-  const [activeTab, setActiveTab] = useState('global');
   const [viewingMetric, setViewingMetric] = useState<MetricConfiguration | null>(null);
 
   useEffect(() => {
@@ -36,7 +37,7 @@ const MetricsConfigurationListEnhanced: React.FC = () => {
     try {
       // Load all metrics
       const allMetrics = await metricsApi.getAll();
-      
+
       // Load data sources
       const dsResponse = await fetch('http://localhost:5001/api/v1/datasource?page=1&size=100');
       const dsData = await dsResponse.json();
@@ -44,11 +45,9 @@ const MetricsConfigurationListEnhanced: React.FC = () => {
         setDataSources(dsData.Data.Items || []);
       }
 
-      // Separate global and specific metrics
-      const global = allMetrics.filter(m => m.scope === 'global');
-      const specific = allMetrics.filter(m => m.scope === 'datasource-specific');
-
-      setGlobalMetrics(global);
+      // Only show datasource-specific metrics (field extraction metrics)
+      // NOTE: Global/operational metrics are hardcoded in BusinessMetrics.cs
+      const specific = allMetrics.filter(m => m.scope === 'datasource-specific' || !m.scope);
       setSpecificMetrics(specific);
     } catch (error) {
       message.error('שגיאה בטעינת מדדים');
@@ -218,76 +217,54 @@ const MetricsConfigurationListEnhanced: React.FC = () => {
       </div>
 
       <Spin spinning={loading}>
-        <Tabs
-          activeKey={activeTab}
-          onChange={setActiveTab}
-          items={[
-            {
-              key: 'global',
-              label: (
-                <Space>
-                  <GlobalOutlined />
-                  <span>מדדים גלובליים ({globalMetrics.length})</span>
-                </Space>
-              ),
-              children: (
-                <Card>
-                  <Space direction="vertical" style={{ width: '100%' }} size="middle">
-                    <Text type="secondary">
-                      מדדים גלובליים חלים על כל מקורות הנתונים במערכת
-                    </Text>
-                    {globalMetrics.length === 0 ? (
-                      <Empty description="אין מדדים גלובליים" />
-                    ) : (
-                      globalMetrics.map(renderMetricCard)
-                    )}
-                  </Space>
-                </Card>
-              )
-            },
-            {
-              key: 'datasource',
-              label: (
-                <Space>
-                  <DatabaseOutlined />
-                  <span>מדדים פרטניים ({specificMetrics.length})</span>
-                </Space>
-              ),
-              children: (
-                <Card>
-                  <Space direction="vertical" style={{ width: '100%' }} size="middle">
-                    <Text type="secondary">
-                      מדדים פרטניים מקושרים למקור נתונים ספציפי
-                    </Text>
-                    {Object.keys(groupedMetrics).length === 0 ? (
-                      <Empty description="אין מדדים פרטניים" />
-                    ) : (
-                      <Collapse
-                        items={Object.entries(groupedMetrics).map(([dsId, group]) => ({
-                          key: dsId,
-                          label: (
-                            <Space>
-                              <DatabaseOutlined />
-                              <Text strong>
-                                {group.dataSource?.Name || 'מקור נתונים לא ידוע'}
-                              </Text>
-                              <Tag color="blue">{group.metrics.length} מדדים</Tag>
-                            </Space>
-                          ),
-                          children: (
-                            <Space direction="vertical" style={{ width: '100%' }}>
-                              {group.metrics.map(renderMetricCard)}
-                            </Space>
-                          )
-                        }))}
-                      />
-                    )}
-                  </Space>
-                </Card>
-              )
-            }
-          ]}
+        {/* Info alert about operational metrics */}
+        <Alert
+          message="מדדים תפעוליים"
+          description="מדדים תפעוליים כלליים (רשומות מעובדות, משימות שהושלמו, שגיאות וכו') מוגדרים אוטומטית במערכת ומוצגים בדשבורד Grafana. דף זה מיועד להגדרת מדדי חילוץ שדות ממקורות נתונים ספציפיים."
+          type="info"
+          showIcon
+          icon={<InfoCircleOutlined />}
+          style={{ marginBottom: 16 }}
         />
+
+        {/* Field Extraction Metrics by Data Source */}
+        <Card
+          title={
+            <Space>
+              <DatabaseOutlined />
+              <span>מדדי חילוץ שדות ({specificMetrics.length})</span>
+            </Space>
+          }
+        >
+          <Space direction="vertical" style={{ width: '100%' }} size="middle">
+            <Text type="secondary">
+              מדדים המחלצים ערכים משדות ברשומות מעובדות, מקושרים למקור נתונים ספציפי
+            </Text>
+            {Object.keys(groupedMetrics).length === 0 ? (
+              <Empty description="אין מדדי חילוץ שדות מוגדרים" />
+            ) : (
+              <Collapse
+                items={Object.entries(groupedMetrics).map(([dsId, group]) => ({
+                  key: dsId,
+                  label: (
+                    <Space>
+                      <DatabaseOutlined />
+                      <Text strong>
+                        {group.dataSource?.Name || 'מקור נתונים לא ידוע'}
+                      </Text>
+                      <Tag color="blue">{group.metrics.length} מדדים</Tag>
+                    </Space>
+                  ),
+                  children: (
+                    <Space direction="vertical" style={{ width: '100%' }}>
+                      {group.metrics.map(renderMetricCard)}
+                    </Space>
+                  )
+                }))}
+              />
+            )}
+          </Space>
+        </Card>
       </Spin>
 
       {/* View Metric Details Modal */}

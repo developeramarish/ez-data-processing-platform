@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Card, Steps, Button, Space, message, Typography, Alert } from 'antd';
 import { SaveOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons';
-import WizardStepDataSource from '../../components/metrics/WizardStepDataSource';
+// NOTE: WizardStepDataSource removed - metrics are always created from datasource context
 import WizardStepField from '../../components/metrics/WizardStepField';
 // NOTE: WizardStepGlobalMetrics removed - operational metrics are now hardcoded in BusinessMetrics.cs
 import WizardStepDetails from '../../components/metrics/WizardStepDetails';
@@ -48,13 +48,18 @@ interface WizardData {
 const MetricConfigurationWizard: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
   const isEditMode = !!id;
 
-  const [current, setCurrent] = useState(0);
+  // Get dataSourceId from URL query parameter (e.g., /metrics/new?dataSourceId=xxx)
+  const dataSourceIdFromUrl = searchParams.get('dataSourceId');
+
+  const [current, setCurrent] = useState(0); // Always start at field selection (step 0)
   const [loading, setLoading] = useState(false);
+  const [dataSourcePreloaded, setDataSourcePreloaded] = useState(false);
   const [wizardData, setWizardData] = useState<WizardData>({
     scope: 'datasource-specific', // Always datasource-specific - operational metrics are in BusinessMetrics.cs
-    dataSourceId: null,
+    dataSourceId: dataSourceIdFromUrl,
     dataSourceName: null,
     fieldPath: '',
     name: '',
@@ -69,6 +74,36 @@ const MetricConfigurationWizard: React.FC = () => {
     retention: '30d',
     status: 0
   });
+
+  // Load datasource name if dataSourceId is provided via URL
+  const loadDataSourceName = useCallback(async (dsId: string) => {
+    try {
+      const response = await fetch(`http://localhost:5001/api/v1/datasource/${dsId}`, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.IsSuccess && data.Data) {
+          setWizardData(prev => ({
+            ...prev,
+            dataSourceId: dsId,
+            dataSourceName: data.Data.Name
+          }));
+          setDataSourcePreloaded(true);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading datasource:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (dataSourceIdFromUrl && !dataSourcePreloaded && !isEditMode) {
+      loadDataSourceName(dataSourceIdFromUrl);
+    }
+  }, [dataSourceIdFromUrl, dataSourcePreloaded, isEditMode, loadDataSourceName]);
 
   const loadMetric = useCallback(async (metricId: string) => {
     setLoading(true);
@@ -114,21 +149,14 @@ const MetricConfigurationWizard: React.FC = () => {
 
   const validateStep = (step: number): boolean => {
     switch (step) {
-      case 0: // Data Source (always required for field extraction metrics)
-        if (!wizardData.dataSourceId) {
-          message.warning('יש לבחור מקור נתונים');
-          return false;
-        }
-        return true;
-
-      case 1: // Field Selection (always required)
+      case 0: // Field Selection (always required)
         if (!wizardData.fieldPath) {
           message.warning('יש לבחור שדה - זהו שדה חובה');
           return false;
         }
         return true;
-        
-      case 2: // Metric Details
+
+      case 1: // Metric Details
         if (!wizardData.name) {
           message.warning('יש להזין שם מדד');
           return false;
@@ -146,15 +174,15 @@ const MetricConfigurationWizard: React.FC = () => {
           return false;
         }
         return true;
-        
-      case 3: // Labels
+
+      case 2: // Labels
         // Labels are optional, so always valid
         return true;
-        
-      case 4: // Alert Rules
+
+      case 3: // Alert Rules
         // Alert rules are optional, so always valid
         return true;
-        
+
       default:
         return true;
     }
@@ -240,9 +268,13 @@ const MetricConfigurationWizard: React.FC = () => {
       if (success) {
         console.log('Success is true, scheduling navigation in 800ms');
         setTimeout(() => {
-          console.log('Executing navigation to /metrics');
+          // Navigate back to datasource page if we came from there, otherwise go to alerts
+          const backUrl = dataSourceIdFromUrl
+            ? `/datasources/${dataSourceIdFromUrl}/edit`
+            : '/alerts';
+          console.log('Executing navigation to', backUrl);
           try {
-            navigate('/metrics', { replace: true });
+            navigate(backUrl, { replace: true });
             console.log('Navigate called successfully');
           } catch (navError) {
             console.error('Navigation error:', navError);
@@ -255,16 +287,6 @@ const MetricConfigurationWizard: React.FC = () => {
   };
 
   const steps = [
-    {
-      title: 'מקור נתונים',
-      description: 'בחר מקור נתונים למדד',
-      content: (
-        <WizardStepDataSource
-          value={wizardData}
-          onChange={updateWizardData}
-        />
-      )
-    },
     {
       title: 'בחירת שדה',
       description: 'שדה חובה לחילוץ ערכים',
@@ -349,10 +371,8 @@ const MetricConfigurationWizard: React.FC = () => {
               description: step.description
             }))}
             onChange={(step) => {
-              // Allow clicking on steps to navigate (especially useful in edit mode)
-              if (step < current || isEditMode) {
-                setCurrent(step);
-              }
+              // Allow clicking on any step to navigate freely
+              setCurrent(step);
             }}
           />
 
@@ -370,7 +390,7 @@ const MetricConfigurationWizard: React.FC = () => {
             </div>
             <div>
               <Space>
-                <Button onClick={() => navigate('/metrics')}>
+                <Button onClick={() => navigate(dataSourceIdFromUrl ? `/datasources/${dataSourceIdFromUrl}/edit` : '/alerts')}>
                   ביטול
                 </Button>
                 {current < steps.length - 1 && (

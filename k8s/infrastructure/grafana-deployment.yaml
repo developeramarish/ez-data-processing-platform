@@ -117,7 +117,8 @@ spec:
         - name: grafana-datasources
           mountPath: /etc/grafana/provisioning/datasources
         - name: grafana-dashboards-provider
-          mountPath: /etc/grafana/provisioning/dashboards
+          mountPath: /etc/grafana/provisioning/dashboards/dashboards.yaml
+          subPath: dashboards.yaml
         - name: grafana-business-dashboard
           mountPath: /etc/grafana/provisioning/dashboards/business-metrics.json
           subPath: business-metrics.json

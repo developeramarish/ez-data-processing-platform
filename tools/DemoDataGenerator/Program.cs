@@ -14,21 +14,40 @@ bool incrementalMode = args.Contains("--incremental");
 string mode = incrementalMode ? "INCREMENTAL" : "FULL RESET";
 
 // Parse MongoDB connection string (support both Docker Compose and K8s)
-string mongoConnection = "localhost"; // Default for Docker Compose
+string mongoHost = "localhost"; // Default for Docker Compose
+int mongoPort = 27017;
+bool directConnection = false;
+
 var mongoArg = args.FirstOrDefault(a => a.StartsWith("--mongodb-connection="));
 if (mongoArg != null)
 {
-    mongoConnection = mongoArg.Split('=')[1];
+    mongoHost = mongoArg.Split('=')[1];
 }
 
+var portArg = args.FirstOrDefault(a => a.StartsWith("--mongodb-port="));
+if (portArg != null)
+{
+    mongoPort = int.Parse(portArg.Split('=')[1]);
+}
+
+directConnection = args.Contains("--direct-connection");
+
 Console.WriteLine($"Mode: {mode}");
-Console.WriteLine($"MongoDB: {mongoConnection}");
+Console.WriteLine($"MongoDB: {mongoHost}:{mongoPort} (direct={directConnection})");
 Console.WriteLine($"Seed: {DemoConfig.RandomSeed} (deterministic)\n");
 
 try
 {
-    // Initialize MongoDB connection (configurable for Docker Compose or K8s)
-    await DB.InitAsync("ezplatform", mongoConnection);
+    // Initialize MongoDB connection with proper settings
+    var settings = new MongoDB.Driver.MongoClientSettings
+    {
+        Server = new MongoDB.Driver.MongoServerAddress(mongoHost, mongoPort),
+        DirectConnection = directConnection,
+        ConnectTimeout = TimeSpan.FromSeconds(30),
+        ServerSelectionTimeout = TimeSpan.FromSeconds(30)
+    };
+
+    await DB.InitAsync("ezplatform", settings);
     Console.WriteLine("✓ Connected to MongoDB\n");
     
     // Initialize random with fixed seed for determinism

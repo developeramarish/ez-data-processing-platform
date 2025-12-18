@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Typography, Card, Form, Button, Space, Alert, Spin, message, Divider, Tabs } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeftOutlined, SaveOutlined, FileOutlined, ApiOutlined, ClockCircleOutlined, SafetyOutlined, BellOutlined, FileTextOutlined, ExportOutlined } from '@ant-design/icons';
+import { ArrowLeftOutlined, SaveOutlined, FileOutlined, ApiOutlined, ClockCircleOutlined, SafetyOutlined, BellOutlined, FileTextOutlined, ExportOutlined, BarChartOutlined } from '@ant-design/icons';
 import { type JSONSchema } from 'jsonjoy-builder';
 
 // Import tab components
@@ -14,6 +14,7 @@ import { ScheduleTab } from '../../components/datasource/tabs/ScheduleTab';
 import { ValidationTab } from '../../components/datasource/tabs/ValidationTab';
 import { NotificationsTab } from '../../components/datasource/tabs/NotificationsTab';
 import { OutputTab } from '../../components/datasource/tabs/OutputTab';
+import { MetricsTab } from '../../components/datasource/tabs/MetricsTab';
 import CronHelperDialog from '../../components/datasource/CronHelperDialog';
 
 // Import shared utilities
@@ -428,6 +429,18 @@ const DataSourceEditEnhanced: React.FC = () => {
                   key: 'schema',
                   label: <span><FileTextOutlined /> הגדרת Schema</span>,
                   children: <SchemaTab jsonSchema={jsonSchema} onChange={handleSchemaChange} />
+                },
+                {
+                  key: 'metrics',
+                  label: <span><BarChartOutlined /> מדדים</span>,
+                  children: (
+                    <MetricsTab
+                      dataSourceId={id!}
+                      dataSourceName={dataSource.Name}
+                      onCreateMetric={() => navigate(`/metrics/new?dataSourceId=${id}`)}
+                      onEditMetric={(metricId) => navigate(`/metrics/edit/${metricId}?dataSourceId=${id}`)}
+                    />
+                  )
                 },
                 {
                   key: 'schedule',

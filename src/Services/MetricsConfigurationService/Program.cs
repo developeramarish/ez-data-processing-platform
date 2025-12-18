@@ -6,6 +6,8 @@ using MetricsConfigurationService.Services.Collection;
 using MetricsConfigurationService.Services.Prometheus;
 using MongoDB.Driver;
 using MongoDB.Entities;
+using DataProcessing.Shared.Configuration;
+using System.Diagnostics;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,6 +18,12 @@ builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new() { Title = "Metrics Configuration API", Version = "v1" });
 });
+
+// Configure OpenTelemetry (metrics, traces, and logs via OTLP)
+var serviceName = "DataProcessing.MetricsConfiguration";
+var activitySource = new ActivitySource(serviceName);
+builder.Services.AddSingleton(activitySource);
+builder.Services.AddDataProcessingOpenTelemetry(builder.Configuration, serviceName);
 
 // CORS configuration
 builder.Services.AddCors(options =>

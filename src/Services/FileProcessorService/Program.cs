@@ -115,6 +115,7 @@ builder.Services.AddDataProcessingHealthChecks(builder.Configuration, serviceNam
 
 // Configure metrics
 builder.Services.AddSingleton<DataProcessingMetrics>();
+builder.Services.AddBusinessMetrics();
 
 // Configure CORS for development
 builder.Services.AddCors(options =>

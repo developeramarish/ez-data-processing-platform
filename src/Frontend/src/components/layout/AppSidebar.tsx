@@ -1,11 +1,11 @@
 import React from 'react';
+// Force recompile - sidebar menu order updated
 import { Layout, Menu } from 'antd';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   DashboardOutlined,
   DatabaseOutlined,
-  BarChartOutlined,
   ExclamationCircleOutlined,
   RobotOutlined,
   BellOutlined,
@@ -29,14 +29,14 @@ const AppSidebar: React.FC<AppSidebarProps> = ({ collapsed = false }) => {
       label: t('navigation.datasources'),
     },
     {
-      key: '/metrics-config',
-      icon: <BarChartOutlined />,
-      label: t('navigation.metricsConfig'),
-    },
-    {
       key: '/invalid-records',
       icon: <ExclamationCircleOutlined />,
       label: t('navigation.invalidRecords'),
+    },
+    {
+      key: '/alerts',
+      icon: <BellOutlined />,
+      label: 'התרעות',
     },
     {
       key: '/dashboard',
@@ -47,11 +47,6 @@ const AppSidebar: React.FC<AppSidebarProps> = ({ collapsed = false }) => {
       key: '/ai-assistant',
       icon: <RobotOutlined />,
       label: t('navigation.aiAssistant'),
-    },
-    {
-      key: '/notifications',
-      icon: <BellOutlined />,
-      label: t('navigation.notifications'),
     },
   ];
 
