@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Tabs, Alert, Select, Space, Typography } from 'antd';
-import { GlobalOutlined, DatabaseOutlined } from '@ant-design/icons';
+import { Alert, Select, Space, Typography, Card } from 'antd';
+import { DatabaseOutlined } from '@ant-design/icons';
 import type { WizardData } from '../../pages/metrics/MetricConfigurationWizard';
 
-const { Text } = Typography;
+const { Text, Title } = Typography;
 const { Option } = Select;
 
 interface WizardStepDataSourceProps {
@@ -29,6 +29,17 @@ interface PagedResult<T> {
   TotalItems: number;
 }
 
+/**
+ * WizardStepDataSource Component
+ *
+ * Step 1 of the metric configuration wizard.
+ * Users select a data source for the metric - field extraction metrics
+ * are always tied to a specific data source's schema.
+ *
+ * NOTE: Global/operational metrics (like records_processed, jobs_completed, etc.)
+ * are hardcoded in BusinessMetrics.cs and NOT configured through this wizard.
+ * This wizard is ONLY for field extraction metrics that extract values from data content.
+ */
 const WizardStepDataSource: React.FC<WizardStepDataSourceProps> = ({ value, onChange }) => {
   const [dataSources, setDataSources] = useState<DataSource[]>([]);
   const [loading, setLoading] = useState(false);
@@ -52,88 +63,100 @@ const WizardStepDataSource: React.FC<WizardStepDataSourceProps> = ({ value, onCh
     loadDataSources();
   }, [loadDataSources]);
 
-  const handleScopeChange = useCallback((key: string) => {
-    onChange({
-      scope: key as 'global' | 'datasource-specific',
-      dataSourceId: null,
-    });
-  }, [onChange]);
+  // Ensure scope is always datasource-specific
+  useEffect(() => {
+    if (value.scope !== 'datasource-specific') {
+      onChange({ scope: 'datasource-specific' });
+    }
+  }, [value.scope, onChange]);
 
   const handleDataSourceSelect = useCallback((dataSourceId: string) => {
+    const selectedDs = dataSources.find(ds => ds.ID === dataSourceId);
     onChange({
       dataSourceId,
+      dataSourceName: selectedDs?.Name || null,
     });
-  }, [onChange]);
+  }, [onChange, dataSources]);
 
   return (
-    <Tabs
-      activeKey={value.scope}
-      onChange={handleScopeChange}
-      items={[
-        {
-          key: 'global',
-          label: (
-            <span>
-              <GlobalOutlined /> מדדים כלליים
-            </span>
-          ),
-          children: (
-            <Alert
-              message="מדד כללי"
-              description="מדד כללי חל על כל מקורות הנתונים במערכת. השתמש במדדים כלליים למדדים שצריכים לעבוד על פני כל מקורות הנתונים."
-              type="info"
-              showIcon
-              style={{ marginTop: 16 }}
-            />
-          )
-        },
-        {
-          key: 'datasource-specific',
-          label: (
-            <span>
-              <DatabaseOutlined /> מדדים פרטניים
-            </span>
-          ),
-          children: (
-            <Space direction="vertical" style={{ width: '100%' }} size="middle">
-              <Alert
-                message="מדד פרטני"
-                description="מדד פרטני קשור למקור נתונים ספציפי אחד. השתמש במדדים פרטניים כאשר המדד תלוי בשדות או מבנה ספציפיים של מקור נתונים מסוים."
-                type="info"
-                showIcon
-                style={{ marginTop: 16 }}
-              />
-              
-              <div>
-                <Text strong>בחר מקור נתונים:</Text>
-                <Text type="danger"> *</Text>
-                <Select
-                  style={{ width: '100%', marginTop: 8 }}
-                  placeholder="בחר מקור נתונים"
-                  value={value.dataSourceId || undefined}
-                  onChange={handleDataSourceSelect}
-                  loading={loading}
-                  showSearch
-                  filterOption={(input, option) => {
-                    const label = option?.label;
-                    if (typeof label === 'string') {
-                      return label.toLowerCase().includes(input.toLowerCase());
-                    }
-                    return false;
-                  }}
-                >
-                  {dataSources.map(ds => (
-                    <Option key={ds.ID} value={ds.ID} label={ds.Name}>
-                      {ds.Name} ({ds.Category})
-                    </Option>
-                  ))}
-                </Select>
-              </div>
+    <Space direction="vertical" style={{ width: '100%' }} size="middle">
+      <Card>
+        <Space direction="vertical" style={{ width: '100%' }} size="middle">
+          <div>
+            <Space>
+              <DatabaseOutlined style={{ fontSize: 20, color: '#1890ff' }} />
+              <Title level={4} style={{ margin: 0 }}>בחירת מקור נתונים</Title>
             </Space>
-          )
+          </div>
+
+          <Alert
+            message="מדד חילוץ שדות"
+            description={
+              <Space direction="vertical" size={4}>
+                <Text>מדד זה יחלץ ערכים משדות ברשומות המעובדות של מקור הנתונים שתבחר.</Text>
+                <Text type="secondary" style={{ fontSize: 11 }}>
+                  המערכת תחלץ את הערך מכל רשומה שעוברת אימות בהצלחה ותשלח אותו ל-Prometheus.
+                </Text>
+              </Space>
+            }
+            type="info"
+            showIcon
+          />
+
+          <div>
+            <Text strong>בחר מקור נתונים:</Text>
+            <Text type="danger"> *</Text>
+            <Select
+              style={{ width: '100%', marginTop: 8 }}
+              placeholder="בחר מקור נתונים"
+              value={value.dataSourceId || undefined}
+              onChange={handleDataSourceSelect}
+              loading={loading}
+              showSearch
+              size="large"
+              filterOption={(input, option) => {
+                const label = option?.label;
+                if (typeof label === 'string') {
+                  return label.toLowerCase().includes(input.toLowerCase());
+                }
+                return false;
+              }}
+            >
+              {dataSources.map(ds => (
+                <Option key={ds.ID} value={ds.ID} label={ds.Name}>
+                  {ds.Name} ({ds.Category})
+                </Option>
+              ))}
+            </Select>
+          </div>
+
+          {value.dataSourceId && (
+            <Alert
+              message={`מקור נתונים נבחר: ${value.dataSourceName}`}
+              type="success"
+              showIcon
+            />
+          )}
+        </Space>
+      </Card>
+
+      <Alert
+        message="הערה על מדדים תפעוליים"
+        description={
+          <Space direction="vertical" size={4}>
+            <Text style={{ fontSize: 12 }}>
+              מדדים תפעוליים כלליים (כמו רשומות מעובדות, משימות שהושלמו, שגיאות וכו')
+              מוגדרים אוטומטית במערכת ואינם דורשים הגדרה ידנית.
+            </Text>
+            <Text type="secondary" style={{ fontSize: 11 }}>
+              אשף זה מיועד רק להגדרת מדדי חילוץ שדות ממקור נתונים ספציפי.
+            </Text>
+          </Space>
         }
-      ]}
-    />
+        type="warning"
+        showIcon
+      />
+    </Space>
   );
 };
 

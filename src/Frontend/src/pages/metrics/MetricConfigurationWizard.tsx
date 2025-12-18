@@ -3,8 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Card, Steps, Button, Space, message, Typography, Alert } from 'antd';
 import { SaveOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons';
 import WizardStepDataSource from '../../components/metrics/WizardStepDataSource';
-import WizardStepGlobalMetrics from '../../components/metrics/WizardStepGlobalMetrics';
 import WizardStepField from '../../components/metrics/WizardStepField';
+// NOTE: WizardStepGlobalMetrics removed - operational metrics are now hardcoded in BusinessMetrics.cs
 import WizardStepDetails from '../../components/metrics/WizardStepDetails';
 import WizardStepLabels from '../../components/metrics/WizardStepLabels';
 import WizardStepAlerts from '../../components/metrics/WizardStepAlerts';
@@ -38,7 +38,9 @@ interface WizardData {
   
   // Additional fields
   formula: string;
-  formulaType: 'simple' | 'promql' | 'recording';
+  // NOTE: FormulaType is always 'simple' (0) - JSON path extraction during file processing
+  // PromQL expressions are NOT supported for metric extraction (only for alerts)
+  // FormulaType is NOT stored in wizard state, hardcoded to 0 in handleSubmit
   retention: string;
   status: number;
 }
@@ -51,7 +53,7 @@ const MetricConfigurationWizard: React.FC = () => {
   const [current, setCurrent] = useState(0);
   const [loading, setLoading] = useState(false);
   const [wizardData, setWizardData] = useState<WizardData>({
-    scope: 'global',
+    scope: 'datasource-specific', // Always datasource-specific - operational metrics are in BusinessMetrics.cs
     dataSourceId: null,
     dataSourceName: null,
     fieldPath: '',
@@ -64,7 +66,6 @@ const MetricConfigurationWizard: React.FC = () => {
     labelsExpression: '',
     alertRules: [],
     formula: '',
-    formulaType: 'simple',
     retention: '30d',
     status: 0
   });
@@ -87,7 +88,6 @@ const MetricConfigurationWizard: React.FC = () => {
         labelsExpression: (metric as any).labelsExpression || '',
         alertRules: (metric as any).alertRules || [],
         formula: metric.formula || '',
-        formulaType: (metric as any).formulaType || 'simple',
         retention: metric.retention || '30d',
         status: metric.status || 0
       });
@@ -114,26 +114,17 @@ const MetricConfigurationWizard: React.FC = () => {
 
   const validateStep = (step: number): boolean => {
     switch (step) {
-      case 0: // Data Source
-        if (wizardData.scope === 'datasource-specific' && !wizardData.dataSourceId) {
+      case 0: // Data Source (always required for field extraction metrics)
+        if (!wizardData.dataSourceId) {
           message.warning('יש לבחור מקור נתונים');
           return false;
         }
         return true;
-        
-      case 1: // Global Metric or Field Selection
-        if (wizardData.scope === 'global') {
-          // For global metrics, only require fieldPath
-          if (!wizardData.fieldPath) {
-            message.warning('יש להזין נתיב שדה');
-            return false;
-          }
-        } else {
-          // For specific metrics, require field selection
-          if (!wizardData.fieldPath) {
-            message.warning('יש לבחור שדה - זהו שדה חובה');
-            return false;
-          }
+
+      case 1: // Field Selection (always required)
+        if (!wizardData.fieldPath) {
+          message.warning('יש לבחור שדה - זהו שדה חובה');
+          return false;
         }
         return true;
         
@@ -191,9 +182,9 @@ const MetricConfigurationWizard: React.FC = () => {
     let success = false;
     
     try {
-      // Convert formulaType string to number for API
-      const formulaTypeMap = { 'simple': 0, 'promql': 1, 'recording': 2 };
-      const formulaTypeNumber = formulaTypeMap[wizardData.formulaType] || 0;
+      // FormulaType is always 0 (Simple) - JSON path extraction
+      // PromQL (1) and Recording (2) are NOT supported for metric extraction
+      const formulaTypeNumber = 0; // Always Simple
       
       const payload = {
         name: wizardData.name,
@@ -266,7 +257,7 @@ const MetricConfigurationWizard: React.FC = () => {
   const steps = [
     {
       title: 'מקור נתונים',
-      description: 'בחר האם מדד כללי או פרטי',
+      description: 'בחר מקור נתונים למדד',
       content: (
         <WizardStepDataSource
           value={wizardData}
@@ -275,14 +266,9 @@ const MetricConfigurationWizard: React.FC = () => {
       )
     },
     {
-      title: wizardData.scope === 'global' ? 'בחירת מדד גלובלי' : 'בחירת שדה',
-      description: wizardData.scope === 'global' ? 'בחר מדד מוגדר מראש' : 'שדה חובה לקישור המדד',
-      content: wizardData.scope === 'global' ? (
-        <WizardStepGlobalMetrics
-          value={wizardData}
-          onChange={updateWizardData}
-        />
-      ) : (
+      title: 'בחירת שדה',
+      description: 'שדה חובה לחילוץ ערכים',
+      content: (
         <WizardStepField
           value={wizardData}
           onChange={updateWizardData}

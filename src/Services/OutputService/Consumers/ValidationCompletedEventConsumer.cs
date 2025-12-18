@@ -10,6 +10,7 @@ using MongoDB.Entities;
 using Newtonsoft.Json.Linq;
 using DataProcessing.Shared.Entities;
 using DataProcessing.Shared.Messages;
+using DataProcessing.Shared.Monitoring;
 using DataProcessing.Output.Handlers;
 using DataProcessing.Output.Services;
 using DataProcessing.Output.Models;
@@ -27,25 +28,29 @@ public class ValidationCompletedEventConsumer : IConsumer<ValidationCompletedEve
     private readonly IEnumerable<IOutputHandler> _outputHandlers;
     private readonly FormatReconstructorService _formatReconstructor;
     private readonly IConfiguration _configuration;
+    private readonly BusinessMetrics _businessMetrics;
 
     public ValidationCompletedEventConsumer(
         ILogger<ValidationCompletedEventConsumer> logger,
         IHazelcastClient hazelcastClient,
         IEnumerable<IOutputHandler> outputHandlers,
         FormatReconstructorService formatReconstructor,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        BusinessMetrics businessMetrics)
     {
         _logger = logger;
         _hazelcastClient = hazelcastClient;
         _outputHandlers = outputHandlers;
         _formatReconstructor = formatReconstructor;
         _configuration = configuration;
+        _businessMetrics = businessMetrics;
     }
 
     public async Task Consume(ConsumeContext<ValidationCompletedEvent> context)
     {
         var message = context.Message;
         var stopwatch = Stopwatch.StartNew();
+        var dataSourceName = message.DataSourceId;
 
         _logger.LogInformation(
             "Processing ValidationCompletedEvent: DataSourceId={DataSourceId}, FileName={FileName}, " +
@@ -88,6 +93,16 @@ public class ValidationCompletedEventConsumer : IConsumer<ValidationCompletedEve
             {
                 throw new Exception($"DataSource not found: {message.DataSourceId}");
             }
+
+            // Use datasource name for better metric labeling
+            dataSourceName = dataSource.Name ?? message.DataSourceId;
+
+            // Create business context for enhanced metric labels
+            var businessContext = BusinessMetrics.BusinessContext.FromDataSource(
+                category: dataSource.Category,
+                supplierName: dataSource.SupplierName,
+                filePattern: dataSource.FilePattern,
+                scheduleFrequency: dataSource.ScheduleFrequency);
 
             // Check if output is configured
             if (dataSource.Output == null || dataSource.Output.Destinations == null || !dataSource.Output.Destinations.Any())
@@ -186,11 +201,31 @@ public class ValidationCompletedEventConsumer : IConsumer<ValidationCompletedEve
                 failureCount,
                 stopwatch.ElapsedMilliseconds);
 
+            // Record business metrics with business context
+            _businessMetrics.RecordProcessedRecords(message.ValidRecords, dataSourceName, "OutputService", businessContext, "output_success");
+            _businessMetrics.RecordProcessingDuration(stopwatch.Elapsed.TotalSeconds, dataSourceName, "OutputService", "output_processing", businessContext, "output");
+
+            // Record per-destination metrics
+            foreach (var result in results)
+            {
+                var status = result.Success ? "destination_success" : "destination_failure";
+                _businessMetrics.RecordProcessedRecords(
+                    result.Success ? message.ValidRecords : 0,
+                    dataSourceName,
+                    "OutputService",
+                    businessContext,
+                    status);
+            }
+
             // TODO: Publish OutputCompletedEvent for monitoring
         }
         catch (Exception ex)
         {
             stopwatch.Stop();
+
+            // Record failed output processing (use empty businessContext since it may not be available)
+            _businessMetrics.RecordProcessedRecords(0, dataSourceName, "OutputService", new BusinessMetrics.BusinessContext(), "output_failure");
+            _businessMetrics.RecordProcessingDuration(stopwatch.Elapsed.TotalSeconds, dataSourceName, "OutputService", "output_processing", new BusinessMetrics.BusinessContext(), "output");
 
             _logger.LogError(
                 ex,

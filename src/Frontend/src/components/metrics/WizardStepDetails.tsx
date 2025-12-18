@@ -2,7 +2,7 @@ import React from 'react';
 import { Form, Input, Select, Space, Divider } from 'antd';
 import type { WizardData } from '../../pages/metrics/MetricConfigurationWizard';
 import MetricNameHelper from './MetricNameHelper';
-import FormulaBuilder, { FormulaType } from './FormulaBuilder';
+import FormulaBuilder from './FormulaBuilder';
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -71,13 +71,7 @@ const WizardStepDetails: React.FC<WizardStepDetailsProps> = ({ value, onChange }
       <FormulaBuilder
         fieldPath={value.fieldPath}
         formula={value.formula}
-        formulaType={value.formulaType as FormulaType}
-        onChange={(formula, formulaType) => {
-          onChange({ 
-            formula, 
-            formulaType: formulaType as any
-          });
-        }}
+        onChange={(formula) => onChange({ formula })}
       />
     </Space>
   );

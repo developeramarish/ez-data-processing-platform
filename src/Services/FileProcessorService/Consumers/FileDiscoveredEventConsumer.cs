@@ -1,7 +1,9 @@
+using System.Diagnostics;
 using DataProcessing.Shared.Connectors;
 using DataProcessing.Shared.Converters;
 using DataProcessing.Shared.Entities;
 using DataProcessing.Shared.Messages;
+using DataProcessing.Shared.Monitoring;
 using Hazelcast;
 using MassTransit;
 using MongoDB.Entities;
@@ -19,24 +21,31 @@ public class FileDiscoveredEventConsumer : IConsumer<FileDiscoveredEvent>
     private readonly IHazelcastClient _hazelcastClient;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IConfiguration _configuration;
+    private readonly BusinessMetrics _businessMetrics;
 
     public FileDiscoveredEventConsumer(
         ILogger<FileDiscoveredEventConsumer> logger,
         IPublishEndpoint publishEndpoint,
         IHazelcastClient hazelcastClient,
         IServiceScopeFactory scopeFactory,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        BusinessMetrics businessMetrics)
     {
         _logger = logger;
         _publishEndpoint = publishEndpoint;
         _hazelcastClient = hazelcastClient;
         _scopeFactory = scopeFactory;
         _configuration = configuration;
+        _businessMetrics = businessMetrics;
     }
 
     public async Task Consume(ConsumeContext<FileDiscoveredEvent> context)
     {
         var message = context.Message;
+        var stopwatch = Stopwatch.StartNew();
+        var dataSourceName = message.DataSourceId;
+        var fileType = Path.GetExtension(message.FileName).TrimStart('.').ToLowerInvariant();
+
         _logger.LogInformation(
             "[{CorrelationId}] FileDiscoveredEventConsumer: Processing file {FileName} from datasource {DataSourceId}",
             message.CorrelationId, message.FileName, message.DataSourceId);
@@ -52,8 +61,19 @@ public class FileDiscoveredEventConsumer : IConsumer<FileDiscoveredEvent>
                 _logger.LogWarning(
                     "[{CorrelationId}] Datasource {DataSourceId} not found",
                     message.CorrelationId, message.DataSourceId);
+                _businessMetrics.RecordFileProcessed(dataSourceName, fileType, false);
                 return;
             }
+
+            // Use datasource name for better metric labeling
+            dataSourceName = datasource.Name ?? message.DataSourceId;
+
+            // Create business context for enhanced metric labels
+            var businessContext = BusinessMetrics.BusinessContext.FromDataSource(
+                category: datasource.Category,
+                supplierName: datasource.SupplierName,
+                filePattern: datasource.FilePattern,
+                scheduleFrequency: datasource.ScheduleFrequency);
 
             // Read file content
             var fileContent = await ReadFileContentAsync(datasource, message.FilePath, message.CorrelationId);
@@ -62,13 +82,18 @@ public class FileDiscoveredEventConsumer : IConsumer<FileDiscoveredEvent>
                 _logger.LogWarning(
                     "[{CorrelationId}] File {FileName} is empty or could not be read",
                     message.CorrelationId, message.FileName);
+                _businessMetrics.RecordFileProcessed(dataSourceName, "FileProcessor", fileType, false, businessContext);
                 return;
             }
 
+            // Record file size with business context
+            _businessMetrics.RecordFileSize(fileContent.Length, dataSourceName, "FileProcessor", fileType);
+            _businessMetrics.RecordBytesProcessed(fileContent.Length, dataSourceName, "FileProcessor", businessContext, fileType, "processing");
+
             // Detect and convert to JSON
             var (jsonContent, originalFormat, metadata) = await ConvertToJsonAsync(
-                fileContent, 
-                message.FileName, 
+                fileContent,
+                message.FileName,
                 message.CorrelationId);
 
             if (string.IsNullOrEmpty(jsonContent))
@@ -76,6 +101,7 @@ public class FileDiscoveredEventConsumer : IConsumer<FileDiscoveredEvent>
                 _logger.LogError(
                     "[{CorrelationId}] Failed to convert file {FileName} to JSON",
                     message.CorrelationId, message.FileName);
+                _businessMetrics.RecordFileProcessed(dataSourceName, "FileProcessor", fileType, false, businessContext);
                 return;
             }
 
@@ -99,9 +125,19 @@ public class FileDiscoveredEventConsumer : IConsumer<FileDiscoveredEvent>
             _logger.LogInformation(
                 "[{CorrelationId}] Published ValidationRequestEvent for file {FileName}",
                 message.CorrelationId, message.FileName);
+
+            // Record successful file processing with business context
+            stopwatch.Stop();
+            _businessMetrics.RecordFileProcessed(dataSourceName, "FileProcessor", fileType, true, businessContext);
+            _businessMetrics.RecordProcessingDuration(stopwatch.Elapsed.TotalSeconds, dataSourceName, "FileProcessor", "file_processing", businessContext, "processing");
+            _businessMetrics.RecordJobCompleted("file_processing", dataSourceName, "FileProcessor", businessContext);
         }
         catch (Exception ex)
         {
+            stopwatch.Stop();
+            _businessMetrics.RecordFileProcessed(dataSourceName, fileType, false);
+            _businessMetrics.RecordProcessingDuration(stopwatch.Elapsed.TotalSeconds, dataSourceName, "file_processing");
+
             _logger.LogError(ex,
                 "[{CorrelationId}] Error processing file {FileName} from datasource {DataSourceId}",
                 message.CorrelationId, message.FileName, message.DataSourceId);
