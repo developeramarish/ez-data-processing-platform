@@ -7,6 +7,7 @@ using MetricsConfigurationService.Services.Prometheus;
 using MongoDB.Driver;
 using MongoDB.Entities;
 using DataProcessing.Shared.Configuration;
+using DataProcessing.Shared.Monitoring;
 using System.Diagnostics;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -19,11 +20,21 @@ builder.Services.AddSwaggerGen(c =>
     c.SwaggerDoc("v1", new() { Title = "Metrics Configuration API", Version = "v1" });
 });
 
-// Configure OpenTelemetry (metrics, traces, and logs via OTLP)
+// Configure logging with Serilog and OTEL
 var serviceName = "DataProcessing.MetricsConfiguration";
+builder.Services.AddDataProcessingLogging(
+    builder.Configuration,
+    builder.Environment,
+    serviceName);
+
+// Configure OpenTelemetry (metrics, traces, and logs via OTLP)
 var activitySource = new ActivitySource(serviceName);
 builder.Services.AddSingleton(activitySource);
 builder.Services.AddDataProcessingOpenTelemetry(builder.Configuration, serviceName);
+
+// Configure metrics
+builder.Services.AddSingleton<DataProcessingMetrics>();
+builder.Services.AddBusinessMetrics();
 
 // CORS configuration
 builder.Services.AddCors(options =>
@@ -54,6 +65,9 @@ builder.Services.AddScoped<IAlertEvaluationService, AlertEvaluationService>();
 
 // Register background metrics collection service
 builder.Services.AddHostedService<MetricsCollectionBackgroundService>();
+
+// Configure health checks
+builder.Services.AddDataProcessingHealthChecks(builder.Configuration, serviceName);
 
 // Configure MassTransit with conditional transport (in-memory for dev, Kafka for prod)
 var useKafka = builder.Configuration.GetValue<bool>("MassTransit:UseKafka", false);
@@ -124,12 +138,15 @@ app.UseCors("AllowFrontend");
 app.UseAuthorization();
 app.MapControllers();
 
-// Health check endpoint
-app.MapGet("/health", () => Results.Ok(new
+// Health check endpoints
+app.MapHealthChecks("/health");
+app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
 {
-    Status = "Healthy",
-    Service = "MetricsConfigurationService",
-    Timestamp = DateTime.UtcNow
-}));
+    Predicate = check => check.Tags.Contains("ready")
+});
+app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("live")
+});
 
 app.Run();
