@@ -62,6 +62,10 @@ backups/
 
 # Playwright screenshots and testing artifacts
 .playwright-mcp/
+playwright-report/
+test-results/
+**/playwright-report/
+**/test-results/
 
 # Test data directory (external mount)
 test-data/
