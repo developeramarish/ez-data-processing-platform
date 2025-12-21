@@ -11,6 +11,7 @@ using OpenTelemetry.Trace;
 using OpenTelemetry.Logs;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
+using DataProcessing.Shared.Monitoring;
 
 namespace DataProcessing.Shared.Configuration;
 
@@ -73,6 +74,9 @@ public static class OpenTelemetryConfiguration
                     // Business metrics meter - will be routed to Business Prometheus (business_* prefix)
                     .AddMeter("DataProcessing.Business.Metrics")
                     .AddMeter("DataProcessing.Business.*")
+
+                    // System metrics meter - explicitly embedded infrastructure metrics
+                    .AddMeter("DataProcessing.System.Metrics")
 
                     // Service-specific meters (validation, processing, etc.)
                     .AddMeter("DataProcessing.Validation")
@@ -221,14 +225,20 @@ public static class OpenTelemetryConfiguration
 
         // Register the ActivitySource and Meter as singletons
         services.AddSingleton(DataProcessingActivitySource);
-        
+
         // Register Business Metrics Meter
-        services.AddSingleton<Meter>(sp => 
+        services.AddSingleton<Meter>(sp =>
             new Meter("DataProcessing.Business.Metrics", "1.0.0"));
-        
+
         // Register Service-specific Meter
-        services.AddSingleton(sp => 
+        services.AddSingleton(sp =>
             new Meter($"{serviceName}.Metrics", "1.0.0"));
+
+        // Register BusinessMetrics for business-level metrics (routed to Business Prometheus)
+        services.AddBusinessMetrics();
+
+        // Register SystemMetrics for infrastructure metrics (explicitly embedded in each service)
+        services.AddSystemMetrics(serviceName);
 
         return services;
     }
