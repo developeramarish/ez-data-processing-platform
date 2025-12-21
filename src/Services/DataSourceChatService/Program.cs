@@ -1,41 +1,68 @@
+using DataProcessing.Shared.Configuration;
+using DataProcessing.Shared.Monitoring;
+using System.Diagnostics;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
+// Add services to the container
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new() { Title = "Data Source Chat API", Version = "v1" });
+});
+
+// Configure logging with Serilog and OTEL
+var serviceName = "DataProcessing.Chat";
+builder.Services.AddDataProcessingLogging(
+    builder.Configuration,
+    builder.Environment,
+    serviceName);
+
+// Configure OpenTelemetry (metrics, traces, and logs via OTLP)
+var activitySource = new ActivitySource(serviceName);
+builder.Services.AddSingleton(activitySource);
+builder.Services.AddDataProcessingOpenTelemetry(builder.Configuration, serviceName);
+
+// Configure metrics
+builder.Services.AddSingleton<DataProcessingMetrics>();
+
+// CORS configuration
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        policy.WithOrigins("http://localhost:3000", "http://localhost:8080")
+              .AllowAnyMethod()
+              .AllowAnyHeader();
+    });
+});
+
+// Configure health checks
+builder.Services.AddDataProcessingHealthChecks(builder.Configuration, serviceName);
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+// Configure the HTTP request pipeline
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
+    app.UseSwagger();
+    app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+app.UseCors("AllowFrontend");
+app.UseAuthorization();
+app.MapControllers();
 
-var summaries = new[]
+// Health check endpoints
+app.MapHealthChecks("/health");
+app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
 {
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
-
-app.MapGet("/weatherforecast", () =>
+    Predicate = check => check.Tags.Contains("ready")
+});
+app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
 {
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
+    Predicate = check => check.Tags.Contains("live")
+});
 
 app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
