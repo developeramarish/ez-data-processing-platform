@@ -89,6 +89,15 @@ spec:
             value: ":9411"
           - name: COLLECTOR_OTLP_ENABLED
             value: "true"
+          # Elasticsearch backend for trace persistence
+          - name: SPAN_STORAGE_TYPE
+            value: "elasticsearch"
+          - name: ES_SERVER_URLS
+            value: "http://elasticsearch:9200"
+          - name: ES_INDEX_PREFIX
+            value: "jaeger"
+          - name: ES_TAGS_AS_FIELDS_ALL
+            value: "true"
         resources:
           limits:
             cpu: "1"
