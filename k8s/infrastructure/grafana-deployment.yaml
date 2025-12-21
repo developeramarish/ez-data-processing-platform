@@ -2,6 +2,20 @@
 # Unified visualization and dashboards for system and business metrics
 
 ---
+# Grafana credentials Secret
+# NOTE: For production, replace with externally managed secrets (e.g., Vault, sealed-secrets)
+apiVersion: v1
+kind: Secret
+metadata:
+  name: grafana-credentials
+  namespace: ez-platform
+  labels:
+    app: ezplatform-grafana
+type: Opaque
+stringData:
+  admin-password: "admin"  # TODO: Change for production deployment
+
+---
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -101,7 +115,10 @@ spec:
           name: http
         env:
         - name: GF_SECURITY_ADMIN_PASSWORD
-          value: "admin"
+          valueFrom:
+            secretKeyRef:
+              name: grafana-credentials
+              key: admin-password
         - name: GF_USERS_ALLOW_SIGN_UP
           value: "false"
         resources:
