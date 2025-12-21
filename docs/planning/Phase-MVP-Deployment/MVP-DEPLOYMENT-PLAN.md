@@ -672,6 +672,7 @@ kubectl port-forward svc/hazelcast 5701:5701 -n ez-platform
 - Session 26 - Comprehensive Verification Analysis + Task Orchestrator Setup (5 Features, 35 Tasks)
 
 ### Testing Documents
+- [TEST-CATALOG.md](./Testing/TEST-CATALOG.md) ← **Complete Test Inventory (126 tests)**
 - [TEST-PLAN-MASTER.md](./Testing/TEST-PLAN-MASTER.md)
 - [TEST-SCENARIOS-E2E.md](./Testing/TEST-SCENARIOS-E2E.md)
 - [TEST-SCENARIOS-INTEGRATION.md](./Testing/TEST-SCENARIOS-INTEGRATION.md)
