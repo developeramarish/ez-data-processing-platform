@@ -919,48 +919,486 @@ public class DatasourceMetricGenerator
 public class AlertGenerator
 {
     private readonly Random _random;
-    
+
+    // Global business metrics (from BusinessMetrics.cs - already scraped by Prometheus)
+    private static readonly string[] GLOBAL_BUSINESS_METRICS = new[]
+    {
+        "business_records_processed_total",
+        "business_invalid_records_total",
+        "business_records_skipped_total",
+        "business_output_records_total",
+        "business_dead_letter_records_total",
+        "business_files_processed_total",
+        "business_files_pending",
+        "business_file_size_bytes",
+        "business_bytes_processed_total",
+        "business_output_bytes_total",
+        "business_active_jobs",
+        "business_jobs_completed_total",
+        "business_jobs_failed_total",
+        "business_batches_processed_total",
+        "business_processing_duration_seconds",
+        "business_end_to_end_latency_seconds",
+        "business_queue_wait_time_seconds",
+        "business_validation_latency_seconds",
+        "business_validation_error_rate",
+        "business_retry_attempts_total"
+    };
+
+    // System/infrastructure metrics (standard Prometheus metrics)
+    private static readonly string[] SYSTEM_METRICS = new[]
+    {
+        "process_cpu_seconds_total",
+        "process_cpu_usage",
+        "process_resident_memory_bytes",
+        "process_virtual_memory_bytes",
+        "dotnet_gc_heap_size_bytes",
+        "dotnet_gc_collections_total",
+        "http_requests_total",
+        "http_request_duration_seconds",
+        "http_requests_in_progress",
+        "up"
+    };
+
     public AlertGenerator(Random random)
     {
         _random = random;
     }
-    
+
     public async Task GenerateAsync()
     {
         Console.WriteLine("[6/7] 🚨 Generating alerts for metrics...");
-        
+
         var metrics = await DB.Find<MetricConfiguration>().ExecuteAsync();
-        int alertCount = 0;
-        
-        // Add alerts to ~30% of metrics
-        var metricsWithAlerts = metrics.OrderBy(_ => _random.Next()).Take(metrics.Count / 3).ToList();
-        
-        foreach (var metric in metricsWithAlerts)
+        int simpleAlertCount = 0;
+        int complexAlertCount = 0;
+
+        // Add simple alerts to ~30% of datasource-specific metrics
+        var metricsWithSimpleAlerts = metrics.OrderBy(_ => _random.Next()).Take(metrics.Count / 3).ToList();
+
+        foreach (var metric in metricsWithSimpleAlerts)
         {
             var thresholds = new[] { 100, 1000, 5000, 10000, 50000 };
             var threshold = thresholds[_random.Next(thresholds.Length)];
-            
+
             metric.AlertRules = new List<AlertRule>
             {
                 new AlertRule
                 {
+                    Id = Guid.NewGuid().ToString(),
                     Name = $"alert_{metric.Name}",
                     Expression = $"{metric.Name} > {threshold}",
                     Description = $"התראה: {metric.DisplayName} עבר את הסף ({threshold})",
                     Severity = _random.Next(2) == 0 ? "warning" : "critical",
+                    For = "5m",
                     Annotations = new Dictionary<string, string>
                     {
                         ["summary"] = $"התראה: {metric.DisplayName}",
                         ["description"] = $"הערך עבר את {threshold}"
                     },
+                    Labels = new Dictionary<string, string>
+                    {
+                        ["alert_type"] = "simple",
+                        ["datasource_id"] = metric.DataSourceId ?? ""
+                    },
                     IsEnabled = true
                 }
             };
-            
+
             await metric.SaveAsync();
-            alertCount++;
+            simpleAlertCount++;
         }
-        
-        Console.WriteLine($"  ✅ Generated {alertCount} alerts\n");
+
+        // Generate complex multi-metric alerts for some metrics
+        var metricsForComplexAlerts = metrics
+            .Where(m => !metricsWithSimpleAlerts.Contains(m))
+            .OrderBy(_ => _random.Next())
+            .Take(Math.Min(10, metrics.Count / 4))
+            .ToList();
+
+        foreach (var metric in metricsForComplexAlerts)
+        {
+            var complexAlert = GenerateComplexAlert(metric, complexAlertCount);
+
+            metric.AlertRules = new List<AlertRule> { complexAlert };
+            await metric.SaveAsync();
+            complexAlertCount++;
+        }
+
+        Console.WriteLine($"  ✅ Generated {simpleAlertCount} simple alerts");
+        Console.WriteLine($"  ✅ Generated {complexAlertCount} complex multi-metric alerts\n");
+    }
+
+    private AlertRule GenerateComplexAlert(MetricConfiguration metric, int index)
+    {
+        // Select a complex alert pattern based on index
+        var pattern = index % 10;
+
+        return pattern switch
+        {
+            0 => GenerateProcessingRateAndCpuAlert(metric),
+            1 => GenerateLatencyAndMemoryAlert(metric),
+            2 => GenerateErrorRateAndJobsAlert(metric),
+            3 => GenerateFilesAndRecordsAlert(metric),
+            4 => GenerateQueueAndLatencyAlert(metric),
+            5 => GenerateHttpAndBusinessAlert(metric),
+            6 => GenerateRetryAndDeadLetterAlert(metric),
+            7 => GenerateValidationAndProcessingAlert(metric),
+            8 => GenerateJobsAndSystemAlert(metric),
+            _ => GenerateBytesAndFilesAlert(metric)
+        };
+    }
+
+    /// <summary>
+    /// Complex alert: Low processing rate OR high CPU usage
+    /// </summary>
+    private AlertRule GenerateProcessingRateAndCpuAlert(MetricConfiguration metric)
+    {
+        var businessMetric = "business_records_processed_total";
+        var systemMetric = "process_cpu_seconds_total";
+
+        return new AlertRule
+        {
+            Id = Guid.NewGuid().ToString(),
+            Name = $"complex_processing_cpu_{metric.Name}",
+            Expression = $"rate({businessMetric}{{datasource_id=\"{metric.DataSourceId}\"}}[5m]) < 10 OR rate({systemMetric}[1m]) > 0.8",
+            Description = "התראה מורכבת: קצב עיבוד נמוך או שימוש גבוה ב-CPU",
+            Severity = "critical",
+            For = "5m",
+            Annotations = new Dictionary<string, string>
+            {
+                ["summary"] = "קצב עיבוד נמוך או עומס CPU גבוה",
+                ["description"] = $"קצב העיבוד של {metric.DisplayName} ירד מתחת ל-10 לשנייה או שימוש ה-CPU עלה מעל 80%",
+                ["runbook_url"] = "https://wiki.example.com/runbooks/processing-cpu-alert"
+            },
+            Labels = new Dictionary<string, string>
+            {
+                ["alert_type"] = "complex",
+                ["datasource_id"] = metric.DataSourceId ?? "",
+                ["business_metrics"] = businessMetric,
+                ["system_metrics"] = systemMetric
+            },
+            TemplateParameters = new Dictionary<string, string>
+            {
+                ["businessMetricIds"] = businessMetric,
+                ["systemMetricIds"] = systemMetric
+            },
+            IsEnabled = true
+        };
+    }
+
+    /// <summary>
+    /// Complex alert: High latency AND high memory usage
+    /// </summary>
+    private AlertRule GenerateLatencyAndMemoryAlert(MetricConfiguration metric)
+    {
+        var businessMetric = "business_processing_duration_seconds";
+        var systemMetric = "process_resident_memory_bytes";
+
+        return new AlertRule
+        {
+            Id = Guid.NewGuid().ToString(),
+            Name = $"complex_latency_memory_{metric.Name}",
+            Expression = $"histogram_quantile(0.95, rate({businessMetric}_bucket{{datasource_id=\"{metric.DataSourceId}\"}}[5m])) > 5 AND {systemMetric} > 1073741824",
+            Description = "התראה מורכבת: חביון גבוה וזיכרון גבוה",
+            Severity = "warning",
+            For = "10m",
+            Annotations = new Dictionary<string, string>
+            {
+                ["summary"] = "חביון גבוה בעיבוד עם שימוש זיכרון גבוה",
+                ["description"] = $"P95 של זמן עיבוד {metric.DisplayName} עולה על 5 שניות ושימוש הזיכרון מעל 1GB"
+            },
+            Labels = new Dictionary<string, string>
+            {
+                ["alert_type"] = "complex",
+                ["datasource_id"] = metric.DataSourceId ?? "",
+                ["business_metrics"] = businessMetric,
+                ["system_metrics"] = systemMetric
+            },
+            TemplateParameters = new Dictionary<string, string>
+            {
+                ["businessMetricIds"] = businessMetric,
+                ["systemMetricIds"] = systemMetric
+            },
+            IsEnabled = true
+        };
+    }
+
+    /// <summary>
+    /// Complex alert: Error rate spike OR jobs failing
+    /// </summary>
+    private AlertRule GenerateErrorRateAndJobsAlert(MetricConfiguration metric)
+    {
+        var businessMetrics = new[] { "business_invalid_records_total", "business_jobs_failed_total" };
+
+        return new AlertRule
+        {
+            Id = Guid.NewGuid().ToString(),
+            Name = $"complex_errors_jobs_{metric.Name}",
+            Expression = $"rate({businessMetrics[0]}{{datasource_id=\"{metric.DataSourceId}\"}}[5m]) > 5 OR increase({businessMetrics[1]}{{datasource_id=\"{metric.DataSourceId}\"}}[15m]) > 3",
+            Description = "התראה מורכבת: קצב שגיאות גבוה או עבודות נכשלות",
+            Severity = "critical",
+            For = "3m",
+            Annotations = new Dictionary<string, string>
+            {
+                ["summary"] = "שגיאות בעיבוד או כשלון עבודות",
+                ["description"] = $"יותר מ-5 רשומות לא תקינות לשנייה או יותר מ-3 עבודות שנכשלו ב-15 דקות האחרונות"
+            },
+            Labels = new Dictionary<string, string>
+            {
+                ["alert_type"] = "complex",
+                ["datasource_id"] = metric.DataSourceId ?? "",
+                ["business_metrics"] = string.Join(",", businessMetrics)
+            },
+            TemplateParameters = new Dictionary<string, string>
+            {
+                ["businessMetricIds"] = string.Join(",", businessMetrics)
+            },
+            IsEnabled = true
+        };
+    }
+
+    /// <summary>
+    /// Complex alert: Files pending AND low records processed
+    /// </summary>
+    private AlertRule GenerateFilesAndRecordsAlert(MetricConfiguration metric)
+    {
+        var businessMetrics = new[] { "business_files_pending", "business_records_processed_total" };
+
+        return new AlertRule
+        {
+            Id = Guid.NewGuid().ToString(),
+            Name = $"complex_files_records_{metric.Name}",
+            Expression = $"{businessMetrics[0]}{{datasource_id=\"{metric.DataSourceId}\"}} > 100 AND rate({businessMetrics[1]}{{datasource_id=\"{metric.DataSourceId}\"}}[5m]) < 5",
+            Description = "התראה מורכבת: קבצים ממתינים עם קצב עיבוד נמוך",
+            Severity = "warning",
+            For = "15m",
+            Annotations = new Dictionary<string, string>
+            {
+                ["summary"] = "צבירת קבצים - קצב עיבוד איטי",
+                ["description"] = "יותר מ-100 קבצים ממתינים וקצב העיבוד נמוך מ-5 רשומות לשנייה"
+            },
+            Labels = new Dictionary<string, string>
+            {
+                ["alert_type"] = "complex",
+                ["datasource_id"] = metric.DataSourceId ?? "",
+                ["business_metrics"] = string.Join(",", businessMetrics)
+            },
+            TemplateParameters = new Dictionary<string, string>
+            {
+                ["businessMetricIds"] = string.Join(",", businessMetrics)
+            },
+            IsEnabled = true
+        };
+    }
+
+    /// <summary>
+    /// Complex alert: Queue wait time AND end-to-end latency
+    /// </summary>
+    private AlertRule GenerateQueueAndLatencyAlert(MetricConfiguration metric)
+    {
+        var businessMetrics = new[] { "business_queue_wait_time_seconds", "business_end_to_end_latency_seconds" };
+
+        return new AlertRule
+        {
+            Id = Guid.NewGuid().ToString(),
+            Name = $"complex_queue_latency_{metric.Name}",
+            Expression = $"histogram_quantile(0.90, rate({businessMetrics[0]}_bucket{{datasource_id=\"{metric.DataSourceId}\"}}[5m])) > 30 AND histogram_quantile(0.90, rate({businessMetrics[1]}_bucket{{datasource_id=\"{metric.DataSourceId}\"}}[5m])) > 60",
+            Description = "התראה מורכבת: זמן המתנה בתור וחביון כולל גבוהים",
+            Severity = "warning",
+            For = "10m",
+            Annotations = new Dictionary<string, string>
+            {
+                ["summary"] = "חביון גבוה בתור ובעיבוד כולל",
+                ["description"] = "P90 של זמן המתנה בתור מעל 30 שניות וחביון כולל מעל 60 שניות"
+            },
+            Labels = new Dictionary<string, string>
+            {
+                ["alert_type"] = "complex",
+                ["datasource_id"] = metric.DataSourceId ?? "",
+                ["business_metrics"] = string.Join(",", businessMetrics)
+            },
+            TemplateParameters = new Dictionary<string, string>
+            {
+                ["businessMetricIds"] = string.Join(",", businessMetrics)
+            },
+            IsEnabled = true
+        };
+    }
+
+    /// <summary>
+    /// Complex alert: HTTP errors AND business processing slowdown
+    /// </summary>
+    private AlertRule GenerateHttpAndBusinessAlert(MetricConfiguration metric)
+    {
+        var businessMetric = "business_processing_duration_seconds";
+        var systemMetric = "http_requests_total";
+
+        return new AlertRule
+        {
+            Id = Guid.NewGuid().ToString(),
+            Name = $"complex_http_processing_{metric.Name}",
+            Expression = $"rate({systemMetric}{{status=~\"5..\"}}[5m]) > 1 OR histogram_quantile(0.99, rate({businessMetric}_bucket{{datasource_id=\"{metric.DataSourceId}\"}}[5m])) > 10",
+            Description = "התראה מורכבת: שגיאות HTTP או עיבוד איטי מאוד",
+            Severity = "critical",
+            For = "5m",
+            Annotations = new Dictionary<string, string>
+            {
+                ["summary"] = "בעיות HTTP או עיבוד איטי",
+                ["description"] = "יותר משגיאת HTTP 5xx לשנייה או P99 של זמן עיבוד מעל 10 שניות"
+            },
+            Labels = new Dictionary<string, string>
+            {
+                ["alert_type"] = "complex",
+                ["datasource_id"] = metric.DataSourceId ?? "",
+                ["business_metrics"] = businessMetric,
+                ["system_metrics"] = systemMetric
+            },
+            TemplateParameters = new Dictionary<string, string>
+            {
+                ["businessMetricIds"] = businessMetric,
+                ["systemMetricIds"] = systemMetric
+            },
+            IsEnabled = true
+        };
+    }
+
+    /// <summary>
+    /// Complex alert: Retry attempts AND dead letter records
+    /// </summary>
+    private AlertRule GenerateRetryAndDeadLetterAlert(MetricConfiguration metric)
+    {
+        var businessMetrics = new[] { "business_retry_attempts_total", "business_dead_letter_records_total" };
+
+        return new AlertRule
+        {
+            Id = Guid.NewGuid().ToString(),
+            Name = $"complex_retry_deadletter_{metric.Name}",
+            Expression = $"increase({businessMetrics[0]}{{datasource_id=\"{metric.DataSourceId}\"}}[10m]) > 50 AND increase({businessMetrics[1]}{{datasource_id=\"{metric.DataSourceId}\"}}[10m]) > 10",
+            Description = "התראה מורכבת: ניסיונות חוזרים רבים ורשומות בתור מתים",
+            Severity = "critical",
+            For = "5m",
+            Annotations = new Dictionary<string, string>
+            {
+                ["summary"] = "כשלונות חוזרים ורשומות אבודות",
+                ["description"] = "יותר מ-50 ניסיונות חוזרים ויותר מ-10 רשומות בתור מתים ב-10 דקות"
+            },
+            Labels = new Dictionary<string, string>
+            {
+                ["alert_type"] = "complex",
+                ["datasource_id"] = metric.DataSourceId ?? "",
+                ["business_metrics"] = string.Join(",", businessMetrics)
+            },
+            TemplateParameters = new Dictionary<string, string>
+            {
+                ["businessMetricIds"] = string.Join(",", businessMetrics)
+            },
+            IsEnabled = true
+        };
+    }
+
+    /// <summary>
+    /// Complex alert: Validation latency AND processing duration
+    /// </summary>
+    private AlertRule GenerateValidationAndProcessingAlert(MetricConfiguration metric)
+    {
+        var businessMetrics = new[] { "business_validation_latency_seconds", "business_processing_duration_seconds" };
+
+        return new AlertRule
+        {
+            Id = Guid.NewGuid().ToString(),
+            Name = $"complex_validation_processing_{metric.Name}",
+            Expression = $"histogram_quantile(0.95, rate({businessMetrics[0]}_bucket{{datasource_id=\"{metric.DataSourceId}\"}}[5m])) > 2 AND histogram_quantile(0.95, rate({businessMetrics[1]}_bucket{{datasource_id=\"{metric.DataSourceId}\"}}[5m])) > 3",
+            Description = "התראה מורכבת: ולידציה ועיבוד איטיים",
+            Severity = "warning",
+            For = "10m",
+            Annotations = new Dictionary<string, string>
+            {
+                ["summary"] = "ולידציה ועיבוד איטיים",
+                ["description"] = "P95 של זמן ולידציה מעל 2 שניות ועיבוד מעל 3 שניות"
+            },
+            Labels = new Dictionary<string, string>
+            {
+                ["alert_type"] = "complex",
+                ["datasource_id"] = metric.DataSourceId ?? "",
+                ["business_metrics"] = string.Join(",", businessMetrics)
+            },
+            TemplateParameters = new Dictionary<string, string>
+            {
+                ["businessMetricIds"] = string.Join(",", businessMetrics)
+            },
+            IsEnabled = true
+        };
+    }
+
+    /// <summary>
+    /// Complex alert: Jobs failing AND system not healthy
+    /// </summary>
+    private AlertRule GenerateJobsAndSystemAlert(MetricConfiguration metric)
+    {
+        var businessMetric = "business_jobs_failed_total";
+        var systemMetric = "up";
+
+        return new AlertRule
+        {
+            Id = Guid.NewGuid().ToString(),
+            Name = $"complex_jobs_system_{metric.Name}",
+            Expression = $"increase({businessMetric}{{datasource_id=\"{metric.DataSourceId}\"}}[5m]) > 2 AND {systemMetric}{{job=\"dataprocessing\"}} < 1",
+            Description = "התראה מורכבת: עבודות נכשלות ושירות לא זמין",
+            Severity = "critical",
+            For = "2m",
+            Annotations = new Dictionary<string, string>
+            {
+                ["summary"] = "כשלון עבודות ובעיות זמינות",
+                ["description"] = "עבודות נכשלות והשירות לא מדווח כפעיל"
+            },
+            Labels = new Dictionary<string, string>
+            {
+                ["alert_type"] = "complex",
+                ["datasource_id"] = metric.DataSourceId ?? "",
+                ["business_metrics"] = businessMetric,
+                ["system_metrics"] = systemMetric
+            },
+            TemplateParameters = new Dictionary<string, string>
+            {
+                ["businessMetricIds"] = businessMetric,
+                ["systemMetricIds"] = systemMetric
+            },
+            IsEnabled = true
+        };
+    }
+
+    /// <summary>
+    /// Complex alert: High bytes processed AND high file count
+    /// </summary>
+    private AlertRule GenerateBytesAndFilesAlert(MetricConfiguration metric)
+    {
+        var businessMetrics = new[] { "business_bytes_processed_total", "business_files_processed_total" };
+
+        return new AlertRule
+        {
+            Id = Guid.NewGuid().ToString(),
+            Name = $"complex_bytes_files_{metric.Name}",
+            Expression = $"rate({businessMetrics[0]}{{datasource_id=\"{metric.DataSourceId}\"}}[5m]) > 104857600 AND rate({businessMetrics[1]}{{datasource_id=\"{metric.DataSourceId}\"}}[5m]) > 10",
+            Description = "התראה מורכבת: עומס גבוה - נפח וקבצים",
+            Severity = "info",
+            For = "15m",
+            Annotations = new Dictionary<string, string>
+            {
+                ["summary"] = "עומס עיבוד גבוה",
+                ["description"] = "יותר מ-100MB לשנייה ויותר מ-10 קבצים לשנייה - עומס גבוה"
+            },
+            Labels = new Dictionary<string, string>
+            {
+                ["alert_type"] = "complex",
+                ["datasource_id"] = metric.DataSourceId ?? "",
+                ["business_metrics"] = string.Join(",", businessMetrics)
+            },
+            TemplateParameters = new Dictionary<string, string>
+            {
+                ["businessMetricIds"] = string.Join(",", businessMetrics)
+            },
+            IsEnabled = true
+        };
     }
 }
