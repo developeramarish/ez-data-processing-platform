@@ -2,10 +2,62 @@
 
 ## Project Overview
 
-EZ Platform is a data processing platform built with microservices architecture (.NET 9.0 backend, React 18 frontend) deployed on Kubernetes. It provides file discovery, format conversion, schema validation, and multi-destination output with full Hebrew/RTL support.
+EZ Platform is a data processing platform built with microservices architecture (.NET 10.0 backend, React 19 frontend) deployed on Kubernetes. It provides file discovery, format conversion, schema validation, and multi-destination output with full Hebrew/RTL support.
 
 **Status:** 90% Complete (Production Validation Phase)
 **Architecture:** 9 Microservices + React Frontend + Kubernetes + Kafka + MongoDB
+
+---
+
+## CRITICAL: Task Orchestrator MCP Tool
+
+**ALWAYS use the `task-orchestrator` MCP tool for planning, managing, and executing tasks and features.**
+
+### Workflow Requirements
+
+1. **Planning Phase** - Use task-orchestrator to:
+   - Create features with `create_feature`
+   - Break down features into tasks with `create_task`
+   - Set dependencies with `create_dependency`
+   - Apply templates with `apply_template`
+
+2. **Execution Phase** - Use task-orchestrator to:
+   - Get overview with `get_overview` before starting work
+   - Update task status to `in_progress` when starting
+   - Update task status to `completed` when done
+   - Track progress with sections using `add_section`
+
+3. **Completion Phase** - After EVERY completed task:
+   - Update task status to `completed`
+   - **Git commit the changes** with descriptive message
+   - **Git push to remote**
+   - Report completion status
+
+### Task Orchestrator Commands
+```
+# Get current work overview
+get_overview
+
+# Create a feature
+create_feature(name, summary, priority, tags)
+
+# Create tasks under a feature
+create_task(title, summary, featureId, priority, complexity, tags)
+
+# Update task status
+update_task(id, status: "in_progress" | "completed")
+
+# Search for tasks
+search_tasks(status, priority, featureId)
+```
+
+### Mandatory Git Workflow After Task Completion
+```powershell
+# After completing any task:
+git add .
+git commit -m "Task: [task-title] - [brief description]"
+git push
+```
 
 ---
 
@@ -45,7 +97,7 @@ This script configures ALL 18 required port forwards:
 ## Technology Stack
 
 ### Backend
-- **Runtime:** .NET 9.0
+- **Runtime:** .NET 10.0
 - **API:** ASP.NET Core Web API
 - **Database:** MongoDB + MongoDB.Entities ORM
 - **Messaging:** MassTransit + Apache Kafka / RabbitMQ
@@ -55,7 +107,7 @@ This script configures ALL 18 required port forwards:
 - **Monitoring:** OpenTelemetry, Serilog, Prometheus
 
 ### Frontend
-- **Framework:** React 18 + TypeScript 5
+- **Framework:** React 19 + TypeScript 5
 - **UI Library:** Ant Design 5.x (RTL-enabled)
 - **State:** React Query (TanStack)
 - **i18n:** i18next (Hebrew/English)
