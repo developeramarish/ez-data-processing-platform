@@ -75,9 +75,6 @@ public static class OpenTelemetryConfiguration
                     .AddMeter("DataProcessing.Business.Metrics")
                     .AddMeter("DataProcessing.Business.*")
 
-                    // System metrics meter - explicitly embedded infrastructure metrics
-                    .AddMeter("DataProcessing.System.Metrics")
-
                     // Service-specific meters (validation, processing, etc.)
                     .AddMeter("DataProcessing.Validation")
                     .AddMeter("DataProcessing.FileProcessor")
@@ -236,9 +233,6 @@ public static class OpenTelemetryConfiguration
 
         // Register BusinessMetrics for business-level metrics (routed to Business Prometheus)
         services.AddBusinessMetrics();
-
-        // Register SystemMetrics for infrastructure metrics (explicitly embedded in each service)
-        services.AddSystemMetrics(serviceName);
 
         return services;
     }
