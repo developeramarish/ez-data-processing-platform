@@ -188,17 +188,8 @@ const AlertsManagement: React.FC = () => {
           : []
       };
 
-      // Combine all selected metrics from the 3 dropdowns
-      const allMetricIds = [
-        ...(values.datasourceMetricIds || []),
-        ...(values.businessMetricIds || []),
-        ...(values.systemMetricIds || [])
-      ];
-
-      if (allMetricIds.length === 0) {
-        message.error('יש לבחור לפחות Metric אחד');
-        return;
-      }
+      // Note: Metric selection validation is now handled by form rules
+      // The form will not submit if no metrics are selected
 
       // For each selected datasource metric, add/update the alert
       for (const metricId of (values.datasourceMetricIds || [])) {
@@ -908,6 +899,16 @@ const AlertsManagement: React.FC = () => {
             name="datasourceMetricIds"
             label={<span style={{ color: '#1890ff', fontWeight: 500 }}>📊 מדדי מקור נתונים (Datasource Metrics)</span>}
             extra={`מדדים ספציפיים למקורות נתונים - ${filteredModalMetrics.length} זמינים`}
+            dependencies={['businessMetricIds', 'systemMetricIds']}
+            rules={[{
+              validator: async (_, value) => {
+                const businessIds = form.getFieldValue('businessMetricIds') || [];
+                const systemIds = form.getFieldValue('systemMetricIds') || [];
+                if ([...(value || []), ...businessIds, ...systemIds].length === 0) {
+                  throw new Error('יש לבחור לפחות Metric אחד');
+                }
+              }
+            }]}
           >
             <Select
               mode="multiple"
@@ -916,7 +917,6 @@ const AlertsManagement: React.FC = () => {
               optionFilterProp="children"
               style={{ width: '100%' }}
               allowClear
-            >
               {filteredModalMetrics.map(metric => (
                 <Option key={metric.id} value={metric.id}>
                   <Space>
@@ -932,6 +932,7 @@ const AlertsManagement: React.FC = () => {
           {/* 2. Global Business Metrics Dropdown */}
           <Form.Item
             name="businessMetricIds"
+            dependencies={['datasourceMetricIds', 'systemMetricIds']}
             label={
               <Space>
                 <span style={{ color: '#52c41a', fontWeight: 500 }}>📈 מדדים עסקיים (Business Metrics)</span>
@@ -996,6 +997,7 @@ const AlertsManagement: React.FC = () => {
           {/* 3. System Metrics Dropdown */}
           <Form.Item
             name="systemMetricIds"
+            dependencies={['datasourceMetricIds', 'businessMetricIds']}
             label={
               <Space>
                 <span style={{ color: '#fa8c16', fontWeight: 500 }}>⚙️ מדדי מערכת (System Metrics)</span>
