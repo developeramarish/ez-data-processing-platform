@@ -89,7 +89,8 @@ public class GlobalAlertRepository : IGlobalAlertRepository
             return false;
         }
 
-        var result = await DB.DeleteAsync<GlobalAlertConfiguration>(id, cancellation: ct);
+        // MongoDB.Entities DeleteAsync doesn't support CancellationToken outside transactions
+        var result = await DB.DeleteAsync<GlobalAlertConfiguration>(id);
 
         if (result.DeletedCount > 0)
         {

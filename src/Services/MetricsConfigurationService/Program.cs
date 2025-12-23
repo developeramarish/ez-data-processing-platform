@@ -32,8 +32,7 @@ var activitySource = new ActivitySource(serviceName);
 builder.Services.AddSingleton(activitySource);
 builder.Services.AddDataProcessingOpenTelemetry(builder.Configuration, serviceName);
 
-// Configure metrics
-builder.Services.AddSingleton<DataProcessingMetrics>();
+// Configure metrics (using OpenTelemetry-based BusinessMetrics)
 builder.Services.AddBusinessMetrics();
 
 // CORS configuration

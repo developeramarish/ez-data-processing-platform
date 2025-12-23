@@ -100,6 +100,65 @@ public class AlertEvaluationService : IAlertEvaluationService
     }
 
     /// <summary>
+    /// Substitute $variable patterns in a PromQL expression with actual values from the metric configuration.
+    /// Supports: $datasource_name, $datasource_id, $metric_name, $category, $scope
+    /// </summary>
+    private string SubstituteVariables(string expression, MetricConfiguration metric)
+    {
+        if (string.IsNullOrEmpty(expression) || !expression.Contains('$'))
+            return expression;
+
+        var variables = new Dictionary<string, string?>
+        {
+            ["$datasource_name"] = metric.DataSourceName,
+            ["$datasource_id"] = metric.DataSourceId,
+            ["$metric_name"] = metric.Name,
+            ["$category"] = metric.Category,
+            ["$scope"] = metric.Scope
+        };
+
+        var result = expression;
+        var substitutedCount = 0;
+
+        foreach (var (variable, value) in variables)
+        {
+            if (!string.IsNullOrEmpty(value) && result.Contains(variable))
+            {
+                result = result.Replace(variable, value);
+                substitutedCount++;
+            }
+        }
+
+        // Log any unsubstituted variables (potential configuration issues)
+        if (result.Contains('$'))
+        {
+            // Extract remaining variable patterns for logging
+            var remainingVars = System.Text.RegularExpressions.Regex.Matches(result, @"\$[a-zA-Z_][a-zA-Z0-9_]*")
+                .Cast<System.Text.RegularExpressions.Match>()
+                .Select(m => m.Value)
+                .Distinct()
+                .ToList();
+
+            if (remainingVars.Any())
+            {
+                _logger.LogWarning(
+                    "Unsubstituted variables in PromQL expression for metric '{MetricName}': {Variables}. " +
+                    "Supported variables: $datasource_name, $datasource_id, $metric_name, $category, $scope",
+                    metric.Name, string.Join(", ", remainingVars));
+            }
+        }
+
+        if (substitutedCount > 0)
+        {
+            _logger.LogDebug(
+                "Substituted {Count} variable(s) in PromQL expression for metric '{MetricName}'. Original: '{Original}' → Resolved: '{Resolved}'",
+                substitutedCount, metric.Name, expression, result);
+        }
+
+        return result;
+    }
+
+    /// <summary>
     /// Evaluate a PromQL alert expression
     /// </summary>
     private async Task<bool> EvaluateAlertExpressionAsync(
@@ -115,8 +174,11 @@ public class AlertEvaluationService : IAlertEvaluationService
                 ? PrometheusInstance.System
                 : PrometheusInstance.Business;
 
-            // Execute the PromQL expression
-            var result = await prometheusService.QueryInstantAsync(alert.Expression, instance);
+            // Substitute $variable patterns with actual values from metric configuration
+            var resolvedExpression = SubstituteVariables(alert.Expression, metric);
+
+            // Execute the resolved PromQL expression
+            var result = await prometheusService.QueryInstantAsync(resolvedExpression, instance);
 
             if (result?.Data == null || !result.Data.Any())
             {

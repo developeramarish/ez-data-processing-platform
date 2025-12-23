@@ -79,6 +79,54 @@ export interface ApiResponse<T> {
   };
 }
 
+// Global Alert interfaces (for business/system metrics)
+export interface GlobalAlertConfiguration {
+  id: string;
+  metricType: 'business' | 'system';
+  metricName: string;
+  alertName: string;
+  description?: string;
+  expression: string;
+  for?: string;
+  severity: 'critical' | 'warning' | 'info';
+  isEnabled: boolean;
+  labels?: Record<string, string>;
+  annotations?: Record<string, string>;
+  notificationRecipients?: string[];
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string;
+  updatedBy: string;
+}
+
+export interface CreateGlobalAlertRequest {
+  metricType: 'business' | 'system';
+  metricName: string;
+  alertName: string;
+  description?: string;
+  expression: string;
+  for?: string;
+  severity: string;
+  isEnabled?: boolean;
+  labels?: Record<string, string>;
+  annotations?: Record<string, string>;
+  notificationRecipients?: string[];
+  createdBy?: string;
+}
+
+export interface UpdateGlobalAlertRequest {
+  alertName?: string;
+  description?: string;
+  expression?: string;
+  for?: string;
+  severity?: string;
+  isEnabled?: boolean;
+  labels?: Record<string, string>;
+  annotations?: Record<string, string>;
+  notificationRecipients?: string[];
+  updatedBy?: string;
+}
+
 class MetricsApiClient {
   async getAll(): Promise<MetricConfiguration[]> {
     const response = await fetch(BASE_URL);
@@ -259,12 +307,110 @@ class MetricsApiClient {
   async getAvailableMetrics(instance: 'system' | 'business' = 'business'): Promise<string[]> {
     const response = await fetch(`${BASE_URL}/available?instance=${instance}`);
     const result: ApiResponse<{ metricNames: string[]; count: number }> = await response.json();
-    
+
     if (!result.isSuccess) {
       throw new Error(result.error?.message || 'Failed to fetch available metrics');
     }
-    
+
     return result.data?.metricNames || [];
+  }
+
+  // Global Alert methods (for business/system metrics)
+  private readonly GLOBAL_ALERTS_URL = 'http://localhost:5002/api/v1/global-alerts';
+
+  async getGlobalAlerts(metricType?: 'business' | 'system'): Promise<GlobalAlertConfiguration[]> {
+    const url = metricType
+      ? `${this.GLOBAL_ALERTS_URL}?metricType=${metricType}`
+      : this.GLOBAL_ALERTS_URL;
+    const response = await fetch(url);
+    const result: ApiResponse<GlobalAlertConfiguration[]> = await response.json();
+
+    if (!result.isSuccess) {
+      throw new Error(result.error?.message || 'Failed to fetch global alerts');
+    }
+
+    return result.data || [];
+  }
+
+  async getGlobalAlertById(id: string): Promise<GlobalAlertConfiguration> {
+    const response = await fetch(`${this.GLOBAL_ALERTS_URL}/${id}`);
+    const result: ApiResponse<GlobalAlertConfiguration> = await response.json();
+
+    if (!result.isSuccess) {
+      throw new Error(result.error?.message || 'Failed to fetch global alert');
+    }
+
+    return result.data!;
+  }
+
+  async createGlobalAlert(request: CreateGlobalAlertRequest): Promise<GlobalAlertConfiguration> {
+    const response = await fetch(this.GLOBAL_ALERTS_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+      },
+      body: JSON.stringify(request),
+    });
+
+    const result: ApiResponse<GlobalAlertConfiguration> = await response.json();
+
+    if (!result.isSuccess) {
+      throw new Error(result.error?.message || 'Failed to create global alert');
+    }
+
+    return result.data!;
+  }
+
+  async updateGlobalAlert(id: string, request: UpdateGlobalAlertRequest): Promise<GlobalAlertConfiguration> {
+    const response = await fetch(`${this.GLOBAL_ALERTS_URL}/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+      },
+      body: JSON.stringify(request),
+    });
+
+    const result: ApiResponse<GlobalAlertConfiguration> = await response.json();
+
+    if (!result.isSuccess) {
+      throw new Error(result.error?.message || 'Failed to update global alert');
+    }
+
+    return result.data!;
+  }
+
+  async deleteGlobalAlert(id: string): Promise<void> {
+    const response = await fetch(`${this.GLOBAL_ALERTS_URL}/${id}`, {
+      method: 'DELETE',
+    });
+
+    const result: ApiResponse<void> = await response.json();
+
+    if (!result.isSuccess) {
+      throw new Error(result.error?.message || 'Failed to delete global alert');
+    }
+  }
+
+  async getGlobalAlertsByMetricName(metricName: string): Promise<GlobalAlertConfiguration[]> {
+    const response = await fetch(`${this.GLOBAL_ALERTS_URL}/metric/${encodeURIComponent(metricName)}`);
+    const result: ApiResponse<GlobalAlertConfiguration[]> = await response.json();
+
+    if (!result.isSuccess) {
+      throw new Error(result.error?.message || 'Failed to fetch global alerts by metric name');
+    }
+
+    return result.data || [];
+  }
+
+  async getEnabledGlobalAlerts(): Promise<GlobalAlertConfiguration[]> {
+    const response = await fetch(`${this.GLOBAL_ALERTS_URL}/enabled`);
+    const result: ApiResponse<GlobalAlertConfiguration[]> = await response.json();
+
+    if (!result.isSuccess) {
+      throw new Error(result.error?.message || 'Failed to fetch enabled global alerts');
+    }
+
+    return result.data || [];
   }
 }
 

@@ -165,6 +165,22 @@ public class BusinessMetrics : IDisposable
 
     #endregion
 
+    #region New 4 Metrics (Migrated from Legacy DataProcessingMetrics)
+
+    // 21. Validation errors counter - Total validation errors (migrated from dataprocessing_validation_errors_total)
+    private readonly Counter<long> _validationErrorsCounter;
+
+    // 22. Active datasources gauge - Number of active data sources (migrated from dataprocessing_active_datasources_total)
+    private readonly UpDownCounter<long> _activeDatasourcesCounter;
+
+    // 23. Messages sent counter - Messages sent via message bus (migrated from dataprocessing_messages_sent_total)
+    private readonly Counter<long> _messagesSentCounter;
+
+    // 24. Messages received counter - Messages received from message bus (migrated from dataprocessing_messages_received_total)
+    private readonly Counter<long> _messagesReceivedCounter;
+
+    #endregion
+
     public BusinessMetrics(Meter meter)
     {
         _meter = meter ?? throw new ArgumentNullException(nameof(meter));
@@ -262,6 +278,26 @@ public class BusinessMetrics : IDisposable
         _batchesProcessedCounter = _meter.CreateCounter<long>(
             "business_batches_processed_total",
             description: "Total number of processing batches completed");
+
+        #endregion
+
+        #region Initialize 4 New Metrics (Migrated from Legacy)
+
+        _validationErrorsCounter = _meter.CreateCounter<long>(
+            "business_validation_errors_total",
+            description: "Total number of validation errors by error type and severity");
+
+        _activeDatasourcesCounter = _meter.CreateUpDownCounter<long>(
+            "business_active_datasources_total",
+            description: "Number of currently active data sources");
+
+        _messagesSentCounter = _meter.CreateCounter<long>(
+            "business_messages_sent_total",
+            description: "Total number of messages sent via message bus");
+
+        _messagesReceivedCounter = _meter.CreateCounter<long>(
+            "business_messages_received_total",
+            description: "Total number of messages received from message bus");
 
         #endregion
     }
@@ -960,6 +996,97 @@ public class BusinessMetrics : IDisposable
 
         context.AddToTags(ref tags);
         _batchesProcessedCounter.Add(1, tags);
+    }
+
+    #endregion
+
+    #region Methods for 4 New Metrics (Migrated from Legacy)
+
+    /// <summary>
+    /// Records validation errors
+    /// Labels: data_source, service, error_type, severity
+    /// </summary>
+    public void RecordValidationErrors(long count, string dataSource, string service,
+        string errorType, string? severity = null)
+    {
+        var tags = new TagList
+        {
+            { "data_source", dataSource },
+            { "service", service },
+            { "error_type", errorType }
+        };
+
+        if (!string.IsNullOrEmpty(severity))
+            tags.Add("severity", severity);
+
+        _validationErrorsCounter.Add(count, tags);
+    }
+
+    /// <summary>
+    /// Increments active datasources counter
+    /// Labels: (none - global count)
+    /// </summary>
+    public void IncrementActiveDatasources()
+    {
+        _activeDatasourcesCounter.Add(1);
+    }
+
+    /// <summary>
+    /// Decrements active datasources counter
+    /// Labels: (none - global count)
+    /// </summary>
+    public void DecrementActiveDatasources()
+    {
+        _activeDatasourcesCounter.Add(-1);
+    }
+
+    /// <summary>
+    /// Sets active datasources count (delta from current)
+    /// Labels: (none - global count)
+    /// </summary>
+    public void SetActiveDatasources(long delta)
+    {
+        _activeDatasourcesCounter.Add(delta);
+    }
+
+    /// <summary>
+    /// Records a message sent via message bus
+    /// Labels: message_type, service, status
+    /// </summary>
+    public void RecordMessageSent(string messageType, string service, string? status = null)
+    {
+        var tags = new TagList
+        {
+            { "message_type", messageType },
+            { "service", service }
+        };
+
+        if (!string.IsNullOrEmpty(status))
+            tags.Add("status", status);
+        else
+            tags.Add("status", "success");
+
+        _messagesSentCounter.Add(1, tags);
+    }
+
+    /// <summary>
+    /// Records a message received from message bus
+    /// Labels: message_type, service, status
+    /// </summary>
+    public void RecordMessageReceived(string messageType, string service, string? status = null)
+    {
+        var tags = new TagList
+        {
+            { "message_type", messageType },
+            { "service", service }
+        };
+
+        if (!string.IsNullOrEmpty(status))
+            tags.Add("status", status);
+        else
+            tags.Add("status", "success");
+
+        _messagesReceivedCounter.Add(1, tags);
     }
 
     #endregion

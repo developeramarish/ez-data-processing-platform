@@ -4,9 +4,28 @@ using System.Diagnostics.Metrics;
 namespace DataProcessing.Shared.Monitoring;
 
 /// <summary>
-/// Centralized metrics collection for Data Processing Platform
+/// [DEPRECATED] Centralized metrics collection for Data Processing Platform
 /// Provides Prometheus metrics for monitoring file processing performance
+///
+/// DEPRECATION NOTICE (December 2025):
+/// This class uses the legacy Prometheus-net library and is being replaced by
+/// BusinessMetrics.cs which uses OpenTelemetry's System.Diagnostics.Metrics API.
+///
+/// Migration mapping:
+/// - dataprocessing_files_processed_total → business_files_processed_total
+/// - dataprocessing_records_processed_total → business_records_processed_total
+/// - dataprocessing_validation_errors_total → business_validation_errors_total
+/// - dataprocessing_processing_duration_seconds → business_processing_duration_seconds
+/// - dataprocessing_file_size_bytes → business_file_size_bytes
+/// - dataprocessing_validation_error_rate → business_validation_error_rate
+/// - dataprocessing_active_datasources_total → business_active_datasources_total
+/// - dataprocessing_pending_files_total → business_files_pending
+/// - dataprocessing_messages_sent_total → business_messages_sent_total
+/// - dataprocessing_messages_received_total → business_messages_received_total
+///
+/// New code should use BusinessMetrics instead. This class will be removed in a future release.
 /// </summary>
+[Obsolete("Use BusinessMetrics class instead. This legacy Prometheus-net class will be removed in a future release.")]
 public class DataProcessingMetrics
 {
     private readonly Meter _meter;
@@ -209,8 +228,10 @@ public class DataProcessingMetrics
 }
 
 /// <summary>
-/// Extension methods for easy metrics recording
+/// [DEPRECATED] Extension methods for easy metrics recording
+/// Use BusinessMetrics methods instead.
 /// </summary>
+[Obsolete("Use BusinessMetrics class instead. This legacy class will be removed in a future release.")]
 public static class MetricsExtensions
 {
     /// <summary>

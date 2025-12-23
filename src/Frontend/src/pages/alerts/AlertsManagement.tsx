@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Typography, Button, Space, Card, Spin, message, Table, Tag, Empty, Modal, Form, Input, Select, Alert as AntAlert, Collapse, Checkbox, Divider, Tabs, Switch, Row, Col, Tooltip } from 'antd';
 import { PlusOutlined, ReloadOutlined, EditOutlined, DeleteOutlined, BellOutlined, InfoCircleOutlined, SearchOutlined, SettingOutlined, CodeOutlined } from '@ant-design/icons';
-import metricsApi, { type MetricConfiguration } from '../../services/metrics-api-client';
+import metricsApi, {
+  type MetricConfiguration,
+  type GlobalAlertConfiguration,
+  type CreateGlobalAlertRequest
+} from '../../services/metrics-api-client';
 import PromQLExpressionHelperDialog, {
   GLOBAL_BUSINESS_METRICS,
   SYSTEM_METRICS,
@@ -9,6 +13,7 @@ import PromQLExpressionHelperDialog, {
   SYSTEM_METRIC_CATEGORIES,
   type AvailableMetric
 } from '../../components/metrics/PromQLExpressionHelperDialog';
+import EnhancedLabelInput from '../../components/metrics/EnhancedLabelInput';
 
 const { Title, Paragraph, Text } = Typography;
 const { TextArea } = Input;
@@ -41,13 +46,24 @@ interface AlertFormData {
   datasourceMetricIds?: string[];
   businessMetricIds?: string[];
   systemMetricIds?: string[];
+  // Labels configuration for PromQL filtering
+  labelNames?: string;
+  labelsExpression?: string;
+  labels?: { key: string; value: string }[];
+}
+
+// Extended AlertRule to track alert source type
+interface ExtendedAlertRule extends AlertRule {
+  sourceType: 'datasource' | 'business' | 'system';
+  globalAlertId?: string; // ID from GlobalAlertConfiguration for business/system alerts
 }
 
 const AlertsManagement: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [allMetrics, setAllMetrics] = useState<MetricConfiguration[]>([]);
-  const [alerts, setAlerts] = useState<AlertRule[]>([]);
-  const [editingAlert, setEditingAlert] = useState<AlertRule | null>(null);
+  const [alerts, setAlerts] = useState<ExtendedAlertRule[]>([]);
+  const [globalAlerts, setGlobalAlerts] = useState<GlobalAlertConfiguration[]>([]);
+  const [editingAlert, setEditingAlert] = useState<ExtendedAlertRule | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form] = Form.useForm();
   const [settingsForm] = Form.useForm();
@@ -80,12 +96,19 @@ const AlertsManagement: React.FC = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      // Load all metrics to get their alert rules
-      const metrics = await metricsApi.getAll();
-      setAllMetrics(metrics);
+      // Load all metrics and global alerts in parallel
+      const [metrics, fetchedGlobalAlerts] = await Promise.all([
+        metricsApi.getAll(),
+        metricsApi.getGlobalAlerts()
+      ]);
 
-      // Extract all alert rules from metrics
-      const allAlerts: AlertRule[] = [];
+      setAllMetrics(metrics);
+      setGlobalAlerts(fetchedGlobalAlerts);
+
+      // Extract all alert rules from datasource metrics
+      const allAlerts: ExtendedAlertRule[] = [];
+
+      // 1. Datasource metric alerts (embedded in MetricConfiguration)
       metrics.forEach(metric => {
         const metricAlerts = (metric as any).alertRules || [];
         metricAlerts.forEach((alert: any, idx: number) => {
@@ -100,10 +123,31 @@ const AlertsManagement: React.FC = () => {
             notificationRecipients: alert.notificationRecipients,
             metricId: metric.id,
             metricName: metric.name,
-            metricDisplayName: metric.displayName
+            metricDisplayName: metric.displayName,
+            sourceType: 'datasource'
           });
         });
       });
+
+      // 2. Global alerts (business and system metrics)
+      fetchedGlobalAlerts.forEach((globalAlert) => {
+        allAlerts.push({
+          id: globalAlert.id,
+          name: globalAlert.alertName,
+          description: globalAlert.description,
+          severity: globalAlert.severity,
+          expression: globalAlert.expression,
+          for: globalAlert.for,
+          isEnabled: globalAlert.isEnabled,
+          notificationRecipients: globalAlert.notificationRecipients,
+          metricId: `${globalAlert.metricType}:${globalAlert.metricName}`,
+          metricName: globalAlert.metricName,
+          metricDisplayName: globalAlert.metricName,
+          sourceType: globalAlert.metricType as 'business' | 'system',
+          globalAlertId: globalAlert.id
+        });
+      });
+
       setAlerts(allAlerts);
     } catch (error) {
       message.error('שגיאה בטעינת התרעות');
@@ -125,11 +169,16 @@ const AlertsManagement: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleEditAlert = (alert: AlertRule) => {
-    // Determine which type of metric this alert is for
-    const isDatasourceMetric = allMetrics.some(m => m.id === alert.metricId);
-    const isBusinessMetric = alert.metricId?.startsWith('business:');
-    const isSystemMetric = alert.metricId?.startsWith('system:');
+  const handleEditAlert = (alert: ExtendedAlertRule) => {
+    // Use sourceType to determine metric category
+    const isDatasourceMetric = alert.sourceType === 'datasource';
+    const isBusinessMetric = alert.sourceType === 'business';
+    const isSystemMetric = alert.sourceType === 'system';
+
+    // For business/system alerts, extract the metric name from the metricId
+    const metricName = isBusinessMetric || isSystemMetric
+      ? alert.metricId.split(':')[1] || alert.metricName
+      : null;
 
     form.setFieldsValue({
       name: alert.name,
@@ -140,20 +189,29 @@ const AlertsManagement: React.FC = () => {
       isEnabled: alert.isEnabled,
       notificationRecipients: alert.notificationRecipients?.join(', '),
       datasourceMetricIds: isDatasourceMetric ? [alert.metricId] : [],
-      businessMetricIds: isBusinessMetric ? [alert.metricId] : [],
-      systemMetricIds: isSystemMetric ? [alert.metricId] : []
+      businessMetricIds: isBusinessMetric && metricName ? [metricName] : [],
+      systemMetricIds: isSystemMetric && metricName ? [metricName] : []
     });
     setEditingAlert(alert);
     setIsModalOpen(true);
   };
 
-  const handleDeleteAlert = async (alert: AlertRule) => {
+  const handleDeleteAlert = async (alert: ExtendedAlertRule) => {
     if (!window.confirm(`האם למחוק את ההתרעה "${alert.name}"?`)) {
       return;
     }
 
     try {
-      // Find the metric and remove the alert from it
+      // Check if this is a global alert (business/system metric)
+      if (alert.globalAlertId && (alert.sourceType === 'business' || alert.sourceType === 'system')) {
+        // Delete via global alerts API
+        await metricsApi.deleteGlobalAlert(alert.globalAlertId);
+        message.success(`ההתרעה "${alert.name}" נמחקה בהצלחה`);
+        loadData();
+        return;
+      }
+
+      // For datasource alerts, find the metric and remove the alert from it
       const metric = allMetrics.find(m => m.id === alert.metricId);
       if (metric) {
         const alertRules = ((metric as any).alertRules || []).filter((a: any) =>
@@ -176,28 +234,39 @@ const AlertsManagement: React.FC = () => {
 
   const handleSaveAlert = async (values: AlertFormData) => {
     try {
-      const alertData = {
-        name: values.name,
-        description: values.description,
-        severity: values.severity,
-        expression: values.expression,
-        for: values.for,
-        isEnabled: values.isEnabled,
-        notificationRecipients: values.notificationRecipients
-          ? values.notificationRecipients.split(',').map(r => r.trim())
-          : []
-      };
+      const notificationRecipients = values.notificationRecipients
+        ? values.notificationRecipients.split(',').map(r => r.trim()).filter(r => r)
+        : [];
 
       // Note: Metric selection validation is now handled by form rules
       // The form will not submit if no metrics are selected
 
-      // For each selected datasource metric, add/update the alert
+      // Build labels object from form values
+      const labelsRecord: Record<string, string> = {};
+      if (values.labels) {
+        for (const label of values.labels) {
+          labelsRecord[label.key] = label.value;
+        }
+      }
+
+      // 1. Handle datasource metric alerts (embedded in MetricConfiguration)
       for (const metricId of (values.datasourceMetricIds || [])) {
         const metric = allMetrics.find(m => m.id === metricId);
         if (metric) {
+          const alertData = {
+            name: values.name,
+            description: values.description,
+            severity: values.severity,
+            expression: values.expression,
+            for: values.for,
+            isEnabled: values.isEnabled,
+            notificationRecipients,
+            labels: Object.keys(labelsRecord).length > 0 ? labelsRecord : undefined
+          };
+
           let alertRules = [...((metric as any).alertRules || [])];
 
-          if (editingAlert && editingAlert.metricId === metricId) {
+          if (editingAlert && editingAlert.sourceType === 'datasource' && editingAlert.metricId === metricId) {
             // Update existing alert
             alertRules = alertRules.map((a: any) =>
               (a.id || a.name) === (editingAlert.id || editingAlert.name) ? alertData : a
@@ -214,8 +283,73 @@ const AlertsManagement: React.FC = () => {
         }
       }
 
-      // Note: Business and System metrics are global, alerts on them would need different handling
-      // For now, we store the alert configuration with the expression referencing the metric
+      // 2. Handle business metric alerts (via GlobalAlertConfiguration API)
+      for (const metricName of (values.businessMetricIds || [])) {
+        if (editingAlert && editingAlert.sourceType === 'business' && editingAlert.globalAlertId) {
+          // Update existing global alert
+          await metricsApi.updateGlobalAlert(editingAlert.globalAlertId, {
+            alertName: values.name,
+            description: values.description,
+            expression: values.expression,
+            for: values.for,
+            severity: values.severity,
+            isEnabled: values.isEnabled,
+            notificationRecipients,
+            labels: Object.keys(labelsRecord).length > 0 ? labelsRecord : undefined,
+            updatedBy: 'frontend-user'
+          });
+        } else {
+          // Create new global alert for business metric
+          const request: CreateGlobalAlertRequest = {
+            metricType: 'business',
+            metricName,
+            alertName: values.name,
+            description: values.description,
+            expression: values.expression,
+            for: values.for,
+            severity: values.severity,
+            isEnabled: values.isEnabled,
+            notificationRecipients,
+            labels: Object.keys(labelsRecord).length > 0 ? labelsRecord : undefined,
+            createdBy: 'frontend-user'
+          };
+          await metricsApi.createGlobalAlert(request);
+        }
+      }
+
+      // 3. Handle system metric alerts (via GlobalAlertConfiguration API)
+      for (const metricName of (values.systemMetricIds || [])) {
+        if (editingAlert && editingAlert.sourceType === 'system' && editingAlert.globalAlertId) {
+          // Update existing global alert
+          await metricsApi.updateGlobalAlert(editingAlert.globalAlertId, {
+            alertName: values.name,
+            description: values.description,
+            expression: values.expression,
+            for: values.for,
+            severity: values.severity,
+            isEnabled: values.isEnabled,
+            notificationRecipients,
+            labels: Object.keys(labelsRecord).length > 0 ? labelsRecord : undefined,
+            updatedBy: 'frontend-user'
+          });
+        } else {
+          // Create new global alert for system metric
+          const request: CreateGlobalAlertRequest = {
+            metricType: 'system',
+            metricName,
+            alertName: values.name,
+            description: values.description,
+            expression: values.expression,
+            for: values.for,
+            severity: values.severity,
+            isEnabled: values.isEnabled,
+            notificationRecipients,
+            labels: Object.keys(labelsRecord).length > 0 ? labelsRecord : undefined,
+            createdBy: 'frontend-user'
+          };
+          await metricsApi.createGlobalAlert(request);
+        }
+      }
 
       message.success(editingAlert ? 'ההתרעה עודכנה בהצלחה' : 'ההתרעה נוצרה בהצלחה');
       setIsModalOpen(false);
@@ -389,9 +523,28 @@ const AlertsManagement: React.FC = () => {
     {
       title: 'Metric',
       key: 'metric',
-      render: (_: any, record: AlertRule) => (
-        <Tag color="blue">{record.metricDisplayName || record.metricName}</Tag>
-      )
+      render: (_: any, record: ExtendedAlertRule) => {
+        const colorMap = {
+          datasource: 'blue',
+          business: 'green',
+          system: 'orange'
+        };
+        const labelMap = {
+          datasource: 'מקור נתונים',
+          business: 'עסקי',
+          system: 'מערכת'
+        };
+        return (
+          <Space direction="vertical" size={0}>
+            <Tag color={colorMap[record.sourceType] || 'blue'}>
+              {record.metricDisplayName || record.metricName}
+            </Tag>
+            <Text type="secondary" style={{ fontSize: 10 }}>
+              {labelMap[record.sourceType] || record.sourceType}
+            </Text>
+          </Space>
+        );
+      }
     },
     {
       title: 'חומרה',
@@ -917,6 +1070,7 @@ const AlertsManagement: React.FC = () => {
               optionFilterProp="children"
               style={{ width: '100%' }}
               allowClear
+            >
               {filteredModalMetrics.map(metric => (
                 <Option key={metric.id} value={metric.id}>
                   <Space>
@@ -1167,6 +1321,29 @@ const AlertsManagement: React.FC = () => {
             extra="כמה זמן הביטוי צריך להתקיים לפני שההתרעה תופעל"
           >
             <Input placeholder="לדוגמה: 5m, 1h" style={{ width: 120 }} />
+          </Form.Item>
+
+          {/* Labels Configuration - Optional */}
+          <Form.Item
+            label={
+              <Space>
+                <span>תוויות (Labels) - אופציונלי</span>
+                <Tooltip title="הוסף תוויות לסינון ביטוי PromQL. השתמש ב-$variable לערכים דינמיים">
+                  <InfoCircleOutlined style={{ color: '#1890ff' }} />
+                </Tooltip>
+              </Space>
+            }
+          >
+            <EnhancedLabelInput
+              value={form.getFieldValue('labelNames')}
+              onChange={(labelNames, promqlExpr, labels) => {
+                form.setFieldsValue({
+                  labelNames,
+                  labelsExpression: promqlExpr,
+                  labels: labels.map(l => ({ key: l.name, value: l.value }))
+                });
+              }}
+            />
           </Form.Item>
 
           <Form.Item

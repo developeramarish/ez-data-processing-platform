@@ -68,6 +68,11 @@ export const GLOBAL_BUSINESS_METRICS: AvailableMetric[] = [
   { name: 'business_validation_error_rate', displayName: 'Validation Error Rate', description: 'אחוז רשומות שנכשלו בולידציה', prometheusType: 'histogram', category: 'validation', labels: ['datasource_id', 'rule_name'] },
   // Retry Metrics
   { name: 'business_retry_attempts_total', displayName: 'Retry Attempts Total', description: 'סה״כ ניסיונות חוזרים לעיבוד כושל', prometheusType: 'counter', category: 'errors', labels: ['datasource_id', 'operation'] },
+  // Migrated from Legacy DataProcessingMetrics
+  { name: 'business_validation_errors_total', displayName: 'Validation Errors Total', description: 'סה״כ שגיאות ולידציה לפי סוג ודרגת חומרה', prometheusType: 'counter', category: 'validation', labels: ['data_source', 'service', 'error_type', 'severity'] },
+  { name: 'business_active_datasources_total', displayName: 'Active Datasources Total', description: 'מספר מקורות נתונים פעילים כרגע', prometheusType: 'gauge', category: 'datasources', labels: [] },
+  { name: 'business_messages_sent_total', displayName: 'Messages Sent Total', description: 'סה״כ הודעות שנשלחו דרך אפיק ההודעות', prometheusType: 'counter', category: 'messaging', labels: ['message_type', 'service', 'status'] },
+  { name: 'business_messages_received_total', displayName: 'Messages Received Total', description: 'סה״כ הודעות שהתקבלו מאפיק ההודעות', prometheusType: 'counter', category: 'messaging', labels: ['message_type', 'service', 'status'] },
 ];
 
 // Category labels for business metrics (Hebrew)
@@ -78,7 +83,9 @@ export const BUSINESS_METRIC_CATEGORIES: Record<string, string> = {
   jobs: 'עבודות',
   latency: 'זמני תגובה',
   validation: 'ולידציה',
-  errors: 'שגיאות'
+  errors: 'שגיאות',
+  datasources: 'מקורות נתונים',
+  messaging: 'הודעות'
 };
 
 // Predefined system/infrastructure metrics for system alerts
