@@ -56,6 +56,7 @@ builder.Services.AddHttpClient("Prometheus", client =>
 
 // Register repositories
 builder.Services.AddScoped<IMetricRepository, MetricRepository>();
+builder.Services.AddScoped<IGlobalAlertRepository, GlobalAlertRepository>();
 
 // Register Prometheus query service
 builder.Services.AddScoped<IPrometheusQueryService, PrometheusQueryService>();
