@@ -16,7 +16,8 @@ public class ExcelToJsonConverter : IFormatConverter
     public ExcelToJsonConverter(ILogger<ExcelToJsonConverter> logger)
     {
         _logger = logger;
-        // EPPlus license will be configured in application startup
+        // Set EPPlus license for non-commercial use (EPPlus 8+ API)
+        ExcelPackage.License.SetNonCommercialPersonal("EZ Platform Development");
     }
 
     public Task<string> ConvertToJsonAsync(

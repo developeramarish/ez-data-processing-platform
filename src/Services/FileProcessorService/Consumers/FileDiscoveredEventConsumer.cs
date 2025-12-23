@@ -75,26 +75,60 @@ public class FileDiscoveredEventConsumer : IConsumer<FileDiscoveredEvent>
                 filePattern: datasource.FilePattern,
                 scheduleFrequency: datasource.ScheduleFrequency);
 
-            // Read file content
-            var fileContent = await ReadFileContentAsync(datasource, message.FilePath, message.CorrelationId);
-            if (string.IsNullOrEmpty(fileContent))
+            // Read file content - use binary mode for Excel, text mode for others
+            string jsonContent;
+            string originalFormat;
+            Dictionary<string, object> metadata;
+            int contentLength;
+
+            if (IsBinaryFormat(message.FileName))
             {
-                _logger.LogWarning(
-                    "[{CorrelationId}] File {FileName} is empty or could not be read",
-                    message.CorrelationId, message.FileName);
-                _businessMetrics.RecordFileProcessed(dataSourceName, "FileProcessor", fileType, false, businessContext);
-                return;
+                // Binary file (Excel) - read as bytes to preserve binary integrity
+                var fileContentBytes = await ReadFileContentAsBytesAsync(datasource, message.FilePath, message.CorrelationId);
+                if (fileContentBytes.Length == 0)
+                {
+                    _logger.LogWarning(
+                        "[{CorrelationId}] Binary file {FileName} is empty or could not be read",
+                        message.CorrelationId, message.FileName);
+                    _businessMetrics.RecordFileProcessed(dataSourceName, "FileProcessor", fileType, false, businessContext);
+                    return;
+                }
+                contentLength = fileContentBytes.Length;
+
+                // Record file size with business context
+                _businessMetrics.RecordFileSize(contentLength, dataSourceName, "FileProcessor", fileType);
+                _businessMetrics.RecordBytesProcessed(contentLength, dataSourceName, "FileProcessor", businessContext, fileType, "processing");
+
+                // Convert binary content to JSON
+                (jsonContent, originalFormat, metadata) = await ConvertToJsonFromBytesAsync(
+                    fileContentBytes,
+                    message.FileName,
+                    message.CorrelationId);
             }
+            else
+            {
+                // Text file (CSV, XML, JSON) - read as string
+                var fileContent = await ReadFileContentAsync(datasource, message.FilePath, message.CorrelationId);
+                if (string.IsNullOrEmpty(fileContent))
+                {
+                    _logger.LogWarning(
+                        "[{CorrelationId}] File {FileName} is empty or could not be read",
+                        message.CorrelationId, message.FileName);
+                    _businessMetrics.RecordFileProcessed(dataSourceName, "FileProcessor", fileType, false, businessContext);
+                    return;
+                }
+                contentLength = fileContent.Length;
 
-            // Record file size with business context
-            _businessMetrics.RecordFileSize(fileContent.Length, dataSourceName, "FileProcessor", fileType);
-            _businessMetrics.RecordBytesProcessed(fileContent.Length, dataSourceName, "FileProcessor", businessContext, fileType, "processing");
+                // Record file size with business context
+                _businessMetrics.RecordFileSize(contentLength, dataSourceName, "FileProcessor", fileType);
+                _businessMetrics.RecordBytesProcessed(contentLength, dataSourceName, "FileProcessor", businessContext, fileType, "processing");
 
-            // Detect and convert to JSON
-            var (jsonContent, originalFormat, metadata) = await ConvertToJsonAsync(
-                fileContent,
-                message.FileName,
-                message.CorrelationId);
+                // Convert text content to JSON
+                (jsonContent, originalFormat, metadata) = await ConvertToJsonAsync(
+                    fileContent,
+                    message.FileName,
+                    message.CorrelationId);
+            }
 
             if (string.IsNullOrEmpty(jsonContent))
             {
@@ -146,7 +180,16 @@ public class FileDiscoveredEventConsumer : IConsumer<FileDiscoveredEvent>
     }
 
     /// <summary>
-    /// Reads file content using the appropriate connector
+    /// Checks if a file format is binary (requires byte-level handling)
+    /// </summary>
+    private static bool IsBinaryFormat(string fileName)
+    {
+        var extension = Path.GetExtension(fileName).ToLowerInvariant();
+        return extension is ".xlsx" or ".xls";
+    }
+
+    /// <summary>
+    /// Reads file content as text using the appropriate connector
     /// </summary>
     private async Task<string> ReadFileContentAsync(
         DataProcessingDataSource datasource,
@@ -154,7 +197,7 @@ public class FileDiscoveredEventConsumer : IConsumer<FileDiscoveredEvent>
         string correlationId)
     {
         using var scope = _scopeFactory.CreateScope();
-        
+
         // Get appropriate connector (for now, LocalFileConnector)
         var connector = scope.ServiceProvider.GetRequiredService<LocalFileConnector>();
 
@@ -180,10 +223,60 @@ public class FileDiscoveredEventConsumer : IConsumer<FileDiscoveredEvent>
     }
 
     /// <summary>
-    /// Converts file content to JSON using appropriate format converter
+    /// Reads file content as binary bytes using the appropriate connector
+    /// Used for binary formats like Excel (.xlsx, .xls) that cannot be read as text
+    /// </summary>
+    private async Task<byte[]> ReadFileContentAsBytesAsync(
+        DataProcessingDataSource datasource,
+        string filePath,
+        string correlationId)
+    {
+        using var scope = _scopeFactory.CreateScope();
+
+        // Get appropriate connector (for now, LocalFileConnector)
+        var connector = scope.ServiceProvider.GetRequiredService<LocalFileConnector>();
+
+        try
+        {
+            using var stream = await connector.ReadFileAsync(datasource, filePath);
+            using var memoryStream = new MemoryStream();
+            await stream.CopyToAsync(memoryStream);
+            var content = memoryStream.ToArray();
+
+            _logger.LogDebug(
+                "[{CorrelationId}] Read {Bytes} bytes (binary) from file {FilePath}",
+                correlationId, content.Length, filePath);
+
+            return content;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "[{CorrelationId}] Error reading binary file {FilePath}",
+                correlationId, filePath);
+            return Array.Empty<byte>();
+        }
+    }
+
+    /// <summary>
+    /// Converts file content to JSON using appropriate format converter (text-based files)
     /// </summary>
     private async Task<(string jsonContent, string originalFormat, Dictionary<string, object> metadata)> ConvertToJsonAsync(
         string fileContent,
+        string fileName,
+        string correlationId)
+    {
+        // Convert text content to bytes for the stream-based converter
+        var contentBytes = System.Text.Encoding.UTF8.GetBytes(fileContent);
+        return await ConvertToJsonFromBytesAsync(contentBytes, fileName, correlationId);
+    }
+
+    /// <summary>
+    /// Converts binary file content to JSON using appropriate format converter
+    /// Used for binary formats like Excel that must preserve exact byte representation
+    /// </summary>
+    private async Task<(string jsonContent, string originalFormat, Dictionary<string, object> metadata)> ConvertToJsonFromBytesAsync(
+        byte[] contentBytes,
         string fileName,
         string correlationId)
     {
@@ -219,8 +312,7 @@ public class FileDiscoveredEventConsumer : IConsumer<FileDiscoveredEvent>
                 return (string.Empty, originalFormat, new Dictionary<string, object>());
             }
 
-            // Convert content to JSON
-            var contentBytes = System.Text.Encoding.UTF8.GetBytes(fileContent);
+            // Convert content to JSON using the binary bytes directly
             using (var stream = new MemoryStream(contentBytes))
             {
                 var jsonContent = await converter.ConvertToJsonAsync(stream);

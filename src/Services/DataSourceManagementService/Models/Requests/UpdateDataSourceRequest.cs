@@ -122,4 +122,9 @@ public class UpdateDataSourceRequest
     /// Updated schema version (for schema evolution tracking)
     /// </summary>
     public int? SchemaVersion { get; set; }
+
+    /// <summary>
+    /// Output configuration with destinations (folder, Kafka, SFTP, HTTP)
+    /// </summary>
+    public DataProcessing.Shared.Entities.OutputConfiguration? Output { get; set; }
 }

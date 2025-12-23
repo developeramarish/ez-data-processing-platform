@@ -795,7 +795,8 @@ public class DataSourceService : IDataSourceService
             TotalFilesProcessed = 0,
             TotalErrorRecords = 0,
             LastProcessedAt = null,
-            AdditionalConfiguration = additionalConfig.ElementCount > 0 ? additionalConfig : null
+            AdditionalConfiguration = additionalConfig.ElementCount > 0 ? additionalConfig : null,
+            Output = request.Output ?? new DataProcessing.Shared.Entities.OutputConfiguration()
         };
     }
 
@@ -888,7 +889,13 @@ public class DataSourceService : IDataSourceService
         }
         
         entity.AdditionalConfiguration = additionalConfig.ElementCount > 0 ? additionalConfig : null;
-        
+
+        // Map Output configuration with destinations
+        if (request.Output != null)
+        {
+            entity.Output = request.Output;
+        }
+
         // Mark entity as modified to ensure MongoDB saves the changes
         entity.MarkAsModified();
     }

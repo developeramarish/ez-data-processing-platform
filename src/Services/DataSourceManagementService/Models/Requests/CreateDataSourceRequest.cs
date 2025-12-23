@@ -96,4 +96,9 @@ public class CreateDataSourceRequest
     /// JSON schema document for validating file content
     /// </summary>
     public object? JsonSchema { get; set; }
+
+    /// <summary>
+    /// Output configuration with destinations (folder, Kafka, SFTP, HTTP)
+    /// </summary>
+    public DataProcessing.Shared.Entities.OutputConfiguration? Output { get; set; }
 }

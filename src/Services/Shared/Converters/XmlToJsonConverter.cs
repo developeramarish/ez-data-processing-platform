@@ -86,7 +86,7 @@ public class XmlToJsonConverter : IFormatConverter
             {
                 var key = child.Name.LocalName;
                 var value = XmlToJsonObject(child);
-                
+
                 if (dict.ContainsKey(key))
                 {
                     if (dict[key] is not List<object> list)
@@ -103,6 +103,32 @@ public class XmlToJsonConverter : IFormatConverter
             }
             return dict;
         }
-        return element.Value;
+        return ParseValue(element.Value);
+    }
+
+    /// <summary>
+    /// Parses a string value and converts it to the appropriate type (number, boolean, or string)
+    /// </summary>
+    private static object ParseValue(string value)
+    {
+        if (string.IsNullOrEmpty(value))
+            return value;
+
+        // Try parsing as decimal (for numeric values including decimals)
+        if (decimal.TryParse(value, System.Globalization.NumberStyles.Any,
+            System.Globalization.CultureInfo.InvariantCulture, out var decimalValue))
+        {
+            // Return as integer if it's a whole number, otherwise as decimal
+            if (decimalValue == Math.Truncate(decimalValue) && decimalValue >= int.MinValue && decimalValue <= int.MaxValue)
+                return (int)decimalValue;
+            return decimalValue;
+        }
+
+        // Try parsing as boolean
+        if (bool.TryParse(value, out var boolValue))
+            return boolValue;
+
+        // Return as string
+        return value;
     }
 }
