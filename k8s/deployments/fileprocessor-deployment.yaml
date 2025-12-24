@@ -1,6 +1,6 @@
 # FileProcessorService - Kubernetes Deployment
 # Week 2: Day 1
-# Replicas: 5 (CPU intensive, high scaling for parallel processing)
+# Replicas: 2 (Optimized based on 1000-file stress test, scale up for >5000 files)
 
 apiVersion: apps/v1
 kind: Deployment
@@ -12,7 +12,7 @@ metadata:
     component: processing
     tier: backend
 spec:
-  replicas: 5
+  replicas: 2
   selector:
     matchLabels:
       app: fileprocessor
@@ -71,11 +71,11 @@ spec:
           value: "1000"
         resources:
           requests:
-            cpu: "1000m"
-            memory: "2Gi"
+            cpu: "200m"
+            memory: "256Mi"
           limits:
-            cpu: "4000m"
-            memory: "8Gi"
+            cpu: "1000m"
+            memory: "1Gi"
         livenessProbe:
           httpGet:
             path: /health

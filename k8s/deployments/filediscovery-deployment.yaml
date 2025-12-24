@@ -59,7 +59,7 @@ spec:
               name: services-config
               key: otlp-endpoint
         - name: FileDiscovery__DeduplicationTTLHours
-          value: "24"
+          value: "4"
         - name: Hazelcast__Server
           valueFrom:
             configMapKeyRef:
@@ -69,11 +69,11 @@ spec:
           value: "data-processing-cluster"
         resources:
           requests:
+            cpu: "100m"
+            memory: "256Mi"
+          limits:
             cpu: "500m"
             memory: "1Gi"
-          limits:
-            cpu: "2000m"
-            memory: "4Gi"
         livenessProbe:
           httpGet:
             path: /health

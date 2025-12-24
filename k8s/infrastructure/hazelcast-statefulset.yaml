@@ -40,6 +40,16 @@ data:
             size: 256                     # 256MB max heap for this map
           backup-count: 0                 # No backups (single node dev)
 
+        # File deduplication cache - stores file hashes to prevent reprocessing
+        file-hashes:
+          time-to-live-seconds: 14400     # 4 hours TTL (matches DeduplicationTTLHours)
+          max-idle-seconds: 7200          # 2 hours idle timeout
+          eviction:
+            eviction-policy: LRU
+            max-size-policy: USED_HEAP_SIZE
+            size: 128                     # 128MB max heap for hash storage
+          backup-count: 0                 # No backups (single node dev)
+
 ---
 apiVersion: v1
 kind: Service

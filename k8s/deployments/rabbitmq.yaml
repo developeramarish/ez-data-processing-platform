@@ -16,6 +16,10 @@ spec:
       port: 15672
       targetPort: 15672
       protocol: TCP
+    - name: prometheus
+      port: 15692
+      targetPort: 15692
+      protocol: TCP
   selector:
     app: rabbitmq
   type: ClusterIP
@@ -47,11 +51,19 @@ spec:
           containerPort: 5672
         - name: management
           containerPort: 15672
+        - name: prometheus
+          containerPort: 15692
         env:
         - name: RABBITMQ_DEFAULT_USER
           value: "guest"
         - name: RABBITMQ_DEFAULT_PASS
           value: "guest"
+        # Enable prometheus plugin via command on startup
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          rabbitmq-plugins enable rabbitmq_prometheus &
+          exec docker-entrypoint.sh rabbitmq-server
         resources:
           requests:
             memory: "1Gi"
