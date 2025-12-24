@@ -15,6 +15,7 @@
     <PackageReference Include="System.ComponentModel.Annotations" />
     <PackageReference Include="MassTransit" />
     <PackageReference Include="MassTransit.Kafka" />
+    <PackageReference Include="Hazelcast.Net" />
 
     <!-- Monitoring & Observability -->
     <PackageReference Include="prometheus-net" />

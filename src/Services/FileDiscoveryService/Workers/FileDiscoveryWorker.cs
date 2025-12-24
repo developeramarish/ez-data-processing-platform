@@ -1,6 +1,7 @@
 using DataProcessing.Shared.Connectors;
 using DataProcessing.Shared.Entities;
 using DataProcessing.Shared.Messages;
+using DataProcessing.Shared.Services;
 using DataProcessing.Shared.Utilities;
 using MassTransit;
 using MongoDB.Entities;
@@ -19,17 +20,20 @@ public class FileDiscoveryWorker : IJob
     private readonly IPublishEndpoint _publishEndpoint;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IConfiguration _configuration;
+    private readonly IFileHashService _fileHashService;
 
     public FileDiscoveryWorker(
         ILogger<FileDiscoveryWorker> logger,
         IPublishEndpoint publishEndpoint,
         IServiceScopeFactory scopeFactory,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IFileHashService fileHashService)
     {
         _logger = logger;
         _publishEndpoint = publishEndpoint;
         _scopeFactory = scopeFactory;
         _configuration = configuration;
+        _fileHashService = fileHashService;
     }
 
     public async Task Execute(IJobExecutionContext context)
@@ -120,7 +124,7 @@ public class FileDiscoveryWorker : IJob
 
     /// <summary>
     /// Discovers files from a datasource using the appropriate connector
-    /// Implements deduplication to prevent processing the same file multiple times
+    /// Uses Hazelcast distributed cache for deduplication (replaces MongoDB-embedded hashes)
     /// </summary>
     private async Task<List<FileMetadata>> DiscoverFilesAsync(
         DataProcessingDataSource datasource,
@@ -148,7 +152,7 @@ public class FileDiscoveryWorker : IJob
                 "[{CorrelationId}] Connector found {FileCount} file(s) from {Path}",
                 correlationId, filePaths.Count, datasource.FilePath);
 
-            // Get metadata for each file and apply deduplication
+            // Get metadata for each file and apply deduplication via Hazelcast
             var newFiles = new List<FileMetadata>();
             var duplicateCount = 0;
 
@@ -161,8 +165,8 @@ public class FileDiscoveryWorker : IJob
                     // Calculate file hash for deduplication
                     var fileHash = FileHashCalculator.CalculateHash(metadata);
 
-                    // Check if file already processed (not expired)
-                    if (datasource.IsFileAlreadyProcessed(fileHash))
+                    // Check if file already processed using distributed Hazelcast cache
+                    if (await _fileHashService.IsFileAlreadyProcessedAsync(datasource.ID!, fileHash))
                     {
                         _logger.LogDebug(
                             "[{CorrelationId}] Skipping already processed file: {FileName} (hash: {Hash})",
@@ -171,22 +175,26 @@ public class FileDiscoveryWorker : IJob
                         continue;
                     }
 
-                    // Add to processed hashes with TTL
-                    datasource.AddProcessedFileHash(
+                    // Add to Hazelcast with TTL (automatic expiration, no cleanup needed)
+                    await _fileHashService.AddProcessedFileHashAsync(
+                        datasource.ID!,
                         fileHash,
-                        metadata.FileName,
-                        metadata.FilePath,
-                        metadata.FileSizeBytes,
-                        metadata.LastModifiedUtc,
-                        ttl,
-                        correlationId);
+                        new ProcessedFileHashInfo
+                        {
+                            FileName = metadata.FileName,
+                            FilePath = metadata.FilePath,
+                            FileSizeBytes = metadata.FileSizeBytes,
+                            LastModifiedUtc = metadata.LastModifiedUtc,
+                            ProcessedAt = DateTime.UtcNow,
+                            CorrelationId = correlationId
+                        },
+                        ttl);
 
                     newFiles.Add(metadata);
 
                     _logger.LogDebug(
-                        "[{CorrelationId}] File queued for processing: {FileName} (hash: {Hash}, expires: {Expires})",
-                        correlationId, metadata.FileName, fileHash.Substring(0, 8) + "...",
-                        DateTime.UtcNow.Add(ttl).ToString("yyyy-MM-dd HH:mm:ss"));
+                        "[{CorrelationId}] File queued for processing: {FileName} (hash: {Hash}, TTL: {TTL}h)",
+                        correlationId, metadata.FileName, fileHash.Substring(0, 8) + "...", ttlHours);
                 }
                 catch (Exception ex)
                 {
@@ -196,21 +204,12 @@ public class FileDiscoveryWorker : IJob
                 }
             }
 
-            // Cleanup expired hashes
-            var cleanedCount = datasource.CleanupExpiredFileHashes();
-            if (cleanedCount > 0)
-            {
-                _logger.LogInformation(
-                    "[{CorrelationId}] Cleaned up {Count} expired file hash(es) for datasource {DataSourceId}",
-                    correlationId, cleanedCount, datasource.ID);
-            }
-
-            // Save datasource with updated hashes
-            await datasource.SaveAsync();
+            // Get active hash count from Hazelcast for logging
+            var activeHashCount = await _fileHashService.GetActiveFileHashCountAsync(datasource.ID!);
 
             _logger.LogInformation(
-                "[{CorrelationId}] Deduplication results: {NewFiles} new file(s), {Duplicates} duplicate(s) skipped, {ActiveHashes} active hash(es) tracked",
-                correlationId, newFiles.Count, duplicateCount, datasource.GetActiveFileHashCount());
+                "[{CorrelationId}] Deduplication results: {NewFiles} new file(s), {Duplicates} duplicate(s) skipped, {ActiveHashes} active hash(es) in Hazelcast",
+                correlationId, newFiles.Count, duplicateCount, activeHashCount);
 
             return newFiles;
         }

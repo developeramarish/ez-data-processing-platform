@@ -12,6 +12,7 @@
     <PackageReference Include="MassTransit" />
     <PackageReference Include="MassTransit.RabbitMQ" />
     <PackageReference Include="MongoDB.Entities" />
+    <PackageReference Include="Hazelcast.Net" />
     <PackageReference Include="Quartz" />
     <PackageReference Include="Swashbuckle.AspNetCore" />
     <PackageReference Include="Serilog.AspNetCore" />

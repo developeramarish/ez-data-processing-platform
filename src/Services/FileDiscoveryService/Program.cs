@@ -3,6 +3,8 @@ using DataProcessing.Shared.Configuration;
 using DataProcessing.Shared.Connectors;
 using DataProcessing.Shared.Middleware;
 using DataProcessing.Shared.Monitoring;
+using DataProcessing.Shared.Services;
+using Hazelcast;
 using MongoDB.Entities;
 using Prometheus;
 using MassTransit;
@@ -33,6 +35,43 @@ Console.WriteLine($"[DEBUG] FileDiscovery MongoDB ConnectionString from config: 
 // IMPORTANT: Use "ezplatform" database to access shared DataProcessingDataSource collection
 var databaseName = builder.Configuration.GetConnectionString("DatabaseName") ?? "ezplatform";
 await DB.InitAsync(databaseName, connectionString);
+
+// Configure Hazelcast Client for distributed file hash deduplication
+var hazelcastHost = builder.Configuration.GetValue<string>("Hazelcast:Server") ?? "localhost:5701";
+var clusterName = builder.Configuration.GetValue<string>("Hazelcast:ClusterName") ?? "data-processing-cluster";
+var hazelcastAddresses = hazelcastHost.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+builder.Services.AddSingleton<IHazelcastClient>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Program>>();
+
+    logger.LogInformation("Hazelcast configuration - Server: {Server}, ClusterName: {ClusterName}", hazelcastHost, clusterName);
+    logger.LogInformation("Parsed {Count} Hazelcast addresses: {Addresses}", hazelcastAddresses.Length, string.Join(", ", hazelcastAddresses));
+
+    var options = new HazelcastOptionsBuilder()
+        .With(args =>
+        {
+            foreach (var address in hazelcastAddresses)
+            {
+                logger.LogInformation("Adding Hazelcast address: {Address}", address);
+                args.Networking.Addresses.Add(address);
+            }
+            args.ClusterName = clusterName;
+            args.Networking.ConnectionRetry.ClusterConnectionTimeoutMilliseconds = 30000;
+        })
+        .WithDefault("Logging:LogLevel:Hazelcast", "Information")
+        .Build();
+
+    var client = HazelcastClientFactory.StartNewClientAsync(options).GetAwaiter().GetResult();
+
+    logger.LogInformation("Hazelcast client connected to cluster: {ClusterName} at {Servers}",
+        clusterName, string.Join(", ", hazelcastAddresses));
+
+    return client;
+});
+
+// Register IFileHashService for distributed file deduplication
+builder.Services.AddScoped<IFileHashService, HazelcastFileHashService>();
 
 // Configure MassTransit with RabbitMQ transport
 var rabbitMqHost = builder.Configuration.GetValue<string>("RabbitMQ:Host") ?? "rabbitmq.ez-platform.svc.cluster.local";
@@ -71,8 +110,7 @@ builder.Services.AddScoped<IDataSourceConnector>(provider =>
 // Configure health checks
 builder.Services.AddDataProcessingHealthChecks(builder.Configuration, serviceName);
 
-// Configure metrics
-builder.Services.AddSingleton<DataProcessingMetrics>();
+// Configure metrics (BusinessMetrics is the active metrics system)
 builder.Services.AddBusinessMetrics();
 
 // Configure CORS for development
