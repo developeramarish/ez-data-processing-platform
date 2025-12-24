@@ -179,6 +179,12 @@ public class BusinessMetrics : IDisposable
     // 24. Messages received counter - Messages received from message bus (migrated from dataprocessing_messages_received_total)
     private readonly Counter<long> _messagesReceivedCounter;
 
+    // 25. Queue depth gauge - Current depth of processing queues
+    private readonly UpDownCounter<long> _queueDepthCounter;
+
+    // 26. Output destination errors counter - Errors when writing to output destinations
+    private readonly Counter<long> _outputDestinationErrorsCounter;
+
     #endregion
 
     public BusinessMetrics(Meter meter)
@@ -298,6 +304,14 @@ public class BusinessMetrics : IDisposable
         _messagesReceivedCounter = _meter.CreateCounter<long>(
             "business_messages_received_total",
             description: "Total number of messages received from message bus");
+
+        _queueDepthCounter = _meter.CreateUpDownCounter<long>(
+            "business_queue_depth",
+            description: "Current depth of processing queues (messages/records waiting)");
+
+        _outputDestinationErrorsCounter = _meter.CreateCounter<long>(
+            "business_output_destination_errors_total",
+            description: "Total number of errors when writing to output destinations");
 
         #endregion
     }
@@ -1087,6 +1101,62 @@ public class BusinessMetrics : IDisposable
             tags.Add("status", "success");
 
         _messagesReceivedCounter.Add(1, tags);
+    }
+
+    /// <summary>
+    /// Increments queue depth counter
+    /// Labels: queue_name, service, priority
+    /// </summary>
+    public void IncrementQueueDepth(string queueName, string service, string? priority = null)
+    {
+        var tags = new TagList
+        {
+            { "queue_name", queueName },
+            { "service", service }
+        };
+
+        if (!string.IsNullOrEmpty(priority))
+            tags.Add("priority", priority);
+
+        _queueDepthCounter.Add(1, tags);
+    }
+
+    /// <summary>
+    /// Decrements queue depth counter
+    /// Labels: queue_name, service, priority
+    /// </summary>
+    public void DecrementQueueDepth(string queueName, string service, string? priority = null)
+    {
+        var tags = new TagList
+        {
+            { "queue_name", queueName },
+            { "service", service }
+        };
+
+        if (!string.IsNullOrEmpty(priority))
+            tags.Add("priority", priority);
+
+        _queueDepthCounter.Add(-1, tags);
+    }
+
+    /// <summary>
+    /// Records output destination errors
+    /// Labels: data_source, service, output_destination, error_type
+    /// </summary>
+    public void RecordOutputDestinationError(string dataSource, string service,
+        string outputDestination, string? errorType = null)
+    {
+        var tags = new TagList
+        {
+            { "data_source", dataSource },
+            { "service", service },
+            { "output_destination", outputDestination }
+        };
+
+        if (!string.IsNullOrEmpty(errorType))
+            tags.Add("error_type", errorType);
+
+        _outputDestinationErrorsCounter.Add(1, tags);
     }
 
     #endregion

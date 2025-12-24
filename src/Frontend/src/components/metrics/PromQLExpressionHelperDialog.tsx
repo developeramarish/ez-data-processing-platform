@@ -73,6 +73,9 @@ export const GLOBAL_BUSINESS_METRICS: AvailableMetric[] = [
   { name: 'business_active_datasources_total', displayName: 'Active Datasources Total', description: 'מספר מקורות נתונים פעילים כרגע', prometheusType: 'gauge', category: 'datasources', labels: [] },
   { name: 'business_messages_sent_total', displayName: 'Messages Sent Total', description: 'סה״כ הודעות שנשלחו דרך אפיק ההודעות', prometheusType: 'counter', category: 'messaging', labels: ['message_type', 'service', 'status'] },
   { name: 'business_messages_received_total', displayName: 'Messages Received Total', description: 'סה״כ הודעות שהתקבלו מאפיק ההודעות', prometheusType: 'counter', category: 'messaging', labels: ['message_type', 'service', 'status'] },
+  // Queue & Output Metrics (Phase 4 additions)
+  { name: 'business_queue_depth', displayName: 'Queue Depth', description: 'עומק נוכחי של תורי עיבוד (הודעות/רשומות ממתינות)', prometheusType: 'gauge', category: 'queues', labels: ['queue_name', 'service', 'priority'] },
+  { name: 'business_output_destination_errors_total', displayName: 'Output Destination Errors', description: 'סה״כ שגיאות בכתיבה ליעדי פלט', prometheusType: 'counter', category: 'errors', labels: ['data_source', 'service', 'output_destination', 'error_type'] },
 ];
 
 // Category labels for business metrics (Hebrew)
