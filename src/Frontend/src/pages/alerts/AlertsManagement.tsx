@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Typography, Button, Space, Card, Spin, message, Table, Tag, Empty, Modal, Form, Input, Select, Alert as AntAlert, Collapse, Checkbox, Divider, Tabs, Switch, Row, Col, Tooltip } from 'antd';
+import { Typography, Button, Space, Card, Spin, message, Table, Tag, Empty, Modal, Form, Input, Select, Alert as AntAlert, Collapse, Checkbox, Divider, Tabs, Switch, Row, Col, Tooltip, notification } from 'antd';
 import { PlusOutlined, ReloadOutlined, EditOutlined, DeleteOutlined, BellOutlined, InfoCircleOutlined, SearchOutlined, SettingOutlined, CodeOutlined } from '@ant-design/icons';
 import metricsApi, {
   type MetricConfiguration,
@@ -85,6 +85,8 @@ const AlertsManagement: React.FC = () => {
   // Category filters for business and system metrics
   const [businessCategoryFilter, setBusinessCategoryFilter] = useState<string | null>(null);
   const [systemCategoryFilter, setSystemCategoryFilter] = useState<string | null>(null);
+  // Validation errors state for displaying prominent error message
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
   // PromQL Helper Dialog state
   const [showPromQLHelper, setShowPromQLHelper] = useState(false);
@@ -166,6 +168,7 @@ const AlertsManagement: React.FC = () => {
     });
     setEditingAlert(null);
     resetModalFilters();
+    setValidationErrors([]); // Clear any previous validation errors
     setIsModalOpen(true);
   };
 
@@ -193,6 +196,7 @@ const AlertsManagement: React.FC = () => {
       systemMetricIds: isSystemMetric && metricName ? [metricName] : []
     });
     setEditingAlert(alert);
+    setValidationErrors([]); // Clear any previous validation errors
     setIsModalOpen(true);
   };
 
@@ -232,7 +236,38 @@ const AlertsManagement: React.FC = () => {
     }
   };
 
+  // Debug handler for form validation failures
+  const handleFormFailed = (errorInfo: any) => {
+    console.log('=== Form validation FAILED ===');
+    console.log('Error info:', JSON.stringify(errorInfo, null, 2));
+    message.error('טופס לא תקין - בדוק את השדות המודגשים');
+  };
+
+  // Manual form submission handler - bypasses potential onFinish issues
+  const handleManualSubmit = async () => {
+    console.log('=== handleManualSubmit called ===');
+    try {
+      const values = await form.validateFields();
+      console.log('Validated values:', JSON.stringify(values, null, 2));
+      await handleSaveAlert(values);
+    } catch (errorInfo: any) {
+      console.log('=== Manual validation FAILED ===');
+      console.log('Error:', JSON.stringify(errorInfo, null, 2));
+      // Show validation error message
+      const errorFields = errorInfo?.errorFields || [];
+      if (errorFields.length > 0) {
+        const firstError = errorFields[0]?.errors?.[0] || 'שגיאת אימות';
+        message.error(firstError);
+      }
+    }
+  };
+
   const handleSaveAlert = async (values: AlertFormData) => {
+    console.log('=== handleSaveAlert called ===');
+    console.log('Form values:', JSON.stringify(values, null, 2));
+    console.log('businessMetricIds:', values.businessMetricIds);
+    console.log('systemMetricIds:', values.systemMetricIds);
+    console.log('datasourceMetricIds:', values.datasourceMetricIds);
     try {
       const notificationRecipients = values.notificationRecipients
         ? values.notificationRecipients.split(',').map(r => r.trim()).filter(r => r)
@@ -909,6 +944,13 @@ const AlertsManagement: React.FC = () => {
 
   return (
     <div>
+      {/* Style to make validation errors more prominent */}
+      <style>{`
+        .ant-form-item-explain-error {
+          font-weight: bold !important;
+          font-size: 14px !important;
+        }
+      `}</style>
       <div className="page-header">
         <div>
           <Title level={2} style={{ margin: 0 }}>
@@ -975,7 +1017,10 @@ const AlertsManagement: React.FC = () => {
           form={form}
           layout="vertical"
           onFinish={handleSaveAlert}
+          onFinishFailed={handleFormFailed}
+          scrollToFirstError
         >
+
           {/* Smart Filters for Metric Selection */}
           <Card size="small" style={{ marginBottom: 16, backgroundColor: '#fafafa' }}>
             <Space direction="vertical" style={{ width: '100%' }} size="small">
@@ -1057,6 +1102,10 @@ const AlertsManagement: React.FC = () => {
               validator: async (_, value) => {
                 const businessIds = form.getFieldValue('businessMetricIds') || [];
                 const systemIds = form.getFieldValue('systemMetricIds') || [];
+                console.log('=== Validator running ===');
+                console.log('datasourceMetricIds value:', value);
+                console.log('businessMetricIds from form:', businessIds);
+                console.log('systemMetricIds from form:', systemIds);
                 if ([...(value || []), ...businessIds, ...systemIds].length === 0) {
                   throw new Error('יש לבחור לפחות Metric אחד');
                 }
@@ -1366,7 +1415,11 @@ const AlertsManagement: React.FC = () => {
               <Button onClick={() => setIsModalOpen(false)}>
                 ביטול
               </Button>
-              <Button type="primary" htmlType="submit">
+              <Button
+                type="primary"
+                htmlType="button"
+                onClick={handleManualSubmit}
+              >
                 {editingAlert ? 'עדכן' : 'צור'} התרעה
               </Button>
             </Space>
