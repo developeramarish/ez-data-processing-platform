@@ -32,6 +32,7 @@ interface AlertRule {
   metricId: string;
   metricName?: string;
   metricDisplayName?: string;
+  labels?: Record<string, string>;
 }
 
 interface AlertFormData {
@@ -126,7 +127,8 @@ const AlertsManagement: React.FC = () => {
             metricId: metric.id,
             metricName: metric.name,
             metricDisplayName: metric.displayName,
-            sourceType: 'datasource'
+            sourceType: 'datasource',
+            labels: alert.labels
           });
         });
       });
@@ -146,7 +148,8 @@ const AlertsManagement: React.FC = () => {
           metricName: globalAlert.metricName,
           metricDisplayName: globalAlert.metricName,
           sourceType: globalAlert.metricType as 'business' | 'system',
-          globalAlertId: globalAlert.id
+          globalAlertId: globalAlert.id,
+          labels: globalAlert.labels
         });
       });
 
@@ -183,6 +186,14 @@ const AlertsManagement: React.FC = () => {
       ? alert.metricId.split(':')[1] || alert.metricName
       : null;
 
+    // Convert labels Record to array format for form
+    const labelsArray = alert.labels
+      ? Object.entries(alert.labels).map(([key, value]) => ({ key, value }))
+      : [];
+    const labelNamesStr = alert.labels
+      ? Object.keys(alert.labels).join(', ')
+      : '';
+
     form.setFieldsValue({
       name: alert.name,
       description: alert.description,
@@ -193,7 +204,9 @@ const AlertsManagement: React.FC = () => {
       notificationRecipients: alert.notificationRecipients?.join(', '),
       datasourceMetricIds: isDatasourceMetric ? [alert.metricId] : [],
       businessMetricIds: isBusinessMetric && metricName ? [metricName] : [],
-      systemMetricIds: isSystemMetric && metricName ? [metricName] : []
+      systemMetricIds: isSystemMetric && metricName ? [metricName] : [],
+      labels: labelsArray,
+      labelNames: labelNamesStr
     });
     setEditingAlert(alert);
     setValidationErrors([]); // Clear any previous validation errors
@@ -627,6 +640,32 @@ const AlertsManagement: React.FC = () => {
           {record.isEnabled ? 'פעיל' : 'מושבת'}
         </Tag>
       )
+    },
+    {
+      title: 'תוויות',
+      key: 'labels',
+      render: (_: any, record: AlertRule) => {
+        const labels = record.labels;
+        if (!labels || Object.keys(labels).length === 0) {
+          return <Text type="secondary" style={{ fontSize: 11 }}>-</Text>;
+        }
+        return (
+          <Space size={2} wrap>
+            {Object.entries(labels).slice(0, 3).map(([key, value]) => (
+              <Tooltip key={key} title={`${key}=${value}`}>
+                <Tag style={{ fontSize: 10, margin: 1 }}>
+                  {key}={value.length > 10 ? value.slice(0, 10) + '...' : value}
+                </Tag>
+              </Tooltip>
+            ))}
+            {Object.keys(labels).length > 3 && (
+              <Tooltip title={Object.entries(labels).map(([k, v]) => `${k}=${v}`).join(', ')}>
+                <Tag style={{ fontSize: 10, margin: 1 }}>+{Object.keys(labels).length - 3}</Tag>
+              </Tooltip>
+            )}
+          </Space>
+        );
+      }
     },
     {
       title: 'פעולות',
