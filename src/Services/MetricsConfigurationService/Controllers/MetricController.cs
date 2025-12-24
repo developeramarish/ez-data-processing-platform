@@ -408,4 +408,78 @@ public class MetricController : ControllerBase
             });
         }
     }
+
+    /// <summary>
+    /// Get available business metrics for alert creation
+    /// </summary>
+    [HttpGet("global/business")]
+    public IActionResult GetAvailableBusinessMetrics()
+    {
+        var businessMetrics = new[]
+        {
+            new { Name = "business_records_processed_total", Description = "Total number of records processed", Type = "counter" },
+            new { Name = "business_invalid_records_total", Description = "Total number of invalid records", Type = "counter" },
+            new { Name = "business_files_processed_total", Description = "Total number of files processed", Type = "counter" },
+            new { Name = "business_bytes_processed_total", Description = "Total bytes processed", Type = "counter" },
+            new { Name = "business_jobs_completed_total", Description = "Total completed jobs", Type = "counter" },
+            new { Name = "business_jobs_failed_total", Description = "Total failed jobs", Type = "counter" },
+            new { Name = "business_output_records_total", Description = "Records written to output", Type = "counter" },
+            new { Name = "business_output_bytes_total", Description = "Bytes written to output", Type = "counter" },
+            new { Name = "business_retry_attempts_total", Description = "Total retry attempts", Type = "counter" },
+            new { Name = "business_dead_letter_records_total", Description = "Records sent to dead letter queue", Type = "counter" },
+            new { Name = "business_records_skipped_total", Description = "Records skipped during processing", Type = "counter" },
+            new { Name = "business_batches_processed_total", Description = "Total processing batches completed", Type = "counter" },
+            new { Name = "business_validation_errors_total", Description = "Total validation errors", Type = "counter" },
+            new { Name = "business_messages_sent_total", Description = "Messages sent via message bus", Type = "counter" },
+            new { Name = "business_messages_received_total", Description = "Messages received from message bus", Type = "counter" },
+            new { Name = "business_output_destination_errors_total", Description = "Errors writing to output", Type = "counter" },
+            new { Name = "business_active_jobs", Description = "Currently active jobs", Type = "gauge" },
+            new { Name = "business_files_pending", Description = "Files awaiting processing", Type = "gauge" },
+            new { Name = "business_active_datasources_total", Description = "Active data sources", Type = "gauge" },
+            new { Name = "business_queue_depth", Description = "Current queue depth", Type = "gauge" },
+            new { Name = "business_processing_duration_seconds", Description = "Processing duration", Type = "histogram" },
+            new { Name = "business_validation_error_rate", Description = "Validation error rate percentage", Type = "histogram" },
+            new { Name = "business_file_size_bytes", Description = "File size in bytes", Type = "histogram" },
+            new { Name = "business_end_to_end_latency_seconds", Description = "End-to-end pipeline latency", Type = "histogram" },
+            new { Name = "business_queue_wait_time_seconds", Description = "Queue wait time", Type = "histogram" },
+            new { Name = "business_validation_latency_seconds", Description = "Validation stage latency", Type = "histogram" }
+        };
+
+        return Ok(new
+        {
+            IsSuccess = true,
+            Data = businessMetrics,
+            Message = $"Retrieved {businessMetrics.Length} available business metrics"
+        });
+    }
+
+    /// <summary>
+    /// Get available system metrics for alert creation
+    /// </summary>
+    [HttpGet("global/system")]
+    public IActionResult GetAvailableSystemMetrics()
+    {
+        var systemMetrics = new[]
+        {
+            new { Name = "process_cpu_seconds_total", Description = "Total CPU time used by process", Type = "counter" },
+            new { Name = "process_resident_memory_bytes", Description = "Resident memory size in bytes", Type = "gauge" },
+            new { Name = "process_virtual_memory_bytes", Description = "Virtual memory size in bytes", Type = "gauge" },
+            new { Name = "process_open_fds", Description = "Number of open file descriptors", Type = "gauge" },
+            new { Name = "process_start_time_seconds", Description = "Start time of the process", Type = "gauge" },
+            new { Name = "dotnet_gc_collections_total", Description = "Total GC collections", Type = "counter" },
+            new { Name = "dotnet_gc_memory_total_available_bytes", Description = "Total memory available for GC", Type = "gauge" },
+            new { Name = "dotnet_threadpool_threads_count", Description = "Thread pool thread count", Type = "gauge" },
+            new { Name = "http_server_requests_total", Description = "Total HTTP requests", Type = "counter" },
+            new { Name = "http_server_request_duration_seconds", Description = "HTTP request duration", Type = "histogram" },
+            new { Name = "kafka_consumer_lag", Description = "Kafka consumer lag", Type = "gauge" },
+            new { Name = "mongodb_connection_pool_size", Description = "MongoDB connection pool size", Type = "gauge" }
+        };
+
+        return Ok(new
+        {
+            IsSuccess = true,
+            Data = systemMetrics,
+            Message = $"Retrieved {systemMetrics.Length} available system metrics"
+        });
+    }
 }
