@@ -749,6 +749,42 @@ div[class*="builder"] textarea {
   color: #2c3e50;
 }
 
+/* Form validation error messages - ensure visibility */
+.ant-form-item-explain-error {
+  color: #ff4d4f !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  padding: 4px 0 !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  background: #fff2f0 !important;
+  border-radius: 4px !important;
+  padding: 6px 10px !important;
+  margin-top: 4px !important;
+  border-left: 3px solid #ff4d4f !important;
+}
+
+.rtl .ant-form-item-explain-error {
+  border-left: none !important;
+  border-right: 3px solid #ff4d4f !important;
+  text-align: right !important;
+}
+
+/* Ensure form item with error has red border */
+.ant-form-item-has-error .ant-input,
+.ant-form-item-has-error .ant-select-selector,
+.ant-form-item-has-error .ant-input-number {
+  border-color: #ff4d4f !important;
+  background-color: #fff2f0 !important;
+}
+
+/* Required field asterisk styling */
+.ant-form-item-required::before {
+  color: #ff4d4f !important;
+  font-weight: bold !important;
+}
+
 /* Invalid record cards (mockup style) */
 .invalid-record-card {
   background: #fff5f5;

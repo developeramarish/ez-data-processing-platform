@@ -739,9 +739,9 @@ kubectl port-forward svc/hazelcast 5701:5701 -n ez-platform
 ---
 
 **Document Status:** ✅ Active
-**Last Updated:** December 21, 2025 (Session 26 - Comprehensive Verification + Task Orchestrator Setup)
-**Current Progress:** 92% Complete (Week 5 IN PROGRESS) - E2E 100%, Unit 100%, Integration 100%, Logs ✅, Metrics ✅
-**Current Phase:** Week 5 - Production Validation (Logs ✅, Metrics ✅, BusinessMetrics ✅, Tracing 🔄, Load Testing, Failover)
+**Last Updated:** December 24, 2025 (Session 28 - Alert Creation Bug Fix Verified)
+**Current Progress:** 93% Complete (Week 5 IN PROGRESS) - E2E 100%, Unit 100%, Integration 100%, Logs ✅, Metrics ✅, Alerts Fix ✅
+**Current Phase:** Week 5 - Production Validation (Logs ✅, Metrics ✅, BusinessMetrics ✅, Alerts ✅, Tracing 🔄, Load Testing, Failover)
 
 **Major Achievements (Sessions 6-24):**
 - Complete 4-stage pipeline verified end-to-end (FileDiscovery → FileProcessor → Validation → Output)
@@ -772,6 +772,9 @@ kubectl port-forward svc/hazelcast 5701:5701 -n ez-platform
 - **OTEL Observability:** All services configured with OpenTelemetry endpoint (Session 23)
 - **Alerts UX Complete:** 3-category dropdowns, PromQL helper, cascading filters (Session 24)
 - **Hebrew UI:** Alerts management page fully translated to Hebrew (Session 24)
+- **Alert Creation Bug Fix:** 400 Bad Request resolved - type mismatch in API client (Session 27-28)
+- **Global Alerts Backend:** New entity, repository, controller for business/system metric alerts (Session 27)
+- **Extreme Alert Testing:** 4 metrics from 3 types, complex PromQL, dynamic labels - ALL PASSED (Session 28)
 
 ---
 
@@ -888,24 +891,46 @@ kubectl port-forward svc/hazelcast 5701:5701 -n ez-platform
   - **Frontend deployed as `frontend:v17`**
 
 **Session 27 Progress (December 23, 2025):**
-- **Alert Creation Bug Fix Planning: COMPLETE** ✅
+- **Alert Creation Bug Fix: PHASES 1-3 COMPLETE** ✅
   - **Bug Identified:** Create Alert button at `/alerts` doesn't save or close modal
-  - **Root Cause:** Missing form validation on metric selection dropdowns + manual validation causes early return
+  - **Root Cause:** Type mismatch - frontend sent string types, backend expected int/enum
   - **5-Phase Implementation Plan Created:**
-    1. Phase 1: Fix Primary Bug (form validation)
-    2. Phase 2: Global Alerts Backend (new entity, repository, controller)
-    3. Phase 3: Frontend API Integration
-    4. Phase 4: Add Missing Metrics + Migrate Legacy (4 new metrics)
-    5. Phase 5: Labels UI + Dynamic Variable Substitution
-  - **Key Discovery:** `EnhancedLabelInput` component already exists and can be reused
-  - **Dynamic Labels:** Implemented `$variable` substitution design for AlertEvaluationService.cs
+    1. Phase 1: Fix Primary Bug (form validation) ✅ **COMPLETE**
+    2. Phase 2: Global Alerts Backend (entity, repository, controller) ✅ **COMPLETE**
+    3. Phase 3: Frontend API Integration ✅ **COMPLETE**
+    4. Phase 4: Add Missing Metrics + Migrate Legacy (4 new metrics) - PENDING
+    5. Phase 5: Labels UI + Dynamic Variable Substitution - PENDING
+  - **Key Fix (metrics-api-client.ts):**
+    - `formulaType: string` → `number` (0=Simple, 1=PromQL, 2=Recording)
+    - `status: string` → `number` (0=Draft, 1=Active, 2=Inactive, 3=Error)
+    - `retention: number` → `string | null` (e.g., "30d")
+  - **Backend Implementation:**
+    - `GlobalAlertConfiguration.cs` - MongoDB entity for business/system alerts
+    - `GlobalAlertRepository.cs` - Repository with CRUD operations
+    - `GlobalAlertController.cs` - REST API endpoints at `/api/v1/global-alerts`
+  - **Frontend API Client:** Added GlobalAlert interfaces and API methods
   - **Plan Document:** `docs/planning/Phase-MVP-Deployment/ALERT-CREATION-BUG-FIX-PLAN.md`
-  - **Files Impacted:** 12 files (4 CREATE, 8 MODIFY)
 
 - **Task Orchestrator Integration:**
-  - Created new Feature: "Alert Creation Bug Fix" with 5 phase tasks
-  - Updated incomplete tasks report generated
-  - Integration with existing Week 5 features
+  - Created new Feature: "Alert Creation Bug Fix + Global Alerts" with 8 tasks
+  - Phase 1-3 tasks completed
+
+**Session 28 Progress (December 24, 2025):**
+- **Alert Dialog Extreme Testing: COMPLETE** ✅
+  - **Test Requirements:**
+    1. Select metrics from ALL 3 types (datasource, business, system) ✅
+    2. Select MORE THAN ONE metric from one type (4 total) ✅
+    3. Use PromQL helper tool to build expression ✅
+    4. Test dynamic labels functionality ✅
+    5. Create alert and verify persistence after refresh ✅
+  - **Test Alert Created:**
+    - Name: `multi_metric_extreme_test`
+    - Metrics: 4 total (1 datasource + 1 business + 2 system)
+    - Expression: Complex PromQL with OR logic across all metric types
+    - Dynamic Label: `status = $status` (generates `{status="$status"}`)
+    - Persistence: Verified after F5 page refresh
+  - **Bug Fix Validated:** 400 Bad Request error RESOLVED
+  - **Test Result:** ALL TESTS PASSED ✅
 
 **Session 26 Progress (December 21, 2025):**
 - **Comprehensive Verification Analysis: COMPLETE** ✅
@@ -953,4 +978,4 @@ kubectl port-forward svc/hazelcast 5701:5701 -n ez-platform
 
 ### Current Blockers: NONE ✅
 
-**Week 5 Progress:** 4/10 features complete (Logs ✅, Metrics ✅, BusinessMetrics ✅, Alerts UX ✅) - Next: Distributed Tracing
+**Week 5 Progress:** 5/10 features complete (Logs ✅, Metrics ✅, BusinessMetrics ✅, Alerts UX ✅, Alert Creation Fix ✅) - Next: Distributed Tracing

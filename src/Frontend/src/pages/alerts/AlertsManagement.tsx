@@ -311,10 +311,32 @@ const AlertsManagement: React.FC = () => {
             alertRules.push(alertData);
           }
 
-          await metricsApi.update(metric.id, {
-            ...metric,
-            alertRules
-          } as any);
+          // Construct proper UpdateMetricRequest matching backend MetricConfiguration.cs:
+          // - Status: int (0=Draft, 1=Active, 2=Inactive, 3=Error)
+          // - FormulaType: FormulaType enum (0=Simple, 1=PromQL, 2=Recording)
+          // - Retention: string | null (e.g., "30d")
+          // - LabelNames: string | null (comma-separated)
+          // - Labels: string[] | null (deprecated, kept for compatibility)
+          const updateRequest = {
+            displayName: metric.displayName || metric.name || '',
+            description: metric.description || '',
+            category: metric.category || 'כללי',
+            scope: metric.scope || 'global',
+            dataSourceId: metric.dataSourceId || null,
+            dataSourceName: metric.dataSourceName || null,
+            prometheusType: metric.prometheusType || 'gauge',
+            formula: metric.formula || '',
+            formulaType: 0, // FormulaType enum: 0=Simple, 1=PromQL, 2=Recording
+            fieldPath: metric.fieldPath || null,
+            labelNames: null, // string (comma-separated) or null
+            labelsExpression: null,
+            labels: null, // string[] for backward compatibility
+            alertRules,
+            retention: '30d', // string like "30d"
+            status: 1, // int: 0=Draft, 1=Active, 2=Inactive, 3=Error
+            updatedBy: 'frontend-user'
+          };
+          await metricsApi.update(metric.id, updateRequest);
         }
       }
 

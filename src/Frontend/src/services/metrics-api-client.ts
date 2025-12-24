@@ -52,14 +52,14 @@ export interface UpdateMetricRequest {
   dataSourceName?: string | null;
   prometheusType?: string;
   formula: string;
-  formulaType?: number; // 0=Simple, 1=PromQL, 2=Recording
+  formulaType?: number; // FormulaType enum: 0=Simple, 1=PromQL, 2=Recording
   fieldPath?: string | null;
-  labelNames?: string | null;
+  labelNames?: string | null; // comma-separated string
   labelsExpression?: string | null;
-  labels?: string[];
+  labels?: string[] | null; // string[] for backward compatibility
   alertRules?: any[]; // AlertRule[]
-  retention?: string | null;
-  status: number;
+  retention?: string | null; // string like "30d"
+  status: number; // int: 0=Draft, 1=Active, 2=Inactive, 3=Error
   updatedBy: string;
 }
 
