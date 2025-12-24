@@ -19,6 +19,14 @@ public interface IAlertEvaluationService
     /// </summary>
     /// <returns>List of evaluation results</returns>
     Task<List<AlertEvaluationResult>> EvaluateAllAsync();
+
+    /// <summary>
+    /// Substitute $variable patterns in a PromQL expression for global alerts.
+    /// </summary>
+    /// <param name="expression">The PromQL expression with potential $variables</param>
+    /// <param name="globalAlert">The global alert configuration containing labels and context</param>
+    /// <returns>The expression with all recognized variables substituted</returns>
+    string SubstituteGlobalAlertVariables(string expression, GlobalAlertConfiguration globalAlert);
 }
 
 /// <summary>

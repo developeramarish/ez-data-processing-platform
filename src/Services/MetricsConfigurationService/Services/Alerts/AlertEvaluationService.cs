@@ -100,14 +100,18 @@ public class AlertEvaluationService : IAlertEvaluationService
     }
 
     /// <summary>
-    /// Substitute $variable patterns in a PromQL expression with actual values from the metric configuration.
-    /// Supports: $datasource_name, $datasource_id, $metric_name, $category, $scope
+    /// Substitute $variable patterns in a PromQL expression with actual values from the metric configuration
+    /// and optionally from alert labels.
+    ///
+    /// Predefined variables: $datasource_name, $datasource_id, $metric_name, $category, $scope
+    /// Dynamic labels: Any $labelName where labelName is defined in the alert's Labels dictionary
     /// </summary>
-    private string SubstituteVariables(string expression, MetricConfiguration metric)
+    private string SubstituteVariables(string expression, MetricConfiguration metric, AlertRule? alert = null)
     {
         if (string.IsNullOrEmpty(expression) || !expression.Contains('$'))
             return expression;
 
+        // Start with predefined metric variables
         var variables = new Dictionary<string, string?>
         {
             ["$datasource_name"] = metric.DataSourceName,
@@ -117,8 +121,27 @@ public class AlertEvaluationService : IAlertEvaluationService
             ["$scope"] = metric.Scope
         };
 
+        // Add alert label variables (where value is not itself a $variable)
+        if (alert?.Labels != null)
+        {
+            foreach (var (labelName, labelValue) in alert.Labels)
+            {
+                // Skip if the value is itself a variable (e.g., "$status")
+                // Only add labels with fixed values for substitution
+                if (!string.IsNullOrEmpty(labelValue) && !labelValue.StartsWith("$"))
+                {
+                    var variableKey = $"${labelName}";
+                    if (!variables.ContainsKey(variableKey))
+                    {
+                        variables[variableKey] = labelValue;
+                    }
+                }
+            }
+        }
+
         var result = expression;
         var substitutedCount = 0;
+        var substitutedVars = new List<string>();
 
         foreach (var (variable, value) in variables)
         {
@@ -126,6 +149,7 @@ public class AlertEvaluationService : IAlertEvaluationService
             {
                 result = result.Replace(variable, value);
                 substitutedCount++;
+                substitutedVars.Add($"{variable}={value}");
             }
         }
 
@@ -143,7 +167,8 @@ public class AlertEvaluationService : IAlertEvaluationService
             {
                 _logger.LogWarning(
                     "Unsubstituted variables in PromQL expression for metric '{MetricName}': {Variables}. " +
-                    "Supported variables: $datasource_name, $datasource_id, $metric_name, $category, $scope",
+                    "Supported: $datasource_name, $datasource_id, $metric_name, $category, $scope, " +
+                    "and any label name defined in the alert's Labels dictionary with a fixed value",
                     metric.Name, string.Join(", ", remainingVars));
             }
         }
@@ -151,8 +176,87 @@ public class AlertEvaluationService : IAlertEvaluationService
         if (substitutedCount > 0)
         {
             _logger.LogDebug(
-                "Substituted {Count} variable(s) in PromQL expression for metric '{MetricName}'. Original: '{Original}' → Resolved: '{Resolved}'",
-                substitutedCount, metric.Name, expression, result);
+                "Substituted {Count} variable(s) in PromQL expression for metric '{MetricName}': [{Substitutions}]. " +
+                "Original: '{Original}' → Resolved: '{Resolved}'",
+                substitutedCount, metric.Name, string.Join(", ", substitutedVars), expression, result);
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Substitute $variable patterns in a PromQL expression for global alerts.
+    /// Supports alert labels and predefined metric context variables.
+    /// </summary>
+    public string SubstituteGlobalAlertVariables(string expression, GlobalAlertConfiguration globalAlert)
+    {
+        if (string.IsNullOrEmpty(expression) || !expression.Contains('$'))
+            return expression;
+
+        // Start with global alert context variables
+        var variables = new Dictionary<string, string?>
+        {
+            ["$metric_name"] = globalAlert.MetricName,
+            ["$metric_type"] = globalAlert.MetricType,
+            ["$alert_name"] = globalAlert.AlertName,
+            ["$severity"] = globalAlert.Severity
+        };
+
+        // Add alert label variables (where value is not itself a $variable)
+        if (globalAlert.Labels != null)
+        {
+            foreach (var (labelName, labelValue) in globalAlert.Labels)
+            {
+                if (!string.IsNullOrEmpty(labelValue) && !labelValue.StartsWith("$"))
+                {
+                    var variableKey = $"${labelName}";
+                    if (!variables.ContainsKey(variableKey))
+                    {
+                        variables[variableKey] = labelValue;
+                    }
+                }
+            }
+        }
+
+        var result = expression;
+        var substitutedCount = 0;
+        var substitutedVars = new List<string>();
+
+        foreach (var (variable, value) in variables)
+        {
+            if (!string.IsNullOrEmpty(value) && result.Contains(variable))
+            {
+                result = result.Replace(variable, value);
+                substitutedCount++;
+                substitutedVars.Add($"{variable}={value}");
+            }
+        }
+
+        // Log any unsubstituted variables
+        if (result.Contains('$'))
+        {
+            var remainingVars = System.Text.RegularExpressions.Regex.Matches(result, @"\$[a-zA-Z_][a-zA-Z0-9_]*")
+                .Cast<System.Text.RegularExpressions.Match>()
+                .Select(m => m.Value)
+                .Distinct()
+                .ToList();
+
+            if (remainingVars.Any())
+            {
+                _logger.LogWarning(
+                    "Unsubstituted variables in global alert '{AlertName}': {Variables}. " +
+                    "Supported: $metric_name, $metric_type, $alert_name, $severity, " +
+                    "and any label name defined in the alert's Labels dictionary with a fixed value",
+                    globalAlert.AlertName, string.Join(", ", remainingVars));
+            }
+        }
+
+        if (substitutedCount > 0)
+        {
+            _logger.LogDebug(
+                "Substituted {Count} variable(s) in global alert '{AlertName}': [{Substitutions}]. " +
+                "Original: '{Original}' → Resolved: '{Resolved}'",
+                substitutedCount, globalAlert.AlertName, string.Join(", ", substitutedVars), expression, result);
         }
 
         return result;
@@ -174,8 +278,8 @@ public class AlertEvaluationService : IAlertEvaluationService
                 ? PrometheusInstance.System
                 : PrometheusInstance.Business;
 
-            // Substitute $variable patterns with actual values from metric configuration
-            var resolvedExpression = SubstituteVariables(alert.Expression, metric);
+            // Substitute $variable patterns with actual values from metric configuration and alert labels
+            var resolvedExpression = SubstituteVariables(alert.Expression, metric, alert);
 
             // Execute the resolved PromQL expression
             var result = await prometheusService.QueryInstantAsync(resolvedExpression, instance);
