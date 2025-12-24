@@ -74,10 +74,10 @@ This document outlines the complete deployment plan for the EZ Data Processing P
 | Schedule Persistence (BUG-017) | ✅ 100% | Week 3 (Day 10) | **COMPLETE** |
 | Unit Tests (Critical) | ✅ 100% | Week 4 (Phase 1) | **25/25 COMPLETE** ✅ |
 | Integration Tests (Critical) | ✅ 100% | Week 4 (Phase 2) | **58/58 COMPLETE** ✅ |
-| Production Validation | 🔄 70% | Week 5 | **Logs ✅, Metrics ✅, BusinessMetrics ✅, Tracing ✅, Load Tests ✅** |
+| Production Validation | 🔄 80% | Week 5 | **Logs ✅, Metrics ✅, BusinessMetrics ✅, Tracing ✅, Load Tests ✅, Recommendations ✅** |
 
 **Current Phase:** Week 5 IN PROGRESS - Production Validation + UX Improvements
-**Last Updated:** December 24, 2025 (Session 33 - 1000-File Stress Test Complete)
+**Last Updated:** December 24, 2025 (Session 34 - Stress Test Recommendations Implemented)
 
 ---
 
@@ -673,6 +673,7 @@ kubectl port-forward svc/hazelcast 5701:5701 -n ez-platform
 - Session 31 - Distributed Tracing & Jaeger Verification COMPLETE (10/10 services, 570K+ traces)
 - Session 32 - Load Testing 100-File Stress Test COMPLETE (7,481 records, 14,922 output)
 - Session 33 - 1000-File Stress Test COMPLETE (~47s, 21 files/sec, Hazelcast deduplication verified)
+- Session 34 - Stress Test Recommendations Implemented (Horizontal Scaling, RabbitMQ Monitoring, Hazelcast TTL, Alerting Rules)
 
 ### Testing Documents
 - [TEST-CATALOG.md](./Testing/TEST-CATALOG.md) ← **Complete Test Inventory (126 tests)**
@@ -742,8 +743,8 @@ kubectl port-forward svc/hazelcast 5701:5701 -n ez-platform
 ---
 
 **Document Status:** ✅ Active
-**Last Updated:** December 24, 2025 (Session 33 - 1000-File Stress Test Complete)
-**Current Progress:** 96% Complete (Week 5 IN PROGRESS) - E2E 100%, Unit 100%, Integration 100%, Logs ✅, Metrics ✅, Alerts 100%, Load Testing ✅
+**Last Updated:** December 24, 2025 (Session 34 - Stress Test Recommendations Implemented)
+**Current Progress:** 97% Complete (Week 5 IN PROGRESS) - E2E 100%, Unit 100%, Integration 100%, Logs ✅, Metrics ✅, Alerts 100%, Load Testing ✅, Recommendations ✅
 **Current Phase:** Week 5 - Production Validation (Logs ✅, Metrics ✅, BusinessMetrics ✅, Alerts ✅, Tracing ✅, Load Testing ✅, Failover 🔄)
 
 **Major Achievements (Sessions 6-24):**
@@ -1064,6 +1065,41 @@ kubectl port-forward svc/hazelcast 5701:5701 -n ez-platform
     - All services remained within K8s resource limits
   - **Documentation:** `docs/testing/STRESS-TEST-1000-FILES-REPORT.md`
   - **Git Commit:** b924719 pushed to main
+
+**Session 34 Progress (December 24, 2025):**
+- **Stress Test Recommendations Implementation: COMPLETE** ✅
+  - **Phase 1: FileProcessor Horizontal Scaling:**
+    - Updated `k8s/deployments/fileprocessor-deployment.yaml` to 2 replicas
+    - Reduced resource requests from 1000m/2Gi to 200m/256Mi for Minikube compatibility
+    - Updated `k8s/deployments/filediscovery-deployment.yaml` to 2 replicas
+    - Reduced FileDiscovery resources from 500m/1Gi to 100m/256Mi
+  - **Phase 2: RabbitMQ Queue Monitoring:**
+    - Added Prometheus port 15692 to RabbitMQ service and deployment
+    - Added command to enable `rabbitmq_prometheus` plugin on startup
+    - Added RabbitMQ scrape job to `k8s/configmaps/prometheus-system-config.yaml`
+    - Verified metrics endpoint at `rabbitmq:15692/metrics`
+  - **Phase 3: Hazelcast TTL Configuration:**
+    - Changed deduplication TTL from 24 hours to 4 hours
+    - Updated `FileDiscovery__DeduplicationTTLHours: "4"` in filediscovery-deployment.yaml
+    - Added `file-hashes` map to hazelcast-statefulset.yaml with 14400s TTL
+  - **Phase 4: Processing Lag Alerting:**
+    - Created `k8s/configmaps/prometheus-alerts.yaml` with alerting rules:
+      - `RabbitMQQueueBacklog` (>100 messages for 5m)
+      - `RabbitMQQueueCritical` (>500 messages for 2m)
+      - `ProcessingLagHigh` (P99 >60s for 5m)
+      - `ProcessingStalled` (no files processed for 10m)
+      - `HazelcastMemoryHigh` (>85% memory)
+      - `PodNotReady` (pod not ready for 5m)
+      - `FileProcessorScaledDown` (<2 replicas)
+      - `HighInvalidRecordRate` (>10%)
+  - **Git Commit:** dcac2b2 pushed to main
+  - **Files Modified:**
+    - `k8s/deployments/fileprocessor-deployment.yaml`
+    - `k8s/deployments/filediscovery-deployment.yaml`
+    - `k8s/deployments/rabbitmq.yaml`
+    - `k8s/infrastructure/hazelcast-statefulset.yaml`
+    - `k8s/configmaps/prometheus-system-config.yaml`
+    - `k8s/configmaps/prometheus-alerts.yaml` (NEW)
 
 **Session 31 Progress (December 24, 2025):**
 - **Distributed Tracing & Jaeger Verification: COMPLETE** ✅
