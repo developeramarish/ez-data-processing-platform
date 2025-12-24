@@ -60,6 +60,13 @@ spec:
               key: otlp-endpoint
         - name: FileDiscovery__DeduplicationTTLHours
           value: "24"
+        - name: Hazelcast__Server
+          valueFrom:
+            configMapKeyRef:
+              name: services-config
+              key: hazelcast-server
+        - name: Hazelcast__ClusterName
+          value: "data-processing-cluster"
         resources:
           requests:
             cpu: "500m"
