@@ -214,12 +214,30 @@ const EnhancedLabelInput: React.FC<EnhancedLabelInputProps> = ({
         )}
 
         <Alert
-          message="דוגמאות"
+          message="משתנים נתמכים"
           description={
             <div style={{ fontSize: 12 }}>
-              <div><strong>משתנה:</strong> status = $status → <code>{`status="$status"`}</code></div>
-              <div><strong>קבוע:</strong> region = us-east-1 → <code>{`region="us-east-1"`}</code></div>
-              <div><strong>מעורב:</strong> <code>{`{status="$status", env="production"}`}</code></div>
+              <div style={{ marginBottom: 8 }}>
+                <strong>משתנים מוגדרים מראש (מוחלפים אוטומטית):</strong>
+                <div style={{ marginLeft: 12, fontFamily: 'monospace', fontSize: 11 }}>
+                  <div><code>$datasource_name</code> - שם מקור הנתונים</div>
+                  <div><code>$datasource_id</code> - מזהה מקור הנתונים</div>
+                  <div><code>$metric_name</code> - שם המדד</div>
+                  <div><code>$category</code> - קטגוריה</div>
+                  <div><code>$scope</code> - היקף (global/local)</div>
+                </div>
+              </div>
+              <div style={{ marginBottom: 8 }}>
+                <strong>דוגמאות שימוש:</strong>
+                <div style={{ marginLeft: 12, fontSize: 11 }}>
+                  <div>• <strong>משתנה:</strong> status = $status → <code>{`status="$status"`}</code></div>
+                  <div>• <strong>קבוע:</strong> region = us-east-1 → <code>{`region="us-east-1"`}</code></div>
+                  <div>• <strong>מעורב:</strong> <code>{`{data_source="$datasource_name", env="production"}`}</code></div>
+                </div>
+              </div>
+              <div style={{ fontSize: 10, color: '#666' }}>
+                💡 תוויות עם ערכים קבועים (ללא $) ישמשו להחלפת משתנים בביטוי
+              </div>
             </div>
           }
           type="info"

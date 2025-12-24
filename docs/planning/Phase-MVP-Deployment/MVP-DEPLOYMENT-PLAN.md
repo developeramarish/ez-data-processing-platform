@@ -739,9 +739,9 @@ kubectl port-forward svc/hazelcast 5701:5701 -n ez-platform
 ---
 
 **Document Status:** ✅ Active
-**Last Updated:** December 24, 2025 (Session 28 - Alert Creation Bug Fix Verified)
-**Current Progress:** 93% Complete (Week 5 IN PROGRESS) - E2E 100%, Unit 100%, Integration 100%, Logs ✅, Metrics ✅, Alerts Fix ✅
-**Current Phase:** Week 5 - Production Validation (Logs ✅, Metrics ✅, BusinessMetrics ✅, Alerts ✅, Tracing 🔄, Load Testing, Failover)
+**Last Updated:** December 24, 2025 (Session 29 - Alert Variable Substitution Complete)
+**Current Progress:** 94% Complete (Week 5 IN PROGRESS) - E2E 100%, Unit 100%, Integration 100%, Logs ✅, Metrics ✅, Alerts 87.5%
+**Current Phase:** Week 5 - Production Validation (Logs ✅, Metrics ✅, BusinessMetrics ✅, Alerts 🔄, Tracing 🔄, Load Testing, Failover)
 
 **Major Achievements (Sessions 6-24):**
 - Complete 4-stage pipeline verified end-to-end (FileDiscovery → FileProcessor → Validation → Output)
@@ -915,7 +915,7 @@ kubectl port-forward svc/hazelcast 5701:5701 -n ez-platform
   - Created new Feature: "Alert Creation Bug Fix + Global Alerts" with 8 tasks
   - Phase 1-3 tasks completed
 
-**Session 28 Progress (December 24, 2025):**
+**Session 28-29 Progress (December 24, 2025):**
 - **Alert Dialog Extreme Testing: COMPLETE** ✅
   - **Test Requirements:**
     1. Select metrics from ALL 3 types (datasource, business, system) ✅
@@ -931,6 +931,40 @@ kubectl port-forward svc/hazelcast 5701:5701 -n ez-platform
     - Persistence: Verified after F5 page refresh
   - **Bug Fix Validated:** 400 Bad Request error RESOLVED
   - **Test Result:** ALL TESTS PASSED ✅
+
+- **Phase 4: Add Missing Metrics + Migrate Legacy: COMPLETE** ✅
+  - Added 2 new metrics to `BusinessMetrics.cs`:
+    - `business_queue_depth` (UpDownCounter) - Queue depth tracking
+    - `business_output_destination_errors_total` (Counter) - Output errors
+  - Added to `PromQLExpressionHelperDialog.tsx` for frontend visibility
+  - Total business metrics: 26
+
+- **Phase 5A: Labels UI Integration in Alert Form: COMPLETE** ✅
+  - Added `labels` field to AlertRule interface
+  - Labels column in alerts table (shows 3 + overflow indicator)
+  - Labels populated in edit mode (form.setFieldsValue)
+  - EnhancedLabelInput component already integrated
+
+- **Phase 5B: Dynamic Variable Substitution: COMPLETE** ✅
+  - **Backend Implementation** (`AlertEvaluationService.cs`):
+    - Extended `SubstituteVariables(expression, metric, alert)` method
+    - Created `SubstituteGlobalAlertVariables(expression, globalAlert)` method
+  - **Supported Variables:**
+    - Predefined: `$datasource_name`, `$datasource_id`, `$metric_name`, `$category`, `$scope`
+    - Dynamic: Any `$labelName` from alert.Labels with fixed value
+    - Global: `$metric_name`, `$metric_type`, `$alert_name`, `$severity`
+  - **UI Documentation** (`EnhancedLabelInput.tsx`):
+    - Added help panel listing all supported variables
+    - Usage examples with Hebrew translations
+  - **Alert Evaluation Architecture:**
+    - `MetricsCollectionBackgroundService` runs every 60s (configurable)
+    - Queries Prometheus for metric values via `IPrometheusQueryService`
+    - Calls `AlertEvaluationService.EvaluateAlertsAsync()` for each metric
+    - Variable substitution applied before PromQL execution
+    - Cooldown prevents alert storms (default 300s)
+
+- **Feature Status: Fix Alerts Dialog - 87.5% Complete (7/8 tasks)**
+  - Remaining: Final Testing task
 
 **Session 26 Progress (December 21, 2025):**
 - **Comprehensive Verification Analysis: COMPLETE** ✅
