@@ -139,6 +139,9 @@ spec:
         - name: grafana-business-dashboard
           mountPath: /etc/grafana/provisioning/dashboards/business-metrics.json
           subPath: business-metrics.json
+        - name: grafana-infrastructure-dashboard
+          mountPath: /etc/grafana/provisioning/dashboards/infrastructure-metrics.json
+          subPath: infrastructure-metrics.json
       volumes:
       - name: grafana-data
         persistentVolumeClaim:
@@ -152,6 +155,9 @@ spec:
       - name: grafana-business-dashboard
         configMap:
           name: grafana-business-metrics-dashboard
+      - name: grafana-infrastructure-dashboard
+        configMap:
+          name: grafana-infrastructure-dashboard
 
 ---
 apiVersion: v1
