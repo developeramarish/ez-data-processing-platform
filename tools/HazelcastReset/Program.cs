@@ -25,14 +25,20 @@ var listOption = new Option<bool>(
     () => false,
     "List all maps and their entry counts instead of clearing");
 
+var clearAllOption = new Option<bool>(
+    "--clear-all",
+    () => false,
+    "Clear ALL maps including file-hashes deduplication cache");
+
 var rootCommand = new RootCommand("Hazelcast Cache Reset Tool for EZ Platform")
 {
     hostOption,
     mapsOption,
-    listOption
+    listOption,
+    clearAllOption
 };
 
-rootCommand.SetHandler(async (string host, string[] maps, bool list) =>
+rootCommand.SetHandler(async (string host, string[] maps, bool list, bool clearAll) =>
 {
     Console.WriteLine("===========================================");
     Console.WriteLine("  Hazelcast Cache Reset Tool - EZ Platform");
@@ -88,6 +94,41 @@ rootCommand.SetHandler(async (string host, string[] maps, bool list) =>
 
             Console.WriteLine("-------------------------------------------");
         }
+        else if (clearAll)
+        {
+            // Clear ALL maps mode - including file-hashes deduplication cache
+            Console.WriteLine("Clearing ALL Hazelcast maps (including deduplication cache):");
+            Console.WriteLine("-------------------------------------------");
+
+            var objects = await client.GetDistributedObjectsAsync();
+            var clearedCount = 0;
+            var totalEntries = 0;
+
+            foreach (var obj in objects)
+            {
+                if (obj.ServiceName == "hz:impl:mapService")
+                {
+                    try
+                    {
+                        Console.Write($"  Clearing '{obj.Name}'... ");
+                        var map = await client.GetMapAsync<string, object>(obj.Name);
+                        var size = await map.GetSizeAsync();
+                        totalEntries += size;
+                        await map.ClearAsync();
+                        Console.WriteLine($"Done! (was {size} entries)");
+                        clearedCount++;
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Failed! ({ex.Message})");
+                    }
+                }
+            }
+
+            Console.WriteLine("-------------------------------------------");
+            Console.WriteLine();
+            Console.WriteLine($"Cleared {clearedCount} map(s) with {totalEntries} total entries!");
+        }
         else
         {
             // Clear mode - clear specified maps
@@ -127,6 +168,6 @@ rootCommand.SetHandler(async (string host, string[] maps, bool list) =>
         Environment.Exit(1);
     }
 
-}, hostOption, mapsOption, listOption);
+}, hostOption, mapsOption, listOption, clearAllOption);
 
 await rootCommand.InvokeAsync(args);
