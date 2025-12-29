@@ -94,6 +94,9 @@ services.AddHealthChecks()
 services.AddScoped<IDataSourceRepository, DataSourceRepository>();
 services.AddScoped<IDataSourceService, DataSourceService>();
 
+// Register category management service (BETA Release)
+services.AddScoped<ICategoryService, CategoryService>();
+
 // Register schema management services
 services.AddScoped<DataProcessing.DataSourceManagement.Repositories.Schema.ISchemaRepository,
     DataProcessing.DataSourceManagement.Repositories.Schema.SchemaRepository>();
@@ -150,7 +153,10 @@ try
     
     var initLogger = app.Services.GetRequiredService<ILogger<Program>>();
     initLogger.LogInformation("MongoDB.Entities database connection initialized successfully");
-    
+
+    // Seed default categories (BETA Release)
+    await DataProcessing.DataSourceManagement.Data.CategorySeeder.SeedDefaultCategoriesAsync(initLogger);
+
     // Create indexes for better performance - non-blocking
     _ = Task.Run(async () =>
     {
@@ -178,7 +184,20 @@ try
             await DB.Index<DataProcessingDataSource>()
                 .Key(x => x.CreatedAt, KeyType.Descending)
                 .CreateAsync();
-                
+
+            // Create indexes for DataSourceCategory (BETA Release)
+            await DB.Index<DataSourceCategory>()
+                .Key(x => x.SortOrder, KeyType.Ascending)
+                .CreateAsync();
+
+            await DB.Index<DataSourceCategory>()
+                .Key(x => x.IsActive, KeyType.Ascending)
+                .CreateAsync();
+
+            await DB.Index<DataSourceCategory>()
+                .Key(x => x.Name, KeyType.Ascending)
+                .CreateAsync();
+
             initLogger.LogInformation("Database indexes created successfully");
         }
         catch (Exception indexEx)
