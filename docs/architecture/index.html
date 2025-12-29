@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="he" dir="rtl">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EZ Platform - תיעוד ארכיטקטורה</title>
+    <title>EZ Platform - Architecture Documentation</title>
     <style>
         * {
             margin: 0;
@@ -16,7 +16,6 @@
             min-height: 100vh;
             padding: 40px 20px;
             color: #fff;
-            direction: rtl;
         }
         .container {
             max-width: 1200px;
@@ -43,7 +42,7 @@
             font-size: 1.2rem;
             max-width: 600px;
             margin: 0 auto 30px;
-            line-height: 1.8;
+            line-height: 1.6;
         }
         .status-badge {
             display: inline-block;
@@ -102,7 +101,7 @@
         }
         .card p {
             color: #94a3b8;
-            line-height: 1.8;
+            line-height: 1.6;
             margin-bottom: 20px;
         }
         .card-meta {
@@ -116,11 +115,10 @@
             border-radius: 20px;
             background: rgba(255,255,255,0.1);
             color: #a5b4fc;
-            direction: ltr;
         }
         .card-arrow {
             position: absolute;
-            left: 30px;
+            right: 30px;
             bottom: 30px;
             font-size: 1.5rem;
             color: rgba(255,255,255,0.3);
@@ -128,7 +126,7 @@
         }
         .card:hover .card-arrow {
             color: var(--card-accent);
-            transform: translateX(-5px);
+            transform: translateX(5px);
         }
 
         /* Card accent colors */
@@ -175,12 +173,10 @@
             font-weight: 600;
             color: #fff;
             font-size: 0.9rem;
-            direction: ltr;
         }
         .tech-item .version {
             color: #64748b;
             font-size: 0.75rem;
-            direction: ltr;
         }
 
         .stats {
@@ -203,7 +199,6 @@
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
-            direction: ltr;
         }
         .stat-label {
             color: #64748b;
@@ -225,96 +220,80 @@
         footer a:hover {
             text-decoration: underline;
         }
-        .lang-switch {
-            position: fixed;
-            top: 20px;
-            left: 20px;
-            background: rgba(255,255,255,0.1);
-            padding: 8px 16px;
-            border-radius: 20px;
-            text-decoration: none;
-            color: #a5b4fc;
-            font-size: 0.9rem;
-            transition: all 0.3s;
-        }
-        .lang-switch:hover {
-            background: rgba(255,255,255,0.2);
-        }
     </style>
 </head>
 <body>
-    <a href="../index.html" class="lang-switch">EN English</a>
     <div class="container">
         <header>
             <div class="logo">⚡</div>
             <h1>EZ Platform</h1>
             <p class="subtitle">
-                פלטפורמת עיבוד ואימות נתונים בארכיטקטורת מיקרו-שירותים,
-                עם תמיכה מלאה בעברית ו-RTL וניטור ברמה ארגונית.
+                Data Processing & Validation Platform built with microservices architecture,
+                featuring full Hebrew/RTL support and enterprise-grade observability.
             </p>
-            <span class="status-badge">92% הושלם - שלב אימות לפרודקשן</span>
+            <span class="status-badge">92% Complete - Production Validation Phase</span>
         </header>
 
         <div class="stats">
             <div class="stat">
                 <div class="stat-value">9</div>
-                <div class="stat-label">מיקרו-שירותים</div>
+                <div class="stat-label">Microservices</div>
             </div>
             <div class="stat">
                 <div class="stat-value">4</div>
-                <div class="stat-label">פורמטי קלט</div>
+                <div class="stat-label">Input Formats</div>
             </div>
             <div class="stat">
                 <div class="stat-value">4</div>
-                <div class="stat-label">יעדי פלט</div>
+                <div class="stat-label">Output Destinations</div>
             </div>
             <div class="stat">
                 <div class="stat-value">6</div>
-                <div class="stat-label">בדיקות E2E עוברות</div>
+                <div class="stat-label">E2E Tests Passing</div>
             </div>
             <div class="stat">
-                <div class="stat-value" dir="ltr">&lt;1s</div>
-                <div class="stat-label">לכל 100 רשומות</div>
+                <div class="stat-value">&lt;1s</div>
+                <div class="stat-label">Per 100 Records</div>
             </div>
         </div>
 
         <div class="cards">
             <a href="architecture-overview.html" class="card overview">
                 <div class="card-icon">🏗️</div>
-                <h2>ארכיטקטורת המערכת</h2>
+                <h2>System Architecture</h2>
                 <p>
-                    תצוגה עליונה של ארכיטקטורת הפלטפורמה המלאה כולל כל השכבות:
-                    ממשק משתמש, API וניהול, צינור עיבוד נתונים ותשתית.
+                    High-level view of the complete platform architecture including all layers:
+                    Presentation, API/Management, Data Processing Pipeline, and Infrastructure.
                 </p>
                 <div class="card-meta">
                     <span class="meta-tag">9 Services</span>
                     <span class="meta-tag">Event-Driven</span>
                     <span class="meta-tag">Kubernetes</span>
                 </div>
-                <span class="card-arrow">←</span>
+                <span class="card-arrow">→</span>
             </a>
 
             <a href="data-pipeline.html" class="card pipeline">
                 <div class="card-icon">🔄</div>
-                <h2>זרימת צינור הנתונים</h2>
+                <h2>Data Pipeline Flow</h2>
                 <p>
-                    מסע עיבוד הנתונים מקצה לקצה מקבצי מקור דרך גילוי,
-                    המרה, אימות ועד לפלט מרובה יעדים עם טיפול בשגיאות.
+                    End-to-end data processing journey from source files through discovery,
+                    conversion, validation, to multi-destination output with error handling.
                 </p>
                 <div class="card-meta">
                     <span class="meta-tag">RabbitMQ</span>
                     <span class="meta-tag">Hazelcast</span>
                     <span class="meta-tag">Multi-Format</span>
                 </div>
-                <span class="card-arrow">←</span>
+                <span class="card-arrow">→</span>
             </a>
 
             <a href="observability.html" class="card observability">
                 <div class="card-icon">📊</div>
-                <h2>מערך הניטור</h2>
+                <h2>Observability Stack</h2>
                 <p>
-                    תשתית ניטור וצפייה מלאה עם OpenTelemetry,
-                    שני מופעי Prometheus, לוחות בקרה ב-Grafana, מעקב ב-Jaeger ו-Elasticsearch.
+                    Complete monitoring and observability infrastructure with OpenTelemetry,
+                    dual Prometheus instances, Grafana dashboards, Jaeger tracing, and Elasticsearch.
                 </p>
                 <div class="card-meta">
                     <span class="meta-tag">OTEL</span>
@@ -322,42 +301,42 @@
                     <span class="meta-tag">Grafana</span>
                     <span class="meta-tag">Jaeger</span>
                 </div>
-                <span class="card-arrow">←</span>
+                <span class="card-arrow">→</span>
             </a>
 
             <a href="SYSTEM-ARCHITECTURE.md" class="card markdown">
                 <div class="card-icon">📝</div>
-                <h2>תיעוד Markdown</h2>
+                <h2>Markdown Documentation</h2>
                 <p>
-                    תיעוד ארכיטקטורה מלא בפורמט Markdown עם דיאגרמות ASCII,
-                    טבלאות והסברים מפורטים מתאימים למאגרי Git.
+                    Complete architecture documentation in Markdown format with ASCII diagrams,
+                    tables, and detailed explanations suitable for Git repositories.
                 </p>
                 <div class="card-meta">
                     <span class="meta-tag">ASCII Art</span>
                     <span class="meta-tag">Tables</span>
                     <span class="meta-tag">Git-Friendly</span>
                 </div>
-                <span class="card-arrow">←</span>
+                <span class="card-arrow">→</span>
             </a>
 
             <a href="development-effort.html" class="card effort">
                 <div class="card-icon">📊</div>
-                <h2>דוח מאמץ הפיתוח</h2>
+                <h2>Development Effort Report</h2>
                 <p>
-                    תקציר מנהלים של מאמץ הפרויקט כולל מבנה צוות, תפקידים, ותק,
-                    תכנית לוח זמנים של 6 חודשים, הערכת תקציב ותוצרים עיקריים.
+                    Executive summary of project effort including team structure, roles, seniority,
+                    6-month timeline, budget estimation, and key deliverables.
                 </p>
                 <div class="card-meta">
-                    <span class="meta-tag">צוות: 12-15</span>
-                    <span class="meta-tag">6 חודשים</span>
-                    <span class="meta-tag">~47.5 אדם-חודש</span>
+                    <span class="meta-tag">Team: 12-15</span>
+                    <span class="meta-tag">6 Months</span>
+                    <span class="meta-tag">~47.5 PM</span>
                 </div>
-                <span class="card-arrow">←</span>
+                <span class="card-arrow">→</span>
             </a>
         </div>
 
         <div class="tech-stack">
-            <h3>מחסנית טכנולוגית</h3>
+            <h3>TECHNOLOGY STACK</h3>
             <div class="tech-grid">
                 <div class="tech-item">
                     <div class="icon">⚛️</div>
@@ -414,9 +393,9 @@
 
         <footer>
             <p>
-                תיעוד ארכיטקטורת EZ Platform |
-                נוצר בדצמבר 2025 |
-                <a href="../../../CLAUDE.md">הוראות פרויקט</a>
+                EZ Platform Architecture Documentation |
+                Generated December 25, 2025 |
+                <a href="../../CLAUDE.md">Project Instructions</a>
             </p>
         </footer>
     </div>

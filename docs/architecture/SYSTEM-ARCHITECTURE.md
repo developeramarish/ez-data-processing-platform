@@ -90,10 +90,10 @@ EZ Platform is a microservices-based data processing platform that provides:
 │            │                        │                        │               └──────┬──────┘ │
 │            │                        │                        │                      │        │
 │   ═════════╪════════════════════════╪════════════════════════╪══════════════════════╪═════   │
-│            │  RABBITMQ MESSAGE BUS  │   (Event-Driven)       │                      │        │
+│            │   RABBITMQ MESSAGE BUS  │   (Event-Driven)       │                      │        │
 │   ═════════╪════════════════════════╪════════════════════════╪══════════════════════╪═════   │
 │            │                        │                        │                      │        │
-│   Queues: │                        │                        │                      │        │
+│    Topics: │                        │                        │                      │        │
 │    ├─ filepolling ──────────────────┘                        │                      │        │
 │    ├─ filesreceiver.validationrequest ───────────────────────┘                      │        │
 │    ├─ validation.completed ─────────────────────────────────────────────────────────┘        │
@@ -281,23 +281,23 @@ EZ Platform is a microservices-based data processing platform that provides:
 │                          RABBITMQ QUEUES & EVENTS                            │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
-│  Queue: dataprocessing.scheduling.filepolling                              │
+│  Topic: dataprocessing.scheduling.filepolling                               │
 │  ├─ Producer: Scheduling Service (Quartz)                                  │
 │  └─ Consumer: FileDiscovery Service                                        │
 │                                                                              │
-│  Queue: dataprocessing.filesreceiver.validationrequest                     │
+│  Topic: dataprocessing.filesreceiver.validationrequest                     │
 │  ├─ Producer: FileProcessor Service                                        │
 │  └─ Consumer: Validation Service                                           │
 │                                                                              │
-│  Queue: dataprocessing.validation.completed                                │
+│  Topic: dataprocessing.validation.completed                                │
 │  ├─ Producer: Validation Service                                           │
 │  └─ Consumers: Output Service, InvalidRecords Service                      │
 │                                                                              │
-│  Queue: dataprocessing.global.processingfailed                             │
+│  Topic: dataprocessing.global.processingfailed                             │
 │  ├─ Producer: Any service on error                                         │
 │  └─ Consumer: Error handling                                               │
 │                                                                              │
-│  Note: AMQP (5672) for services | Management UI (15672) for development   │
+│  Note: Internal (9092) for pod-to-pod | External (9094) for development    │
 │                                                                              │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -334,9 +334,9 @@ EZ Platform is a microservices-based data processing platform that provides:
 │   DEPLOYMENTS (Stateless)              STATEFULSETS (Stateful)          │
 │   ═══════════════════════              ════════════════════════          │
 │   • Frontend (2)                       • MongoDB (2 nodes)              │
-│   • DataSource Management (1)          • RabbitMQ (1)                   │
-│   • Metrics Configuration (1)          • Hazelcast (1)                  │
-│   • Validation (1)                                                       │
+│   • DataSource Management (1)          • RabbitMQ              │
+│   • Metrics Configuration (1)          • ZooKeeper (1)                  │
+│   • Validation (1)                     • Hazelcast (1)                  │
 │   • Scheduling (1)                                                       │
 │   • Invalid Records (1)                DAEMONSETS                        │
 │   • File Discovery (2)                 ═══════════                       │
@@ -402,7 +402,7 @@ EZ Platform is a microservices-based data processing platform that provides:
 | **Critical** | Jaeger persistence | ✅ Fixed | Elasticsearch backend configured |
 | **High** | Elasticsearch security | ⚠️ Open | Enable xpack.security |
 | **High** | MongoDB backup strategy | ⚠️ Open | Implement automated backups |
-| **Medium** | RabbitMQ clustering | ⚠️ Dev only | Add HA mirrors for production |
+| **Medium** | RabbitMQ clustering | ⚠️ Dev only | Configure HA for production |
 
 ---
 
