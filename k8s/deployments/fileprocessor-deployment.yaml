@@ -65,6 +65,11 @@ spec:
             configMapKeyRef:
               name: services-config
               key: otlp-endpoint
+        - name: Hazelcast__CacheTTLHours
+          valueFrom:
+            configMapKeyRef:
+              name: services-config
+              key: Hazelcast__CacheTTLHours
         - name: FileProcessor__ConcurrentFiles
           value: "10"
         - name: FileProcessor__MaxFileSizeMB

@@ -59,7 +59,10 @@ spec:
               name: services-config
               key: otlp-endpoint
         - name: FileDiscovery__DeduplicationTTLHours
-          value: "4"
+          valueFrom:
+            configMapKeyRef:
+              name: services-config
+              key: FileDiscovery__DeduplicationTTLHours
         - name: Hazelcast__Server
           valueFrom:
             configMapKeyRef:

@@ -75,6 +75,11 @@ spec:
             configMapKeyRef:
               name: services-config
               key: otlp-endpoint
+        - name: Hazelcast__CacheTTLHours
+          valueFrom:
+            configMapKeyRef:
+              name: services-config
+              key: Hazelcast__CacheTTLHours
         resources:
           requests:
             cpu: "100m"

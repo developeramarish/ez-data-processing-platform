@@ -17,6 +17,15 @@ data:
   # Hazelcast Configuration - Using Service (not specific pod)
   hazelcast-server: "hazelcast:5701"
 
+  # Hazelcast TTL Configuration
+  # Deduplication TTL: How long file hashes are cached to prevent reprocessing
+  # Set to 0.25 (15 minutes) for testing, recommend 4-24 hours for production
+  FileDiscovery__DeduplicationTTLHours: "0.25"
+
+  # Cache TTL: How long file content is cached during processing pipeline
+  # Shorter is fine since content is consumed quickly
+  Hazelcast__CacheTTLHours: "1"
+
   # Prometheus Configuration
   prometheus-endpoint: "http://prometheus:9090"
   prometheus-pushgateway: "http://prometheus:9091"
