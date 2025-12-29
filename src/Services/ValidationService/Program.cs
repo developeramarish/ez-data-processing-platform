@@ -41,26 +41,13 @@ var connectionString = builder.Configuration.GetConnectionString("MongoDB")
 var databaseName = builder.Configuration.GetConnectionString("DatabaseName") ?? "ezplatform";
 await DB.InitAsync(databaseName, connectionString);
 
-// Configure Hazelcast Client
-builder.Services.AddSingleton<IHazelcastClient>(sp =>
+// Configure Hazelcast Client with resilience (auto-reconnect, retry, circuit breaker)
+using var hazelcastLoggerFactory = LoggerFactory.Create(loggingBuilder =>
 {
-    var hazelcastServer = builder.Configuration.GetValue<string>("Hazelcast:Server")
-        ?? "localhost:5701";
-    var clusterName = builder.Configuration.GetValue<string>("Hazelcast:ClusterName")
-        ?? "data-processing-cluster";
-
-    var options = new HazelcastOptionsBuilder()
-        .With(args =>
-        {
-            args.Networking.Addresses.Add(hazelcastServer);
-            args.ClusterName = clusterName;
-            args.Networking.ConnectionRetry.ClusterConnectionTimeoutMilliseconds = 30000;
-            args.LoggerFactory.Creator = () => new Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory();
-        })
-        .Build();
-
-    return HazelcastClientFactory.StartNewClientAsync(options).GetAwaiter().GetResult();
+    loggingBuilder.AddConsole();
+    loggingBuilder.SetMinimumLevel(LogLevel.Information);
 });
+builder.Services.AddResilientHazelcast(builder.Configuration, hazelcastLoggerFactory);
 
 // Configure MassTransit with RabbitMQ transport
 var rabbitMqHost = builder.Configuration.GetValue<string>("RabbitMQ:Host") ?? "rabbitmq.ez-platform.svc.cluster.local";

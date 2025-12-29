@@ -16,6 +16,7 @@
     <PackageReference Include="MassTransit" />
     <PackageReference Include="MassTransit.Kafka" />
     <PackageReference Include="Hazelcast.Net" />
+    <PackageReference Include="Polly" />
 
     <!-- Monitoring & Observability -->
     <PackageReference Include="prometheus-net" />

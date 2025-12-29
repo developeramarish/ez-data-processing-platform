@@ -36,39 +36,13 @@ Console.WriteLine($"[DEBUG] FileDiscovery MongoDB ConnectionString from config: 
 var databaseName = builder.Configuration.GetConnectionString("DatabaseName") ?? "ezplatform";
 await DB.InitAsync(databaseName, connectionString);
 
-// Configure Hazelcast Client for distributed file hash deduplication
-var hazelcastHost = builder.Configuration.GetValue<string>("Hazelcast:Server") ?? "localhost:5701";
-var clusterName = builder.Configuration.GetValue<string>("Hazelcast:ClusterName") ?? "data-processing-cluster";
-var hazelcastAddresses = hazelcastHost.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
-builder.Services.AddSingleton<IHazelcastClient>(sp =>
+// Configure Hazelcast Client with resilience (auto-reconnect, retry, circuit breaker)
+using var hazelcastLoggerFactory = LoggerFactory.Create(loggingBuilder =>
 {
-    var logger = sp.GetRequiredService<ILogger<Program>>();
-
-    logger.LogInformation("Hazelcast configuration - Server: {Server}, ClusterName: {ClusterName}", hazelcastHost, clusterName);
-    logger.LogInformation("Parsed {Count} Hazelcast addresses: {Addresses}", hazelcastAddresses.Length, string.Join(", ", hazelcastAddresses));
-
-    var options = new HazelcastOptionsBuilder()
-        .With(args =>
-        {
-            foreach (var address in hazelcastAddresses)
-            {
-                logger.LogInformation("Adding Hazelcast address: {Address}", address);
-                args.Networking.Addresses.Add(address);
-            }
-            args.ClusterName = clusterName;
-            args.Networking.ConnectionRetry.ClusterConnectionTimeoutMilliseconds = 30000;
-        })
-        .WithDefault("Logging:LogLevel:Hazelcast", "Information")
-        .Build();
-
-    var client = HazelcastClientFactory.StartNewClientAsync(options).GetAwaiter().GetResult();
-
-    logger.LogInformation("Hazelcast client connected to cluster: {ClusterName} at {Servers}",
-        clusterName, string.Join(", ", hazelcastAddresses));
-
-    return client;
+    loggingBuilder.AddConsole();
+    loggingBuilder.SetMinimumLevel(LogLevel.Information);
 });
+builder.Services.AddResilientHazelcast(builder.Configuration, hazelcastLoggerFactory);
 
 // Register IFileHashService for distributed file deduplication
 builder.Services.AddScoped<IFileHashService, HazelcastFileHashService>();

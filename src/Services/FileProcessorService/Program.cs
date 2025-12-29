@@ -34,46 +34,13 @@ var connectionString = builder.Configuration.GetConnectionString("MongoDB") ?? "
 var databaseName = builder.Configuration.GetConnectionString("DatabaseName") ?? "ezplatform";
 await DB.InitAsync(databaseName, connectionString);
 
-// Configure Hazelcast Client - Capture configuration BEFORE lambda
-var hazelcastHost = builder.Configuration.GetValue<string>("Hazelcast:Server") ?? "localhost:5701";
-var clusterName = builder.Configuration.GetValue<string>("Hazelcast:ClusterName") ?? "data-processing-cluster";
-var hazelcastAddresses = hazelcastHost.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
-builder.Services.AddSingleton<IHazelcastClient>(sp =>
+// Configure Hazelcast Client with resilience (auto-reconnect, retry, circuit breaker)
+using var hazelcastLoggerFactory = LoggerFactory.Create(loggingBuilder =>
 {
-    var logger = sp.GetRequiredService<ILogger<Program>>();
-
-    // Debug logging to verify configuration
-    logger.LogInformation("Hazelcast configuration - Server: {Server}, ClusterName: {ClusterName}", hazelcastHost, clusterName);
-    logger.LogInformation("Parsed {Count} Hazelcast addresses: {Addresses}", hazelcastAddresses.Length, string.Join(", ", hazelcastAddresses));
-
-    var options = new HazelcastOptionsBuilder()
-        .With(args =>
-        {
-            logger.LogInformation("Before adding addresses, Addresses.Count = {Count}", args.Networking.Addresses.Count);
-            foreach (var address in hazelcastAddresses)
-            {
-                logger.LogInformation("Adding address: {Address}", address);
-                args.Networking.Addresses.Add(address);
-            }
-            logger.LogInformation("After adding addresses, Addresses.Count = {Count}, Addresses = {Addresses}",
-                args.Networking.Addresses.Count,
-                string.Join(", ", args.Networking.Addresses));
-            args.ClusterName = clusterName;
-            args.Networking.ConnectionRetry.ClusterConnectionTimeoutMilliseconds = 30000;
-        })
-        .WithDefault("Logging:LogLevel:Hazelcast", "Information")
-        .Build();
-
-    logger.LogInformation("Built options with Addresses.Count = {Count}", options.Networking.Addresses.Count);
-
-    var client = HazelcastClientFactory.StartNewClientAsync(options).GetAwaiter().GetResult();
-
-    logger.LogInformation("Hazelcast client connected to cluster: {ClusterName} at {Servers}",
-        clusterName, string.Join(", ", hazelcastAddresses));
-
-    return client;
+    loggingBuilder.AddConsole();
+    loggingBuilder.SetMinimumLevel(LogLevel.Information);
 });
+builder.Services.AddResilientHazelcast(builder.Configuration, hazelcastLoggerFactory);
 
 // Configure MassTransit with InMemory transport (MVP - Kafka migration pending)
 var rabbitMqHost = builder.Configuration.GetValue<string>("RabbitMQ:Host") ?? "rabbitmq.ez-platform.svc.cluster.local";
@@ -113,8 +80,7 @@ builder.Services.AddScoped<JsonToJsonConverter>();
 // Configure health checks
 builder.Services.AddDataProcessingHealthChecks(builder.Configuration, serviceName);
 
-// Configure metrics
-builder.Services.AddSingleton<DataProcessingMetrics>();
+// Configure metrics (BusinessMetrics is the active metrics system)
 builder.Services.AddBusinessMetrics();
 
 // Configure CORS for development

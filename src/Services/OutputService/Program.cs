@@ -31,22 +31,16 @@ await DB.InitAsync(databaseName, mongoConnectionString);
 
 Log.Information("Connected to MongoDB: {ConnectionString}", mongoConnectionString);
 
-// Configure Hazelcast Client
-var hazelcastOptions = new HazelcastOptionsBuilder()
-    .With(options =>
-    {
-        options.ClusterName = builder.Configuration["Hazelcast:ClusterName"] ?? "data-processing-cluster";
-        options.Networking.Addresses.Add(builder.Configuration["Hazelcast:Server"] ?? "localhost:5701");
-        options.Networking.ConnectionRetry.ClusterConnectionTimeoutMilliseconds = 30000;
-        options.LoggerFactory.Creator = () => new Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory();
-    })
-    .Build();
-
-var hazelcastClient = await HazelcastClientFactory.StartNewClientAsync(hazelcastOptions);
-builder.Services.AddSingleton<IHazelcastClient>(hazelcastClient);
+// Configure Hazelcast Client with resilience (auto-reconnect, retry, circuit breaker)
+using var loggerFactory = LoggerFactory.Create(loggingBuilder =>
+{
+    loggingBuilder.AddSerilog();
+    loggingBuilder.SetMinimumLevel(LogLevel.Information);
+});
+builder.Services.AddResilientHazelcast(builder.Configuration, loggerFactory);
 
 Log.Information(
-    "Connected to Hazelcast: {Server}, Cluster={ClusterName}",
+    "Hazelcast resilient client configured: {Server}, Cluster={ClusterName}",
     builder.Configuration["Hazelcast:Server"],
     builder.Configuration["Hazelcast:ClusterName"]);
 

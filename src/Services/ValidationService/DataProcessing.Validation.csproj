@@ -7,6 +7,9 @@
     <DockerfileContext>..\..</DockerfileContext>
     <UserSecretsId>validation-service</UserSecretsId>
     <PreserveCompilationContext>true</PreserveCompilationContext>
+    <!-- Suppress obsolete DataProcessingMetrics warning - TODO: Migrate to BusinessMetrics -->
+    <!-- CS1591: Missing XML comments on public members -->
+    <NoWarn>CS0618;CS1591</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

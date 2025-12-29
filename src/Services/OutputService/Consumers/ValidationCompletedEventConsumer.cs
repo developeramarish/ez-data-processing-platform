@@ -8,6 +8,7 @@ using Hazelcast;
 using MassTransit;
 using MongoDB.Entities;
 using Newtonsoft.Json.Linq;
+using DataProcessing.Shared.Configuration;
 using DataProcessing.Shared.Entities;
 using DataProcessing.Shared.Messages;
 using DataProcessing.Shared.Monitoring;
@@ -24,7 +25,7 @@ namespace DataProcessing.Output.Consumers;
 public class ValidationCompletedEventConsumer : IConsumer<ValidationCompletedEvent>
 {
     private readonly ILogger<ValidationCompletedEventConsumer> _logger;
-    private readonly IHazelcastClient _hazelcastClient;
+    private readonly IResilientHazelcastClient _hazelcastClient;
     private readonly IEnumerable<IOutputHandler> _outputHandlers;
     private readonly FormatReconstructorService _formatReconstructor;
     private readonly IConfiguration _configuration;
@@ -32,7 +33,7 @@ public class ValidationCompletedEventConsumer : IConsumer<ValidationCompletedEve
 
     public ValidationCompletedEventConsumer(
         ILogger<ValidationCompletedEventConsumer> logger,
-        IHazelcastClient hazelcastClient,
+        IResilientHazelcastClient hazelcastClient,
         IEnumerable<IOutputHandler> outputHandlers,
         FormatReconstructorService formatReconstructor,
         IConfiguration configuration,
@@ -323,7 +324,7 @@ public class ValidationCompletedEventConsumer : IConsumer<ValidationCompletedEve
     }
 
     /// <summary>
-    /// Retrieve valid records from Hazelcast cache
+    /// Retrieve valid records from Hazelcast cache with automatic retry and reconnection
     /// </summary>
     private async Task<List<JObject>?> RetrieveValidRecordsFromHazelcastAsync(string? hazelcastKey)
     {
@@ -335,8 +336,8 @@ public class ValidationCompletedEventConsumer : IConsumer<ValidationCompletedEve
 
         try
         {
-            var validRecordsMap = await _hazelcastClient.GetMapAsync<string, string>("valid-records");
-            var jsonContent = await validRecordsMap.GetAsync(hazelcastKey);
+            // Use resilient client with built-in retry and circuit breaker
+            var jsonContent = await _hazelcastClient.GetAsync<string, string>("valid-records", hazelcastKey);
 
             if (string.IsNullOrEmpty(jsonContent))
             {
@@ -346,32 +347,31 @@ public class ValidationCompletedEventConsumer : IConsumer<ValidationCompletedEve
 
             // Parse JSON array
             var jsonArray = JArray.Parse(jsonContent);
+            _logger.LogDebug("Retrieved {Count} valid records from Hazelcast for key: {Key}",
+                jsonArray.Count, hazelcastKey);
             return jsonArray.Select(token => (JObject)token).ToList();
         }
         catch (Exception ex)
         {
             _logger.LogError(
                 ex,
-                "Failed to retrieve valid records from Hazelcast: {Key}",
+                "Failed to retrieve valid records from Hazelcast after retries: {Key}",
                 hazelcastKey);
             throw;
         }
     }
 
     /// <summary>
-    /// Cleanup cached content from Hazelcast
+    /// Cleanup cached content from Hazelcast with resilient operations
     /// </summary>
     private async Task CleanupHazelcastAsync(string? validRecordsKey)
     {
         try
         {
-            // FIX: valid records are stored in "valid-records" map, not "file-content"
-            var validRecordsMap = await _hazelcastClient.GetMapAsync<string, string>("valid-records");
-
-            // Remove valid records
+            // Remove valid records using resilient client
             if (!string.IsNullOrEmpty(validRecordsKey))
             {
-                await validRecordsMap.RemoveAsync(validRecordsKey);
+                await _hazelcastClient.DeleteAsync<string, string>("valid-records", validRecordsKey);
                 _logger.LogDebug("Removed valid records from Hazelcast: {Key}", validRecordsKey);
             }
         }
