@@ -21,7 +21,7 @@ public class CategoryService : ICategoryService
         {
             _logger.LogInformation("Retrieving all categories. IncludeInactive: {IncludeInactive}", includeInactive);
 
-            var query = DB.Find<DataSourceCategory>();
+            var query = DB.Find<DataSourceCategory, DataSourceCategory>();
 
             if (!includeInactive)
             {
@@ -47,7 +47,7 @@ public class CategoryService : ICategoryService
         try
         {
             _logger.LogInformation("Retrieving category by ID: {CategoryId}", id);
-            return await DB.Find<DataSourceCategory>().OneAsync(id, cancellationToken);
+            return await DB.Find<DataSourceCategory, DataSourceCategory>().OneAsync(id, cancellationToken);
         }
         catch (Exception ex)
         {
@@ -65,7 +65,7 @@ public class CategoryService : ICategoryService
             // Set default sort order to highest + 1 if not specified
             if (category.SortOrder == 0)
             {
-                var maxSortOrder = await DB.Find<DataSourceCategory>()
+                var maxSortOrder = await DB.Find<DataSourceCategory, DataSourceCategory>()
                     .Sort(c => c.SortOrder, MongoDB.Entities.Order.Descending)
                     .Limit(1)
                     .ExecuteAsync(cancellationToken);
@@ -101,6 +101,17 @@ public class CategoryService : ICategoryService
                 return null;
             }
 
+            // If name is changing, propagate to all datasources
+            if (existing.Name != category.Name)
+            {
+                _logger.LogInformation("שם קטגוריה משתנה מ-'{OldName}' ל-'{NewName}', מעדכן datasources...",
+                    existing.Name, category.Name);
+
+                var updatedCount = await PropagateRenameToDataSourcesAsync(id, existing.Name, category.Name, cancellationToken);
+
+                _logger.LogInformation("עודכנו {Count} datasources עם שם קטגוריה חדש", updatedCount);
+            }
+
             existing.Name = category.Name;
             existing.NameEn = category.NameEn;
             existing.Description = category.Description;
@@ -121,26 +132,94 @@ public class CategoryService : ICategoryService
         }
     }
 
+    public async Task<int> PropagateRenameToDataSourcesAsync(string id, string oldName, string newName, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogInformation("מעדכן datasources: '{OldName}' → '{NewName}'", oldName, newName);
+
+            var result = await DB.Update<DataProcessingDataSource>()
+                .Match(ds => ds.Category == oldName)
+                .Modify(ds => ds.Category, newName)
+                .Modify(ds => ds.UpdatedAt, DateTime.UtcNow)
+                .ExecuteAsync(cancellationToken);
+
+            _logger.LogInformation("עודכנו {Count} datasources בהצלחה", result.ModifiedCount);
+            return (int)result.ModifiedCount;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "שגיאה בהעברת שינויים ל-datasources");
+            throw;
+        }
+    }
+
+    public async Task<long> GetDataSourceCountByCategoryAsync(string categoryName, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var count = await DB.CountAsync<DataProcessingDataSource>(
+                ds => ds.Category == categoryName);
+
+            _logger.LogInformation("מספר datasources המשתמשים בקטגוריה '{CategoryName}': {Count}", categoryName, count);
+            return count;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "שגיאה בספירת datasources לקטגוריה: {CategoryName}", categoryName);
+            throw;
+        }
+    }
+
     public async Task<bool> DeleteCategoryAsync(string id, CancellationToken cancellationToken = default)
     {
         try
         {
-            _logger.LogInformation("Deleting category: {CategoryId}", id);
-
-            var result = await DB.DeleteAsync<DataSourceCategory>(id, cancellationToken);
-
-            if (result.DeletedCount > 0)
+            var category = await GetCategoryByIdAsync(id, cancellationToken);
+            if (category == null)
             {
-                _logger.LogInformation("קטגוריה נמחקה בהצלחה: {CategoryId}", id);
-                return true;
+                _logger.LogWarning("קטגוריה לא נמצאה למחיקה: {CategoryId}", id);
+                return false;
             }
 
-            _logger.LogWarning("קטגוריה לא נמצאה למחיקה: {CategoryId}", id);
-            return false;
+            // Check if any datasources are using this category
+            var usageCount = await GetDataSourceCountByCategoryAsync(category.Name, cancellationToken);
+
+            if (usageCount > 0)
+            {
+                // Soft delete: mark as inactive if in use
+                _logger.LogInformation("קטגוריה '{CategoryName}' בשימוש על ידי {Count} datasources - מבצע soft delete",
+                    category.Name, usageCount);
+
+                category.IsActive = false;
+                category.UpdatedAt = DateTime.UtcNow;
+                await category.SaveAsync(cancellation: cancellationToken);
+
+                _logger.LogInformation("✅ קטגוריה סומנה כלא פעילה (soft delete): {CategoryId}", id);
+            }
+            else
+            {
+                // Hard delete: permanently remove if not in use
+                _logger.LogInformation("קטגוריה '{CategoryName}' אינה בשימוש - מבצע hard delete", category.Name);
+
+                var result = await DB.DeleteAsync<DataSourceCategory>(id);
+
+                if (result.DeletedCount > 0)
+                {
+                    _logger.LogInformation("✅ קטגוריה נמחקה לצמיתות (hard delete): {CategoryId}", id);
+                }
+                else
+                {
+                    _logger.LogWarning("⚠️ לא הצלחנו למחוק קטגוריה: {CategoryId}", id);
+                    return false;
+                }
+            }
+
+            return true;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "שגיאה במחיקת קטגוריה: {CategoryId}", id);
+            _logger.LogError(ex, "❌ שגיאה במחיקת קטגוריה: {CategoryId}", id);
             throw;
         }
     }

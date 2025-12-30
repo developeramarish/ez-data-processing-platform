@@ -1,0 +1,5 @@
+To deploy docs site from .tar:
+
+docker load -i ezplatform-docs-v0.1.0-beta.tar
+kubectl run ezplatform-docs --image=ezplatform-docs:v0.1.0-beta
+kubectl expose pod ezplatform-docs --port=80 --type=NodePort

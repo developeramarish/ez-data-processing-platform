@@ -1,0 +1,15 @@
+apiVersion: v2
+name: ez-platform
+description: EZ Data Processing Platform - Complete microservices deployment
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - data-processing
+  - microservices
+  - kafka
+  - mongodb
+  - hazelcast
+home: https://github.com/usercourses63/ez-data-processing-platform
+maintainers:
+  - name: EZ Platform Team

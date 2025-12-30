@@ -1,0 +1,42 @@
+site_name: EZ Platform Documentation
+site_description: Complete documentation for EZ Platform data processing system
+site_author: EZ Platform Team
+site_url: https://docs.ezplatform.local
+
+theme:
+  name: material
+  language: en
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - search.suggest
+    - search.highlight
+  palette:
+    - scheme: default
+      primary: blue
+      accent: indigo
+
+nav:
+  - Home: index.md
+  - Installation:
+      - Quick Start: installation/INSTALLATION-GUIDE.md
+  - Administration:
+      - Admin Guide: admin/ADMIN-GUIDE.md
+      - Maintenance Utilities: admin/ADMIN-GUIDE.md#maintenance-tools--utilities
+  - User Documentation:
+      - User Guide (Hebrew): user-guide/USER-GUIDE-HE.md
+  - Release Information:
+      - Release Notes: releases/RELEASE-NOTES-v0.1.0-beta.md
+      - Changelog: ../CHANGELOG.md
+
+markdown_extensions:
+  - tables
+  - fenced_code
+  - codehilite
+  - admonition
+  - toc:
+      permalink: true
+
+extra:
+  version: 0.1.0-beta

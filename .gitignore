@@ -86,3 +86,8 @@ src/publish/
 *.stackdump
 temp_*.json
 *~.md.saved.bak
+
+# Docker images (large binary files - distribute separately)
+release-package/images/*.tar
+*.tar
+*.tar.gz

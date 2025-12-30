@@ -1,13 +1,15 @@
 import React from 'react';
-import { Layout, Button, Switch, Space, Typography, Divider } from 'antd';
-import { 
-  GlobalOutlined, 
-  BellOutlined, 
+import { Layout, Button, Switch, Space, Typography, Divider, Tooltip } from 'antd';
+import {
+  GlobalOutlined,
+  BellOutlined,
   UserOutlined,
   MenuFoldOutlined,
-  MenuUnfoldOutlined 
+  MenuUnfoldOutlined,
+  QuestionCircleOutlined
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 
 const { Header } = Layout;
 const { Text } = Typography;
@@ -19,6 +21,7 @@ interface AppHeaderProps {
 
 const AppHeader: React.FC<AppHeaderProps> = ({ collapsed = false, onCollapse }) => {
   const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
   const isRTL = i18n.language === 'he';
 
   const toggleLanguage = () => {
@@ -81,6 +84,20 @@ const AppHeader: React.FC<AppHeaderProps> = ({ collapsed = false, onCollapse }) 
             size="small"
           />
         </Space>
+
+        {/* Help */}
+        <Tooltip title={isRTL ? 'עזרה' : 'Help'}>
+          <Button
+            type="text"
+            icon={<QuestionCircleOutlined />}
+            onClick={() => navigate('/help')}
+            style={{
+              fontSize: '16px',
+              width: 40,
+              height: 40,
+            }}
+          />
+        </Tooltip>
 
         {/* Notifications */}
         <Button

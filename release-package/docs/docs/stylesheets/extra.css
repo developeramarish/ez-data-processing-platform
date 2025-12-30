@@ -1,0 +1,42 @@
+/* Per-page RTL support for Hebrew User Guide */
+
+/* Only apply RTL to Hebrew user guide page */
+[data-md-file="user-guide-he.md"] .md-content {
+  direction: rtl;
+  text-align: right;
+}
+
+[data-md-file="user-guide-he.md"] .md-content h1,
+[data-md-file="user-guide-he.md"] .md-content h2,
+[data-md-file="user-guide-he.md"] .md-content h3,
+[data-md-file="user-guide-he.md"] .md-content h4 {
+  text-align: right;
+}
+
+[data-md-file="user-guide-he.md"] .md-content p,
+[data-md-file="user-guide-he.md"] .md-content li {
+  text-align: right;
+}
+
+[data-md-file="user-guide-he.md"] .md-content ul,
+[data-md-file="user-guide-he.md"] .md-content ol {
+  padding-right: 2em;
+  padding-left: 0;
+}
+
+/* Keep code blocks LTR even in Hebrew pages */
+[data-md-file="user-guide-he.md"] .md-content code,
+[data-md-file="user-guide-he.md"] .md-content pre {
+  direction: ltr;
+  text-align: left;
+}
+
+/* Tables in Hebrew guide */
+[data-md-file="user-guide-he.md"] .md-content table {
+  direction: rtl;
+}
+
+[data-md-file="user-guide-he.md"] .md-content th,
+[data-md-file="user-guide-he.md"] .md-content td {
+  text-align: right;
+}

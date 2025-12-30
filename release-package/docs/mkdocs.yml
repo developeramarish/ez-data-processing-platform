@@ -1,0 +1,69 @@
+site_name: EZ Platform v0.1.0-beta Documentation
+site_description: Official documentation for EZ Platform v0.1.0-beta
+site_author: EZ Platform Team
+
+theme:
+  name: material
+  language: en
+  direction: ltr
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+  palette:
+    - scheme: default
+      primary: blue
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: blue
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  custom_css:
+    - stylesheets/extra.css
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Installation Guide: installation.md
+      - Helm Installation: installation/helm-installation.md
+      - Quick Start: installation.md#quick-start
+      - Network Access: installation.md#network-access
+  - Administration:
+      - Admin Guide: admin.md
+      - Category Management: admin.md#category-management
+      - Monitoring: admin.md#monitoring--alerts
+      - Backup & Recovery: admin.md#backup--recovery
+      - Maintenance Tools: admin.md#maintenance-tools--utilities
+  - User Guide:
+      - Hebrew Guide: user-guide-he.md
+  - Architecture:
+      - System Architecture: architecture/SYSTEM-ARCHITECTURE.md
+      - Architecture (Hebrew): architecture/he/SYSTEM-ARCHITECTURE.md
+  - Reference:
+      - Release Notes: release-notes.md
+      - Changelog: changelog.md
+      - API Reference: release-notes.md#api-reference
+
+markdown_extensions:
+  - tables
+  - fenced_code
+  - codehilite:
+      guess_lang: false
+  - admonition
+  - toc:
+      permalink: true
+  - attr_list
+  - md_in_html
+
+extra:
+  version:
+    provider: mike
+    default: 0.1.0-beta

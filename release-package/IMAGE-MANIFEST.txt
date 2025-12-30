@@ -1,0 +1,29 @@
+# EZ Platform v0.1.0-beta - Complete Image Manifest
+# All Docker images required for offline installation
+
+## Application Services (10 images)
+datasource-management:v0.1.0-beta
+filediscovery:v0.1.0-beta
+fileprocessor:v0.1.0-beta
+validation:v0.1.0-beta
+output:v0.1.0-beta
+invalidrecords:v0.1.0-beta
+scheduling:v0.1.0-beta
+metrics-configuration:v0.1.0-beta
+frontend:v0.1.0-beta
+ezplatform-docs:v0.1.0-beta
+
+## Infrastructure Services (11 images)
+mongo:8.0
+rabbitmq:3-management-alpine
+confluentinc/cp-kafka:7.5.0
+confluentinc/cp-zookeeper:7.5.0
+hazelcast/hazelcast:5.6
+docker.elastic.co/elasticsearch/elasticsearch:8.17.0
+prom/prometheus:latest
+grafana/grafana:latest
+jaegertracing/all-in-one:latest
+otel/opentelemetry-collector-contrib:latest
+fluent/fluent-bit:latest
+
+# Total: 21 images (10 application + 11 infrastructure)

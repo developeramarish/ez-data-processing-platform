@@ -1,230 +1,104 @@
-# EZ Data Processing Platform
+# EZ Platform v0.1.0-beta
 
-Enterprise data ingestion, validation, and monitoring system with React frontend and .NET microservices backend.
+**Data Processing Platform for Enterprise File Management**
 
-## Project Structure
+---
 
-```
-ez-data-processing-platform/
-├── Frontend/                    # React + TypeScript frontend
-│   ├── src/
-│   │   ├── components/        # Reusable UI components
-│   │   ├── pages/             # Page components
-│   │   ├── services/          # API clients
-│   │   ├── types/             # TypeScript definitions
-│   │   ├── i18n/              # Internationalization
-│   │   └── App.tsx            # Main app component
-│   ├── public/
-│   ├── package.json
-│   └── README.md
-│
-├── Services/                  # .NET 9 microservices
-│   ├── DataSourceManagementService/
-│   ├── FilesReceiverService/
-│   ├── ValidationService/
-│   ├── MetricsConfigurationService/
-│   ├── InvalidRecordsService/
-│   ├── SchedulingService/
-│   ├── DataSourceChatService/
-│   ├── Shared/                # Shared library
-│   └── README.md
-│
-├── DataProcessingPlatform.sln # Solution file
-└── README.md                  # This file
-```
+## Overview
 
-## Features
+EZ Platform: Microservices-based data processing with automated file discovery, format conversion, schema validation, and multi-destination output.
 
-### Frontend
-- **React 19** with TypeScript
-- **Ant Design** UI components
-- **RTL Support** for Hebrew
-- **Bilingual** (Hebrew/English)
-- Data source management
-- Schema builder with visual editor
-- Metrics configuration wizard
-- Real-time monitoring dashboard
+**Key Features:**
+- 📁 Multi-source file discovery (Local, SFTP, FTP, HTTP, Kafka)
+- 🔄 Format conversion (CSV, JSON, XML, Excel)
+- ✅ JSON Schema validation
+- 📤 Multi-destination output
+- 🌐 Hebrew/RTL UI
+- 📊 Business metrics & monitoring
 
-### Backend
-- **7 Microservices** built with .NET 9
-- **MongoDB** for data storage
-- **MassTransit + Kafka** for messaging
-- **OpenTelemetry** for distributed tracing
-- **Prometheus** for metrics
-- **Serilog** for structured logging
-- Health checks and observability
+---
 
 ## Quick Start
 
-### Prerequisites
-
-- Node.js 18+ and npm
-- .NET 9 SDK
-- MongoDB
-- Docker (optional)
-
-### Frontend
-
+### Option 1: Helm Installation (Recommended)
 ```bash
-cd Frontend
-npm install
-npm start
+# Install using Helm
+helm install ez-platform ./helm/ez-platform \
+  --namespace ez-platform \
+  --create-namespace
+
+# Wait for deployment
+kubectl wait --for=condition=ready pod --all -n ez-platform --timeout=10m
+
+# Access via port-forward
+kubectl port-forward svc/frontend 3000:80 -n ez-platform
+# Open: http://localhost:3000
 ```
 
-Access at: http://localhost:3000
-
-### Backend
-
-**Start all services:**
+### Option 2: Direct Kubernetes Manifests
 ```bash
-dotnet build
-# Use PowerShell script
-./start-all-services.ps1
+# Deploy with kubectl
+kubectl create namespace ez-platform
+kubectl apply -f k8s/
+
+# Access (get node IP first)
+kubectl get nodes -o wide
+# Open: http://<NODE-IP>:30080
 ```
 
-**Or start individual service:**
+**📖 Full Guide:** [Installation Guide](docs/installation/INSTALLATION-GUIDE.md) | [Helm Chart README](helm/ez-platform/README.md)
+
+---
+
+## Network Access
+
+### Production (Internal LAN)
+```
+Frontend: http://<K8S-NODE-IP>:30080
+Example: http://192.168.1.50:30080
+```
+
+### Development (localhost)
 ```bash
-cd Services/DataSourceManagementService
-dotnet run
+scripts/start-port-forwards.ps1
+# Access: http://localhost:3000
 ```
 
-### Docker
-
-```bash
-docker-compose up
-```
-
-## Architecture
-
-### Microservices
-
-1. **DataSourceManagementService** (5001) - Data source and schema management
-2. **FilesReceiverService** (5002) - File ingestion
-3. **ValidationService** (5003) - Data validation
-4. **MetricsConfigurationService** (5004) - Metrics management
-5. **InvalidRecordsService** (5005) - Invalid record tracking
-6. **SchedulingService** (5006) - Job scheduling
-7. **DataSourceChatService** (5007) - AI assistant
-
-### Technology Stack
-
-**Frontend:**
-- React 19, TypeScript, Ant Design
-- React Query, React Router
-- i18next for localization
-- Axios for HTTP requests
-
-**Backend:**
-- .NET 9, ASP.NET Core
-- MongoDB.Entities
-- MassTransit, Kafka
-- NJsonSchema for validation
-- OpenTelemetry, Prometheus, Serilog
-
-## Configuration
-
-### MongoDB Connection
-
-Edit `appsettings.Development.json` in each service:
-
-```json
-{
-  "ConnectionStrings": {
-    "DefaultConnection": "ezplatform",
-    "MongoDB": "mongodb://localhost:27017"
-  }
-}
-```
-
-### Frontend API URLs
-
-Create `Frontend/.env`:
-
-```env
-REACT_APP_SCHEMA_API_URL=http://localhost:5001/api/v1/schema
-REACT_APP_METRICS_API_URL=http://localhost:5004/api/v1/metrics
-```
-
-## API Documentation
-
-### Data Source Management
-- `GET/POST/PUT/DELETE /api/v1/datasource` - CRUD operations
-- `GET/POST/PUT/DELETE /api/v1/schema` - Schema management
-- `POST /api/v1/schema/{id}/validate` - Validate data
-
-### Metrics Configuration
-- `GET/POST/PUT/DELETE /api/v1/metrics` - Metrics CRUD
-- `POST /api/v1/metrics/test` - Test metric
-
-### Health Checks
-- `/health` - Overall health
-- `/health/ready` - Readiness probe
-- `/health/live` - Liveness probe
-
-## Development
-
-### Code Style
-
-**Frontend:**
-- TypeScript strict mode
-- ESLint with React rules
-- Functional components with hooks
-
-**Backend:**
-- Microsoft C# conventions
-- Async/await for I/O
-- XML documentation comments
-
-### Testing
-
-**Frontend:**
-```bash
-npm test
-```
-
-**Backend:**
-```bash
-dotnet test
-```
-
-## Deployment
-
-### Docker
-
-Each service has a Dockerfile:
-
-```bash
-docker build -t service-name ./Services/ServiceName
-```
-
-### Kubernetes
-
-Helm charts available in `/deploy/helm`:
-
-```bash
-helm install ez-platform ./deploy/helm/dataprocessing-service
-```
-
-## Monitoring
-
-### Metrics
-- Prometheus scrapes `/metrics` endpoint
-- Grafana dashboards in `/deploy/grafana`
-
-### Tracing
-- OpenTelemetry exports to Jaeger
-- Distributed tracing across services
-
-### Logging
-- Serilog to Elasticsearch
-- Kibana for log visualization
-
-## License
-
-Proprietary
+---
 
 ## Documentation
 
-- [Frontend Documentation](Frontend/README.md)
-- [Backend Services Documentation](Services/README.md)
-- [Frontend Structure](Frontend/STRUCTURE.md)
+- **[Installation Guide](docs/installation/INSTALLATION-GUIDE.md)** - Complete deployment
+- **[Admin Guide](docs/admin/ADMIN-GUIDE.md)** - System administration
+- **[User Guide (Hebrew)](docs/user-guide/USER-GUIDE-HE.md)** - מדריך משתמש
+- **[Release Notes](docs/releases/RELEASE-NOTES-v0.1.0-beta.md)** - What's new
+- **[CHANGELOG.md](CHANGELOG.md)** - Version history
+
+---
+
+## Architecture
+
+**9 Microservices** (.NET 10) + React Frontend
+- DataSourceManagement, FileDiscovery, FileProcessor
+- Validation, Output, InvalidRecords
+- Scheduling, MetricsConfiguration
+- Frontend (React 19 + TypeScript)
+
+**Infrastructure:**
+MongoDB, RabbitMQ, Kafka, Hazelcast, Elasticsearch, Prometheus, Grafana, Jaeger
+
+---
+
+## Default Credentials
+
+| Service | User | Password |
+|---------|------|----------|
+| Grafana | admin | EZPlatform2025!Beta |
+| RabbitMQ | guest | guest |
+
+---
+
+**Version:** v0.1.0-beta
+**Release:** December 29, 2025
+**Status:** Beta - Testing & Demonstration
+**Download:** [GitHub Releases](https://github.com/usercourses63/ez-data-processing-platform/releases/tag/v0.1.0-beta)

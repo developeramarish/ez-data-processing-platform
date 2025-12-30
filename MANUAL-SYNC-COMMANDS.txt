@@ -1,0 +1,111 @@
+EMERGENCY GIT SYNC - Manual Commands for EZ Platform
+=====================================================
+
+Current Status:
+- Local: 16 commits ahead of remote
+- Remote: At commit fa2a4f2
+- Local: At commit f218dd1
+- Blocker: Docker images (4GB) removed from git
+
+STEP-BY-STEP SYNC INSTRUCTIONS:
+================================
+
+Step 1: Configure Git for Large Push
+-------------------------------------
+git config http.postBuffer 524288000
+git config pack.windowMemory "100m"
+git config pack.packSizeLimit "100m"
+
+Step 2: Single Force Push (Try This First)
+-------------------------------------------
+git push origin main --force
+
+If that fails, continue to Step 3.
+
+Step 3: Push in Small Batches
+------------------------------
+# Batch 1: Oldest 5 commits
+git push origin 953c7b3:main --force
+
+# Wait 15 seconds
+timeout 15
+
+# Batch 2: Next 5 commits
+git push origin 88ed4e2:main --force
+
+# Wait 15 seconds
+timeout 15
+
+# Batch 3: Next 3 commits
+git push origin d7e18f8:main --force
+
+# Wait 15 seconds
+timeout 15
+
+# Batch 4: Final 3 commits
+git push origin main --force
+
+Step 4: Push Tags
+-----------------
+git push --tags --force
+
+Step 5: Verify Sync
+-------------------
+git fetch origin
+git status
+
+# Should show: "Your branch is up to date with 'origin/main'"
+
+VERIFICATION COMMANDS:
+======================
+
+# Check how many commits ahead
+git rev-list --count origin/main..HEAD
+
+# Should output: 0
+
+# Check remote has your latest commit
+git log origin/main -1 --oneline
+
+# Should show: f218dd1 Fix: Exclude Docker images from git tracking
+
+# Verify specific files on remote
+git ls-tree origin/main --name-only helm/ez-platform/templates/
+
+# Should list all template files
+
+ALTERNATIVE: Use GitHub Desktop or VS Code
+===========================================
+
+If command line keeps failing:
+
+1. Open in GitHub Desktop:
+   - File → Add Local Repository → Browse to C:\Users\UserC\source\repos\EZ
+   - Click "Push origin" button
+   - Wait for completion
+
+2. Or use VS Code:
+   - Open folder in VS Code
+   - Source Control panel
+   - Click "..." → Push
+   - Select "Push to origin/main"
+
+CRITICAL FILES TO VERIFY ON GITHUB AFTER PUSH:
+===============================================
+
+1. helm/ez-platform/templates/_helpers.tpl
+2. helm/ez-platform/templates/deployments/ (should have 16 files)
+3. release-package/docs/docs/installation/helm-installation.md
+4. release-package/helm/ez-platform/values.yaml
+5. docs/installation/HELM-INSTALLATION.md
+
+Check at: https://github.com/usercourses63/ez-data-processing-platform
+
+WHAT IF PUSH STILL FAILS:
+==========================
+
+Contact me and I'll help with:
+- Git bundle creation (offline sync)
+- Splitting into separate repository
+- Using Git LFS for any remaining large files
+- Debugging network/auth issues
