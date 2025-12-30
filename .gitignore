@@ -91,3 +91,15 @@ temp_*.json
 release-package/images/*.tar
 *.tar
 *.tar.gz
+*.tar
+*.tar.gz
+*.zip
+*.7z
+bin/
+obj/
+packages/
+node_modules/
+
+*.tar
+
+release-package/images/*.tar
