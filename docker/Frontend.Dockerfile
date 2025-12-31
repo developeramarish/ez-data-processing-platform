@@ -13,8 +13,14 @@ RUN npm install --legacy-peer-deps
 # Copy source code
 COPY src/Frontend/ ./
 
+# Debug: List public folder to verify docs exist
+RUN ls -la ./public/docs/ || echo "docs folder missing!"
+
 # Build React app
 RUN npm run build
+
+# Debug: List build folder to check if docs were copied
+RUN ls -la ./build/docs/ || echo "docs not in build!"
 
 # Production image
 FROM nginx:alpine
@@ -25,6 +31,9 @@ RUN rm -rf ./*
 
 # Copy built app from build stage
 COPY --from=build /app/build .
+
+# Copy help documentation (ensure it exists)
+COPY --from=build /app/public/docs ./docs
 
 # Copy nginx configuration
 COPY docker/nginx.conf /etc/nginx/conf.d/default.conf

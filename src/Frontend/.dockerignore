@@ -1,8 +1,9 @@
 node_modules
 src
-public
 .env*
-*.md
 .git
 tsconfig.json
 package*.json
+# Allow public/docs folder for help documentation
+!public/docs
+!public/docs/*.md

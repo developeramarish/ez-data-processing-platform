@@ -52,7 +52,7 @@ try
     
     // Initialize random with fixed seed for determinism
     var random = new Random(DemoConfig.RandomSeed);
-    
+
     // Step 1: Reset database (unless incremental)
     if (!incrementalMode)
     {
@@ -61,42 +61,60 @@ try
     }
     else
     {
-        Console.WriteLine("[1/7] ⏭️  Skipping reset (incremental mode)\n");
+        Console.WriteLine("[1/9] ⏭️  Skipping reset (incremental mode)\n");
     }
-    
-    // Step 2: Generate DataSources
+
+    // Step 2: Seed Categories FIRST (datasources reference them)
+    var categorySeeder = new CategorySeederGenerator();
+    await categorySeeder.SeedCategoriesAsync();
+
+    // Step 3: Generate DataSources
     var dsGenerator = new DataSourceGenerator(random);
     var datasources = await dsGenerator.GenerateAsync();
-    
+
     // Step 3: Generate Schemas
     var schemaGenerator = new SchemaGenerator(random);
     await schemaGenerator.GenerateForDataSourcesAsync(datasources);
-    
-    // Step 4: Generate Global Metrics
+
+    // Step 4: Generate Global Metrics (skipped - see documentation)
     var globalMetricGenerator = new GlobalMetricGenerator(random);
     await globalMetricGenerator.GenerateAsync();
-    
+
     // Step 5: Generate Datasource Metrics
     var dsMetricGenerator = new DatasourceMetricGenerator(random);
     await dsMetricGenerator.GenerateAsync(datasources);
-    
-    // Step 6: Generate Alerts
+
+    // Step 6: Generate Datasource-Specific Alerts
     var alertGenerator = new AlertGenerator(random);
     await alertGenerator.GenerateAsync();
-    
-    // Step 7: Summary
-    Console.WriteLine("[7/7] 📊 Generation Summary:");
+
+    // Step 7: Generate Invalid Records (with schema violations)
+    var invalidRecordsGenerator = new InvalidRecordsGenerator(random);
+    await invalidRecordsGenerator.GenerateAsync(datasources);
+
+    // Step 8: Generate Global Alerts (system + business + complex)
+    var globalAlertGenerator = new GlobalAlertGenerator(random);
+    await globalAlertGenerator.GenerateAsync();
+
+    // Step 9: Summary
+    Console.WriteLine("[9/9] 📊 Generation Summary:");
     var dsCount = await DB.CountAsync<DataProcessing.Shared.Entities.DataProcessingDataSource>(_ => true);
     var schemaCount = await DB.CountAsync<DataProcessing.Shared.Entities.DataProcessingSchema>(_ => true);
+    var categoryCount = await DB.CountAsync<DataProcessing.Shared.Entities.DataSourceCategory>(_ => true);
     var metricCount = await DB.CountAsync<MetricsConfigurationService.Models.MetricConfiguration>(_ => true);
+    var invalidRecordCount = await DB.CountAsync<DataProcessing.Shared.Entities.DataProcessingInvalidRecord>(_ => true);
+    var globalAlertCount = await DB.CountAsync<MetricsConfigurationService.Models.GlobalAlertConfiguration>(_ => true);
     var metricsWithAlerts = await DB.Find<MetricsConfigurationService.Models.MetricConfiguration>()
         .Match(m => m.AlertRules != null && m.AlertRules.Count > 0)
         .ExecuteAsync();
-    
+
+    Console.WriteLine($"  ✅ {categoryCount} Categories");
     Console.WriteLine($"  ✅ {dsCount} DataSources");
     Console.WriteLine($"  ✅ {schemaCount} Schemas");
-    Console.WriteLine($"  ✅ {metricCount} Metrics (global + datasource-specific)");
-    Console.WriteLine($"  ✅ {metricsWithAlerts.Count} Metrics with alerts\n");
+    Console.WriteLine($"  ✅ {metricCount} Metrics (datasource-specific)");
+    Console.WriteLine($"  ✅ {metricsWithAlerts.Count} Metrics with datasource alerts");
+    Console.WriteLine($"  ✅ {globalAlertCount} Global Alerts (system + business)");
+    Console.WriteLine($"  ✅ {invalidRecordCount} Invalid Records\n");
     
     Console.WriteLine("═══════════════════════════════════════════════");
     Console.WriteLine("  ✨ Demo data generation completed successfully!");

@@ -47,6 +47,7 @@ public static class OutputConfigurationTemplate
         });
 
         // Destination 2: Daily archive folder (original format)
+        // Using mounted volume: /data/output
         config.Destinations.Add(new OutputDestination
         {
             Name = "Daily Archive",
@@ -54,7 +55,7 @@ public static class OutputConfigurationTemplate
             Enabled = true,
             FolderConfig = new FolderOutputConfig
             {
-                Path = $@"C:\DataProcessing\Archive\{datasourceName.Replace(" ", "")}",
+                Path = $"/data/output/archive/{datasourceName.Replace(" ", "")}",
                 FileNamePattern = "{filename}_{date}_valid.{ext}",
                 CreateSubfolders = true,
                 SubfolderPattern = "{year}/{month}/{day}",
@@ -75,7 +76,7 @@ public static class OutputConfigurationTemplate
                 IncludeInvalidRecords = true, // Override: Include for debugging
                 FolderConfig = new FolderOutputConfig
                 {
-                    Path = $@"C:\DataProcessing\Analytics\{datasourceName.Replace(" ", "")}",
+                    Path = $"/data/output/analytics/{datasourceName.Replace(" ", "")}",
                     FileNamePattern = "analytics_{date}.csv",
                     CreateSubfolders = false,
                     OverwriteExisting = true // Analytics wants latest data
@@ -120,7 +121,7 @@ public static class OutputConfigurationTemplate
                         Type = "folder",
                         Enabled = true,
                         FolderConfig = new() {
-                            Path = @"C:\Compliance\Banking\Transactions",
+                            Path = "/data/output/compliance/banking/transactions",
                             FileNamePattern = "{filename}_{timestamp}_validated.{ext}",
                             CreateSubfolders = true,
                             SubfolderPattern = "{year}/{month}",
@@ -134,7 +135,7 @@ public static class OutputConfigurationTemplate
                         Enabled = true,
                         OutputFormat = "csv",
                         FolderConfig = new() {
-                            Path = @"C:\Analytics\Risk",
+                            Path = "/data/output/analytics/risk",
                             FileNamePattern = "risk_data_{date}.csv",
                             OverwriteExisting = true
                         }
@@ -175,7 +176,7 @@ public static class OutputConfigurationTemplate
                         Name = "Backup Archive",
                         Type = "folder",
                         Enabled = true,
-                        FolderConfig = new() { Path = $@"C:\Archive\{datasourceName}" }
+                        FolderConfig = new() { Path = $"/data/output/archive/{datasourceName}" }
                     }
                 }
             };

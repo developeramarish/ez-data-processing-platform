@@ -56,14 +56,15 @@ public class DataSourceGenerator
             var cronExpr = cronExpressions[i % cronExpressions.Length];
             
             // Create varied file paths based on connection type
+            // Using mounted volumes: /data/input for Local files, kafka:9092 for Kafka
             var filePath = connType switch
             {
-                "Local" => $"/data/{category}/{i + 1:D3}",
+                "Local" => $"/data/input/{category}/{i + 1:D3}",
                 "FTP" => $"ftp://files.example.com/{category}/incoming",
                 "SFTP" => $"sftp://secure.example.com:22/{category}/data",
                 "HTTP" => $"https://api.example.com/{category}/files",
-                "Kafka" => $"kafka://broker.example.com:9092/{category}_topic",
-                _ => $"/data/{category}/{i + 1:D3}"
+                "Kafka" => $"kafka://kafka:9092/{category}_topic",
+                _ => $"/data/input/{category}/{i + 1:D3}"
             };
             
             // Create AdditionalConfiguration with connection details
@@ -90,10 +91,10 @@ public class DataSourceGenerator
             }
             else if (connType == "Kafka")
             {
-                additionalConfig["brokers"] = "broker1.example.com:9092,broker2.example.com:9092";
+                additionalConfig["brokers"] = "kafka:9092";
                 additionalConfig["topic"] = $"{category}_events";
                 additionalConfig["consumerGroup"] = $"dataprocessing_{category}_group";
-                additionalConfig["securityProtocol"] = i % 2 == 0 ? "PLAINTEXT" : "SASL_SSL";
+                additionalConfig["securityProtocol"] = "PLAINTEXT";
             }
             
             // Create ConfigurationSettings JSON for frontend
@@ -119,7 +120,7 @@ public class DataSourceGenerator
                         _ => 0
                     },
                     path = filePath,
-                    kafkaBrokers = connType == "Kafka" ? "broker1.example.com:9092,broker2.example.com:9092" : (string?)null,
+                    kafkaBrokers = connType == "Kafka" ? "kafka:9092" : (string?)null,
                     kafkaTopic = connType == "Kafka" ? $"{category}_events" : (string?)null,
                     kafkaConsumerGroup = connType == "Kafka" ? $"dataprocessing_{category}_group" : (string?)null,
                     kafkaSecurityProtocol = connType == "Kafka" ? (i % 2 == 0 ? "PLAINTEXT" : "SASL_SSL") : (string?)null
@@ -1400,5 +1401,606 @@ public class AlertGenerator
             },
             IsEnabled = true
         };
+    }
+}
+
+/// <summary>
+/// Generator for Category entities - synchronizes with DataSourceCategory table
+/// </summary>
+public class CategorySeederGenerator
+{
+    public async Task SeedCategoriesAsync()
+    {
+        Console.WriteLine("[1/8] 📚 Seeding category entities...");
+
+        // Category data with Hebrew, English, and descriptions
+        var categoryData = new[]
+        {
+            ("מכירות", "Sales", "נתוני מכירות ועסקאות", 1),
+            ("כספים", "Finance", "נתונים כספיים וחשבונאיים", 2),
+            ("משאבי אנוש", "HR", "נתוני עובדים ומשאבי אנוש", 3),
+            ("מלאי", "Inventory", "ניהול מלאי ומוצרים", 4),
+            ("שירות לקוחות", "Customer Service", "נתוני שירות לקוחות ותמיכה", 5),
+            ("שיווק", "Marketing", "נתוני שיווק וקמפיינים", 6),
+            ("לוגיסטיקה", "Logistics", "נתוני משלוחים ולוגיסטיקה", 7),
+            ("תפעול", "Operations", "נתוני תפעול ותהליכים", 8),
+            ("מחקר ופיתוח", "R&D", "נתוני מחקר, פיתוח וחדשנות", 9),
+            ("רכש", "Procurement", "נתוני רכש וספקים", 10)
+        };
+
+        foreach (var (nameHe, nameEn, desc, sortOrder) in categoryData)
+        {
+            var category = new DataProcessing.Shared.Entities.DataSourceCategory
+            {
+                Name = nameHe,
+                NameEn = nameEn,
+                Description = desc,
+                SortOrder = sortOrder,
+                IsActive = true,
+                CreatedBy = "DemoGenerator",
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            await category.SaveAsync();
+            Console.WriteLine($"  ✓ Category: {nameHe} ({nameEn})");
+        }
+
+        Console.WriteLine($"  ✅ Seeded {categoryData.Length} categories\n");
+    }
+}
+
+/// <summary>
+/// Generator for InvalidRecords based on datasource schemas
+/// </summary>
+public class InvalidRecordsGenerator
+{
+    private readonly Random _random;
+
+    public InvalidRecordsGenerator(Random random)
+    {
+        _random = random;
+    }
+
+    public async Task GenerateAsync(List<DataProcessingDataSource> datasources)
+    {
+        Console.WriteLine("[7/8] ❌ Generating invalid records with schema violations...");
+
+        int totalInvalidRecords = 0;
+
+        // Error types that can occur
+        var errorTypes = new[]
+        {
+            "RequiredFieldMissing",
+            "TypeMismatch",
+            "PatternViolation",
+            "RangeViolation",
+            "FormatError",
+            "EnumViolation",
+            "MultipleErrors"  // Special case: multiple error types
+        };
+
+        foreach (var ds in datasources)
+        {
+            // Generate 3-6 invalid records per datasource with mix of single and multi-error records
+            int recordCount = _random.Next(3, 7);
+
+            for (int i = 0; i < recordCount; i++)
+            {
+                // 40% of records should have multiple errors
+                bool multipleErrors = _random.Next(10) < 4;
+                var invalidRecord = await GenerateInvalidRecord(ds, errorTypes, i, multipleErrors);
+                await invalidRecord.SaveAsync();
+                totalInvalidRecords++;
+            }
+
+            Console.WriteLine($"  ✓ {recordCount} invalid records for: {ds.Name}");
+        }
+
+        Console.WriteLine($"  ✅ Generated {totalInvalidRecords} invalid records\n");
+    }
+
+    private async Task<DataProcessing.Shared.Entities.DataProcessingInvalidRecord> GenerateInvalidRecord(
+        DataProcessingDataSource ds,
+        string[] errorTypes,
+        int recordIndex,
+        bool forceMultipleErrors)
+    {
+        // Create a mock validation result ID
+        var validationResultId = MongoDB.Bson.ObjectId.GenerateNewId().ToString();
+
+        MongoDB.Bson.BsonDocument originalRecord;
+        List<string> errors;
+        string fieldName;
+        string expectedValue;
+        string actualValue;
+        string severity;
+        string errorType;
+
+        if (forceMultipleErrors)
+        {
+            // Generate record with MULTIPLE error types (2-4 different errors)
+            (originalRecord, errors, fieldName, expectedValue, actualValue, severity) = GenerateMultipleErrors(ds, recordIndex);
+            errorType = "MultipleErrors";
+        }
+        else
+        {
+            // Single error type
+            var errorTypeIndex = recordIndex % (errorTypes.Length - 1); // Exclude "MultipleErrors" from single selection
+            errorType = errorTypes[errorTypeIndex];
+
+            (originalRecord, errors, fieldName, expectedValue, actualValue, severity) = errorType switch
+            {
+                "RequiredFieldMissing" => GenerateRequiredFieldMissing(ds, recordIndex),
+                "TypeMismatch" => GenerateTypeMismatch(ds, recordIndex),
+                "PatternViolation" => GeneratePatternViolation(ds, recordIndex),
+                "RangeViolation" => GenerateRangeViolation(ds, recordIndex),
+                "FormatError" => GenerateFormatError(ds, recordIndex),
+                "EnumViolation" => GenerateEnumViolation(ds, recordIndex),
+                _ => GenerateRequiredFieldMissing(ds, recordIndex)
+            };
+        }
+
+        var invalidRecord = new DataProcessing.Shared.Entities.DataProcessingInvalidRecord
+        {
+            DataSourceId = ds.ID,
+            FileName = $"{ds.Name.Replace(" ", "_")}_error_{recordIndex + 1}.json",
+            ValidationResultId = validationResultId,
+            OriginalRecord = originalRecord,
+            ValidationErrors = errors,
+            ErrorType = errorType,
+            Severity = severity,
+            LineNumber = _random.Next(1, 1001),
+            FieldName = fieldName,
+            ExpectedValue = expectedValue,
+            ActualValue = actualValue,
+            IsReviewed = _random.Next(10) < 3, // 30% reviewed
+            ReviewedBy = _random.Next(10) < 3 ? "admin@example.com" : null,
+            ReviewedAt = _random.Next(10) < 3 ? DateTime.UtcNow.AddDays(-_random.Next(1, 8)) : null,
+            IsIgnored = _random.Next(20) < 1, // 5% ignored
+            CreatedBy = "DemoGenerator",
+            CorrelationId = Guid.NewGuid().ToString()
+        };
+
+        return invalidRecord;
+    }
+
+    private (MongoDB.Bson.BsonDocument record, List<string> errors, string field, string expected, string actual, string severity)
+        GenerateRequiredFieldMissing(DataProcessingDataSource ds, int index)
+    {
+        var record = new MongoDB.Bson.BsonDocument
+        {
+            { "recordId", index },
+            { "someField", "value" }
+            // Missing required field intentionally
+        };
+
+        var errors = new List<string> { "שדה חובה חסר: transactionId/userId/productId" };
+
+        return (record, errors, "transactionId", "string (required)", "null", "Error");
+    }
+
+    private (MongoDB.Bson.BsonDocument, List<string>, string, string, string, string)
+        GenerateTypeMismatch(DataProcessingDataSource ds, int index)
+    {
+        var record = new MongoDB.Bson.BsonDocument
+        {
+            { "amount", "not_a_number" },  // Should be number
+            { "quantity", "5.5" }          // Should be integer
+        };
+
+        var errors = new List<string> { "סוג שדה שגוי: amount צריך להיות מספר" };
+
+        return (record, errors, "amount", "number", "string", "Error");
+    }
+
+    private (MongoDB.Bson.BsonDocument, List<string>, string, string, string, string)
+        GeneratePatternViolation(DataProcessingDataSource ds, int index)
+    {
+        var record = new MongoDB.Bson.BsonDocument
+        {
+            { "transactionId", "INVALID123" },  // Should match ^TXN-\d{8}$
+            { "email", "not-an-email" }
+        };
+
+        var errors = new List<string> { "הפרת תבנית: transactionId לא תואם לפורמט ^TXN-\\d{8}$" };
+
+        return (record, errors, "transactionId", "^TXN-\\d{8}$", "INVALID123", "Warning");
+    }
+
+    private (MongoDB.Bson.BsonDocument, List<string>, string, string, string, string)
+        GenerateRangeViolation(DataProcessingDataSource ds, int index)
+    {
+        var record = new MongoDB.Bson.BsonDocument
+        {
+            { "amount", -500 },      // Should be minimum: 0
+            { "quantity", 10000 }    // Might exceed maximum
+        };
+
+        var errors = new List<string> { "חריגה מהטווח המותר: amount לא יכול להיות שלילי (minimum: 0)" };
+
+        return (record, errors, "amount", "≥ 0", "-500", "Error");
+    }
+
+    private (MongoDB.Bson.BsonDocument, List<string>, string, string, string, string)
+        GenerateFormatError(DataProcessingDataSource ds, int index)
+    {
+        var record = new MongoDB.Bson.BsonDocument
+        {
+            { "date", "32/13/2025" },          // Invalid date format
+            { "email", "wrong@format@com" },
+            { "uuid", "not-a-uuid" }
+        };
+
+        var errors = new List<string> { "שגיאת פורמט: date לא תואם לפורמט תאריך (format: date)" };
+
+        return (record, errors, "date", "YYYY-MM-DD", "32/13/2025", "Error");
+    }
+
+    private (MongoDB.Bson.BsonDocument, List<string>, string, string, string, string)
+        GenerateEnumViolation(DataProcessingDataSource ds, int index)
+    {
+        var record = new MongoDB.Bson.BsonDocument
+        {
+            { "status", "INVALID_STATUS" },  // Not in enum
+            { "priority", "SUPER_CRITICAL" }
+        };
+
+        var errors = new List<string> { "ערך לא חוקי: status חייב להיות אחד מהערכים המותרים" };
+
+        return (record, errors, "status", "enum: [ממתין, אושר, נדחה]", "INVALID_STATUS", "Warning");
+    }
+
+    private (MongoDB.Bson.BsonDocument, List<string>, string, string, string, string)
+        GenerateMultipleErrors(DataProcessingDataSource ds, int index)
+    {
+        // Create complex record with 7 DIFFERENT fields, each with DIFFERENT error - using Corvus format
+        var record = new MongoDB.Bson.BsonDocument
+        {
+            // Field 1: transactionId - MISSING (will generate required field error)
+            { "customerEmail", "not-an-email-format" },     // Field 2: Pattern violation
+            { "totalAmount", 5000000 },                     // Field 3: Range violation (too high)
+            { "orderDate", "invalid-date-format" },         // Field 4: Format error
+            { "orderStatus", "WRONG_STATUS" },              // Field 5: Enum violation
+            { "itemQuantity", -10 },                        // Field 6: Range violation (negative)
+            { "phoneNumber", "12345" }                      // Field 7: Pattern violation
+        };
+
+        // Corvus-style error messages that the InvalidRecordsService can parse
+        var errors = new List<string>
+        {
+            "Value is required at $.transactionId",
+            "customerEmail 'not-an-email-format' did not match '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$'",
+            "5000000 is greater than 1000000 at $.totalAmount",
+            "orderDate should have been 'date' but was 'invalid-date-format'",
+            "orderStatus 'WRONG_STATUS' did not validate against the enumeration ['pending', 'approved', 'rejected']",
+            "-10 is less than 0 at $.itemQuantity",
+            "phoneNumber '12345' did not match '^05\\d-\\d{7}$'"
+        };
+
+        return (record, errors, "multiple", "various", "various", "Critical");
+    }
+}
+
+/// <summary>
+/// Generator for Global Alerts (system and business metrics)
+/// </summary>
+public class GlobalAlertGenerator
+{
+    private readonly Random _random;
+
+    public GlobalAlertGenerator(Random random)
+    {
+        _random = random;
+    }
+
+    public async Task GenerateAsync()
+    {
+        Console.WriteLine("[9/9] 🚨 Generating global alerts (system + business + datasource-specific combined)...");
+
+        int businessAlertCount = await GenerateBusinessMetricAlertsAsync();
+        int systemAlertCount = await GenerateSystemMetricAlertsAsync();
+        int complexGlobalCount = await GenerateComplexCrossCategoryAlertsAsync();
+
+        Console.WriteLine($"  ✅ Generated {businessAlertCount} business metric alerts");
+        Console.WriteLine($"  ✅ Generated {systemAlertCount} system metric alerts");
+        Console.WriteLine($"  ✅ Generated {complexGlobalCount} complex multi-metric cross-category alerts");
+        Console.WriteLine($"  📊 Total global alerts: {businessAlertCount + systemAlertCount + complexGlobalCount}\n");
+    }
+
+    private async Task<int> GenerateBusinessMetricAlertsAsync()
+    {
+        var businessAlerts = new[]
+        {
+            new MetricsConfigurationService.Models.GlobalAlertConfiguration
+            {
+                MetricType = "business",
+                MetricName = "business_invalid_records_total",
+                AlertName = "high_invalid_records",
+                Description = "קצב גבוה של רשומות לא תקינות",
+                Expression = "rate(business_invalid_records_total[5m]) > 10",
+                Severity = "warning",
+                For = "5m",
+                IsEnabled = true,
+                Labels = new Dictionary<string, string>
+                {
+                    ["alert_category"] = "data_quality",
+                    ["metric_type"] = "business"
+                },
+                Annotations = new Dictionary<string, string>
+                {
+                    ["summary"] = "קצב רשומות לא תקינות גבוה",
+                    ["description"] = "יותר מ-10 רשומות לא תקינות לשנייה"
+                },
+                CreatedBy = "DemoGenerator"
+            },
+            new MetricsConfigurationService.Models.GlobalAlertConfiguration
+            {
+                MetricType = "business",
+                MetricName = "business_files_pending",
+                AlertName = "files_queue_buildup",
+                Description = "צבירת קבצים ממתינים",
+                Expression = "business_files_pending > 100",
+                Severity = "warning",
+                For = "10m",
+                IsEnabled = true,
+                Labels = new Dictionary<string, string>
+                {
+                    ["alert_category"] = "throughput",
+                    ["metric_type"] = "business"
+                },
+                Annotations = new Dictionary<string, string>
+                {
+                    ["summary"] = "צבירת קבצים בתור",
+                    ["description"] = "יותר מ-100 קבצים ממתינים לעיבוד"
+                },
+                CreatedBy = "DemoGenerator"
+            },
+            new MetricsConfigurationService.Models.GlobalAlertConfiguration
+            {
+                MetricType = "business",
+                MetricName = "business_processing_duration_seconds",
+                AlertName = "slow_processing",
+                Description = "עיבוד איטי - חביון גבוה",
+                Expression = "histogram_quantile(0.95, rate(business_processing_duration_seconds_bucket[5m])) > 5",
+                Severity = "warning",
+                For = "10m",
+                IsEnabled = true,
+                Labels = new Dictionary<string, string>
+                {
+                    ["alert_category"] = "performance",
+                    ["metric_type"] = "business"
+                },
+                Annotations = new Dictionary<string, string>
+                {
+                    ["summary"] = "זמן עיבוד גבוה",
+                    ["description"] = "P95 של זמן עיבוד מעל 5 שניות"
+                },
+                CreatedBy = "DemoGenerator"
+            }
+        };
+
+        foreach (var alert in businessAlerts)
+        {
+            await alert.SaveAsync();
+        }
+
+        return businessAlerts.Length;
+    }
+
+    private async Task<int> GenerateSystemMetricAlertsAsync()
+    {
+        var systemAlerts = new[]
+        {
+            new MetricsConfigurationService.Models.GlobalAlertConfiguration
+            {
+                MetricType = "system",
+                MetricName = "process_cpu_seconds_total",
+                AlertName = "high_cpu_usage",
+                Description = "שימוש גבוה במעבד",
+                Expression = "rate(process_cpu_seconds_total[1m]) > 0.8",
+                Severity = "warning",
+                For = "5m",
+                IsEnabled = true,
+                Labels = new Dictionary<string, string>
+                {
+                    ["alert_category"] = "resources",
+                    ["metric_type"] = "system"
+                },
+                Annotations = new Dictionary<string, string>
+                {
+                    ["summary"] = "שימוש CPU גבוה",
+                    ["description"] = "שימוש ב-CPU מעל 80%"
+                },
+                CreatedBy = "DemoGenerator"
+            },
+            new MetricsConfigurationService.Models.GlobalAlertConfiguration
+            {
+                MetricType = "system",
+                MetricName = "process_resident_memory_bytes",
+                AlertName = "high_memory_usage",
+                Description = "שימוש גבוה בזיכרון",
+                Expression = "process_resident_memory_bytes > 2147483648",
+                Severity = "critical",
+                For = "5m",
+                IsEnabled = true,
+                Labels = new Dictionary<string, string>
+                {
+                    ["alert_category"] = "resources",
+                    ["metric_type"] = "system"
+                },
+                Annotations = new Dictionary<string, string>
+                {
+                    ["summary"] = "שימוש זיכרון גבוה",
+                    ["description"] = "שימוש בזיכרון מעל 2GB"
+                },
+                CreatedBy = "DemoGenerator"
+            }
+        };
+
+        foreach (var alert in systemAlerts)
+        {
+            await alert.SaveAsync();
+        }
+
+        return systemAlerts.Length;
+    }
+
+    private async Task<int> GenerateComplexCrossCategoryAlertsAsync()
+    {
+        // Get some datasource metrics to combine with system/business metrics
+        var datasourceMetrics = await DB.Find<MetricsConfigurationService.Models.MetricConfiguration>()
+            .Match(m => !string.IsNullOrEmpty(m.DataSourceId))
+            .Limit(5)
+            .ExecuteAsync();
+
+        var complexAlerts = new List<MetricsConfigurationService.Models.GlobalAlertConfiguration>
+        {
+            // Alert 1: Business + System + Datasource metric combined
+            new()
+            {
+                MetricType = "business",
+                MetricName = "business_records_processed_total",
+                AlertName = "cross_category_processing_degradation",
+                Description = "התראה מורכבת חוצת קטגוריות: ירידה בעיבוד (Business) + עומס CPU (System) + נתוני מכירות (Datasource)",
+                Expression = datasourceMetrics.Any()
+                    ? $"rate(business_records_processed_total[5m]) < 5 AND rate(process_cpu_seconds_total[1m]) > 0.7 AND {datasourceMetrics.First().Name} > 100"
+                    : "rate(business_records_processed_total[5m]) < 5 AND rate(process_cpu_seconds_total[1m]) > 0.7",
+                Severity = "critical",
+                For = "10m",
+                IsEnabled = true,
+                Labels = new Dictionary<string, string>
+                {
+                    ["alert_category"] = "cross_category_performance",
+                    ["business_metric"] = "business_records_processed_total",
+                    ["system_metric"] = "process_cpu_seconds_total",
+                    ["datasource_metric"] = datasourceMetrics.FirstOrDefault()?.Name ?? "none",
+                    ["complexity"] = "multi_category"
+                },
+                Annotations = new Dictionary<string, string>
+                {
+                    ["summary"] = "ביצועים ירודים על פני כל הקטגוריות",
+                    ["description"] = "שילוב של: Business (קצב עיבוד < 5/שנייה) + System (CPU > 70%) + Datasource metrics",
+                    ["categories"] = "Business, System, Datasource-Specific",
+                    ["runbook_url"] = "https://wiki.example.com/alerts/cross-category"
+                },
+                CreatedBy = "DemoGenerator"
+            },
+            // Alert 2: Business invalid records + System memory + Business latency
+            new()
+            {
+                MetricType = "business",
+                MetricName = "business_invalid_records_total",
+                AlertName = "data_quality_system_pressure",
+                Description = "התראה מורכבת: איכות נתונים (Business) + לחץ זיכרון (System) + חביון (Business)",
+                Expression = "rate(business_invalid_records_total[5m]) > 5 AND process_resident_memory_bytes > 1073741824 AND histogram_quantile(0.95, rate(business_validation_latency_seconds_bucket[5m])) > 2",
+                Severity = "warning",
+                For = "15m",
+                IsEnabled = true,
+                Labels = new Dictionary<string, string>
+                {
+                    ["alert_category"] = "data_quality_with_system",
+                    ["business_metrics"] = "business_invalid_records_total,business_validation_latency_seconds",
+                    ["system_metric"] = "process_resident_memory_bytes",
+                    ["complexity"] = "multi_category"
+                },
+                Annotations = new Dictionary<string, string>
+                {
+                    ["summary"] = "בעיות איכות עם לחץ משאבים",
+                    ["description"] = "שילוב: שגיאות ולידציה גבוהות + זיכרון > 1GB + חביון ולידציה > 2 שניות",
+                    ["categories"] = "Business (2 metrics), System (1 metric)"
+                },
+                CreatedBy = "DemoGenerator"
+            },
+            // Alert 3: System CPU + Business throughput + Business errors
+            new()
+            {
+                MetricType = "business",
+                MetricName = "business_files_processed_total",
+                AlertName = "system_overload_affecting_business",
+                Description = "התראה מורכבת: עומס מערכת (System) משפיע על תפוקה עסקית (Business)",
+                Expression = "rate(process_cpu_seconds_total[1m]) > 0.8 AND rate(business_files_processed_total[5m]) < 1 AND business_files_pending > 50",
+                Severity = "critical",
+                For = "10m",
+                IsEnabled = true,
+                Labels = new Dictionary<string, string>
+                {
+                    ["alert_category"] = "system_to_business_impact",
+                    ["system_metric"] = "process_cpu_seconds_total",
+                    ["business_metrics"] = "business_files_processed_total,business_files_pending",
+                    ["complexity"] = "multi_category"
+                },
+                Annotations = new Dictionary<string, string>
+                {
+                    ["summary"] = "עומס CPU גורם לירידה בתפוקה",
+                    ["description"] = "CPU > 80% + עיבוד קבצים < 1/שנייה + 50+ קבצים ממתינים",
+                    ["categories"] = "System (1 metric), Business (2 metrics)"
+                },
+                CreatedBy = "DemoGenerator"
+            },
+            // Alert 4: Business + System + Datasource - Complete cross-category
+            new()
+            {
+                MetricType = "business",
+                MetricName = "business_end_to_end_latency_seconds",
+                AlertName = "complete_cross_category_alert",
+                Description = "התראה מלאה חוצת קטגוריות: Business + System + Datasource",
+                Expression = datasourceMetrics.Any()
+                    ? $"histogram_quantile(0.99, rate(business_end_to_end_latency_seconds_bucket[5m])) > 15 AND process_resident_memory_bytes > 2147483648 AND {datasourceMetrics.ElementAtOrDefault(1)?.Name ?? datasourceMetrics.First().Name} > 200"
+                    : "histogram_quantile(0.99, rate(business_end_to_end_latency_seconds_bucket[5m])) > 15 AND process_resident_memory_bytes > 2147483648",
+                Severity = "critical",
+                For = "5m",
+                IsEnabled = true,
+                Labels = new Dictionary<string, string>
+                {
+                    ["alert_category"] = "complete_cross_category",
+                    ["business_metric"] = "business_end_to_end_latency_seconds",
+                    ["system_metric"] = "process_resident_memory_bytes",
+                    ["datasource_metric"] = datasourceMetrics.ElementAtOrDefault(1)?.Name ?? datasourceMetrics.FirstOrDefault()?.Name ?? "none",
+                    ["complexity"] = "full_multi_category"
+                },
+                Annotations = new Dictionary<string, string>
+                {
+                    ["summary"] = "בעיה קריטית על פני כל שכבות המערכת",
+                    ["description"] = "P99 חביון > 15 שניות + זיכרון > 2GB + מדד ספציפי מקור נתונים גבוה",
+                    ["categories"] = "Business (latency), System (memory), Datasource-Specific",
+                    ["runbook_url"] = "https://wiki.example.com/alerts/critical-cross-category"
+                },
+                CreatedBy = "DemoGenerator"
+            },
+            // Alert 5: Business retry + System + Business latency
+            new()
+            {
+                MetricType = "business",
+                MetricName = "business_retry_attempts_total",
+                AlertName = "retry_storms_with_resources",
+                Description = "התראה: סערת ניסיונות חוזרים (Business) + בעיות משאבים (System + Business)",
+                Expression = "rate(business_retry_attempts_total[5m]) > 10 AND (process_cpu_seconds_total > 0.8 OR histogram_quantile(0.95, rate(business_queue_wait_time_seconds_bucket[5m])) > 30)",
+                Severity = "warning",
+                For = "10m",
+                IsEnabled = true,
+                Labels = new Dictionary<string, string>
+                {
+                    ["alert_category"] = "retry_and_resources",
+                    ["business_metrics"] = "business_retry_attempts_total,business_queue_wait_time_seconds",
+                    ["system_metric"] = "process_cpu_seconds_total",
+                    ["complexity"] = "multi_category"
+                },
+                Annotations = new Dictionary<string, string>
+                {
+                    ["summary"] = "ניסיונות חוזרים רבים עם בעיות משאבים",
+                    ["description"] = "יותר מ-10 retries/שנייה + (CPU > 80% או זמן המתנה > 30 שניות)",
+                    ["categories"] = "Business (2 metrics), System (1 metric)"
+                },
+                CreatedBy = "DemoGenerator"
+            }
+        };
+
+        foreach (var alert in complexAlerts)
+        {
+            await alert.SaveAsync();
+        }
+
+        return complexAlerts.Count;
     }
 }

@@ -126,8 +126,8 @@ builder.Services.AddMassTransit(x =>
 var app = builder.Build();
 
 // Initialize MongoDB
-var databaseName = builder.Configuration.GetValue<string>("MongoDB:DatabaseName") ?? "DataProcessing";
-var connectionString = builder.Configuration.GetValue<string>("MongoDB:ConnectionString") ?? "localhost";
+var databaseName = builder.Configuration.GetValue<string>("MongoDB:DatabaseName") ?? "ezplatform";
+var connectionString = builder.Configuration.GetConnectionString("MongoDB") ?? "mongodb";
 
 await DB.InitAsync(databaseName, connectionString);
 

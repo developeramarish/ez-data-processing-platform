@@ -7,6 +7,7 @@ namespace DataProcessing.Shared.Entities;
 /// <summary>
 /// Represents a record that failed validation during file processing
 /// </summary>
+[Collection("DataProcessingInvalidRecord")]
 public class DataProcessingInvalidRecord : DataProcessingBaseEntity
 {
     /// <summary>

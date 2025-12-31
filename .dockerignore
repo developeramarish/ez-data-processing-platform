@@ -26,8 +26,7 @@
 **/.gitattributes
 
 # Documentation and markdown
-**/*.md
-!README.md
+# Markdown files allowed for help documentation
 
 # Test results
 **/TestResults/
