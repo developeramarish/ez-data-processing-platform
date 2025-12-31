@@ -32,8 +32,8 @@ RUN rm -rf ./*
 # Copy built app from build stage
 COPY --from=build /app/build .
 
-# Copy help documentation (ensure it exists)
-COPY --from=build /app/public/docs ./docs
+# Copy help documentation directly from source (public/docs -> build/docs)
+COPY --from=build /app/public/docs/USER-GUIDE-HE.md ./docs/USER-GUIDE-HE.md
 
 # Copy nginx configuration
 COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
