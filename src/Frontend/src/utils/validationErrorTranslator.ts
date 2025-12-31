@@ -105,10 +105,19 @@ function parseCorvusError(errorMessage: string): {
   expectedValue?: string;
   actualValue?: string;
 } {
-  // Extract field name from "#/FieldName" at start of message
-  const fieldMatch = errorMessage.match(/^#\/([^\s]+)/);
-  const fieldPath = fieldMatch ? fieldMatch[1] : '';
-  const fieldName = fieldPath.split('/').pop() || '';
+  // Extract field name from "$." notation (e.g., "at $.amount", "at $.transactionId")
+  const atMatch = errorMessage.match(/at \$\.([^\s,]+)/);
+  let fieldName = '';
+
+  if (atMatch) {
+    fieldName = atMatch[1];
+  } else {
+    // Try to extract field name from the beginning of the message (e.g., "amount should have been...")
+    const fieldStartMatch = errorMessage.match(/^([a-zA-Z_][a-zA-Z0-9_]*)\s/);
+    if (fieldStartMatch) {
+      fieldName = fieldStartMatch[1];
+    }
+  }
 
   // Try to extract validation type from message
   let validationType = 'unknown';
@@ -141,29 +150,51 @@ function parseCorvusError(errorMessage: string): {
     const lengthMatch = errorMessage.match(/(\d+)/);
     if (lengthMatch) expectedValue = lengthMatch[1];
   }
-  // Minimum value validation
-  else if (message.includes('minimum') && !message.includes('length')) {
+  // Minimum value validation - "is less than X at $.field"
+  else if (message.includes('is less than') || (message.includes('minimum') && !message.includes('length'))) {
     validationType = 'minimum';
-    const valueMatch = errorMessage.match(/minimum[:\s]+(\d+(?:\.\d+)?)/i);
-    if (valueMatch) expectedValue = valueMatch[1];
+    const lessThanMatch = errorMessage.match(/is less than (-?\d+(?:\.\d+)?)/i);
+    if (lessThanMatch) {
+      expectedValue = lessThanMatch[1];
+    } else {
+      const valueMatch = errorMessage.match(/minimum[:\s]+(\d+(?:\.\d+)?)/i);
+      if (valueMatch) expectedValue = valueMatch[1];
+    }
   }
-  // Maximum value validation
-  else if (message.includes('maximum') && !message.includes('length')) {
+  // Maximum value validation - "is greater than X at $.field"
+  else if (message.includes('is greater than') || (message.includes('maximum') && !message.includes('length'))) {
     validationType = 'maximum';
-    const valueMatch = errorMessage.match(/maximum[:\s]+(\d+(?:\.\d+)?)/i);
-    if (valueMatch) expectedValue = valueMatch[1];
+    const greaterThanMatch = errorMessage.match(/is greater than (-?\d+(?:\.\d+)?)/i);
+    if (greaterThanMatch) {
+      expectedValue = greaterThanMatch[1];
+    } else {
+      const valueMatch = errorMessage.match(/maximum[:\s]+(\d+(?:\.\d+)?)/i);
+      if (valueMatch) expectedValue = valueMatch[1];
+    }
   }
-  // Format validation (date, email, uri, etc.)
-  else if (message.includes('format')) {
+  // Format validation (date, email, uri, etc.) - "should have been 'date' but was 'value'"
+  else if (message.includes('should have been') || message.includes('format')) {
     validationType = 'format';
-    const formatMatch = errorMessage.match(/format[:\s]+['"]?(\w+)['"]?/i);
-    if (formatMatch) expectedValue = formatMatch[1];
+    const shouldHaveBeenMatch = errorMessage.match(/should have been '([^']+)' but was '([^']+)'/i);
+    if (shouldHaveBeenMatch) {
+      expectedValue = shouldHaveBeenMatch[1];
+      actualValue = shouldHaveBeenMatch[2];
+    } else {
+      const formatMatch = errorMessage.match(/format[:\s]+['"]?(\w+)['"]?/i);
+      if (formatMatch) expectedValue = formatMatch[1];
+    }
   }
-  // Type validation
+  // Type validation - "should have been 'number' but was 'string'"
   else if (message.includes('type')) {
     validationType = 'type';
-    const typeMatch = errorMessage.match(/expected[:\s]+['"]?(\w+)['"]?/i);
-    if (typeMatch) expectedValue = typeMatch[1];
+    const shouldHaveBeenMatch = errorMessage.match(/should have been '([^']+)' but was '([^']+)'/i);
+    if (shouldHaveBeenMatch) {
+      expectedValue = shouldHaveBeenMatch[1];
+      actualValue = shouldHaveBeenMatch[2];
+    } else {
+      const typeMatch = errorMessage.match(/expected[:\s]+['"]?(\w+)['"]?/i);
+      if (typeMatch) expectedValue = typeMatch[1];
+    }
   }
   // Required field validation (via "properties" - required property was not present)
   else if (message.includes('properties') && message.includes('required property')) {
@@ -174,9 +205,10 @@ function parseCorvusError(errorMessage: string): {
       return { fieldName: requiredMatch[1], validationType, expectedValue: 'required', actualValue: '(missing)' };
     }
   }
-  // Required field validation (other formats)
-  else if (message.includes('required')) {
+  // Required field validation - "Value is required at $.field"
+  else if (message.includes('value is required') || message.includes('required')) {
     validationType = 'required';
+    // Field name already extracted from "at $.field" above
   }
 
   return { fieldName, validationType, expectedValue, actualValue };
