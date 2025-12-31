@@ -133,11 +133,31 @@ Log.Information("OpenTelemetry configured with OTLP endpoint: {Endpoint}",
 // Configure health checks using shared configuration
 builder.Services.AddDataProcessingHealthChecks(builder.Configuration, "DataProcessing.Output");
 
+// Add Controllers and Swagger for API documentation
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new() { Title = "Output Service API", Version = "v1" });
+});
+
 // Build application
 var app = builder.Build();
 
 // Configure HTTP request pipeline
 app.UseDataProcessingHealthChecks();
+
+// Configure Swagger for Development
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Output Service API v1");
+    });
+}
+
+app.MapControllers();
 app.MapGet("/", () => "OutputService - Running");
 
 // Log startup information

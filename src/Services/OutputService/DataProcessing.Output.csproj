@@ -23,6 +23,10 @@
     <!-- Health checks -->
     <PackageReference Include="AspNetCore.HealthChecks.MongoDb" />
 
+    <!-- API & Swagger -->
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Swashbuckle.AspNetCore" />
+
     <!-- Logging -->
     <PackageReference Include="Serilog.AspNetCore" />
     <PackageReference Include="Serilog.Sinks.Console" />

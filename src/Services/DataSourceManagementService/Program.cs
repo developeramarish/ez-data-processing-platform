@@ -36,8 +36,12 @@ services.AddControllers()
         options.JsonSerializerOptions.Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping;
     });
 
-// Add API Explorer for Swagger (basic setup)
+// Add API Explorer for Swagger
 services.AddEndpointsApiExplorer();
+services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new() { Title = "DataSource Management API", Version = "v1" });
+});
 
 // Configure logging
 services.AddLogging(loggingBuilder =>
@@ -237,6 +241,16 @@ app.Use(async (context, next) =>
     
     await next();
 });
+
+// Configure Swagger (Development only)
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "DataSource Management API v1");
+    });
+}
 
 // Configure CORS
 if (app.Environment.IsDevelopment())
