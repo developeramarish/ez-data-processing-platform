@@ -35,62 +35,57 @@ const AppHeader: React.FC<AppHeaderProps> = ({ collapsed = false, onCollapse }) 
 
   const MenuIcon = collapsed ? MenuUnfoldOutlined : MenuFoldOutlined;
 
-  const logoSection = (
+  const menuToggleSection = onCollapse ? (
     <div style={{
+      position: 'absolute',
+      left: 0,
+      paddingLeft: 16,
       display: 'flex',
       alignItems: 'center',
-      gap: '16px',
-      position: 'absolute',
-      [isRTL ? 'right' : 'left']: 0,
-      paddingLeft: isRTL ? 0 : 16,
-      paddingRight: isRTL ? 16 : 0,
+      height: '100%',
     }}>
-      {onCollapse && (
-        <>
-          <Button
-            type="text"
-            icon={<MenuIcon />}
-            onClick={onCollapse}
-            style={{
-              fontSize: '16px',
-              width: 48,
-              height: 48,
-            }}
-          />
-          <Divider type="vertical" style={{ height: '32px' }} />
-        </>
-      )}
-
-      {/* Logo - clickable to navigate home */}
-      <div
-        onClick={() => navigate('/datasources')}
-        className="logo-container"
-        role="button"
-        tabIndex={0}
-        onKeyPress={(e) => e.key === 'Enter' && navigate('/datasources')}
-        aria-label={t('app.logoAlt') || 'Navigate to home'}
+      <Button
+        type="text"
+        icon={<MenuIcon />}
+        onClick={onCollapse}
         style={{
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          height: '48px',
+          fontSize: '16px',
+          width: 48,
+          height: 48,
         }}
-      >
-        <img
-          src="/assets/logo/ez-platform-logo.svg"
-          alt={t('app.logoAlt') || 'EZ Platform'}
-          style={{
-            height: '48px',
-            width: 'auto',
-            objectFit: 'contain',
-          }}
-        />
-      </div>
+      />
+    </div>
+  ) : null;
+
+  const titleSection = (
+    <div style={{
+      position: 'absolute',
+      left: '50%',
+      transform: 'translateX(-50%)',
+      display: 'flex',
+      alignItems: 'center',
+      height: '100%',
+    }}>
+      <Text style={{
+        fontSize: '18px',
+        fontWeight: 600,
+        color: '#ffffff',
+        whiteSpace: 'nowrap',
+      }}>
+        {t('app.title')}
+      </Text>
     </div>
   );
 
   const actionsSection = (
-    <div className="header-actions">
+    <div style={{
+      position: 'absolute',
+      right: 0,
+      paddingRight: 16,
+      display: 'flex',
+      alignItems: 'center',
+      height: '100%',
+    }}>
       <Space size="middle">
         {/* Language Toggle */}
         <Space>
@@ -145,7 +140,8 @@ const AppHeader: React.FC<AppHeaderProps> = ({ collapsed = false, onCollapse }) 
 
   return (
     <Header className="app-header">
-      {logoSection}
+      {menuToggleSection}
+      {titleSection}
       {actionsSection}
     </Header>
   );

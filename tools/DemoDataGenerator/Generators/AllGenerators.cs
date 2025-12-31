@@ -1430,6 +1430,17 @@ public class CategorySeederGenerator
 
         foreach (var (nameHe, nameEn, desc, sortOrder) in categoryData)
         {
+            // Check if category already exists
+            var existing = await DB.Find<DataProcessing.Shared.Entities.DataSourceCategory>()
+                .Match(c => c.Name == nameHe)
+                .ExecuteFirstAsync();
+
+            if (existing != null)
+            {
+                Console.WriteLine($"  ⏭️  Category already exists: {nameHe} ({nameEn})");
+                continue;
+            }
+
             var category = new DataProcessing.Shared.Entities.DataSourceCategory
             {
                 Name = nameHe,

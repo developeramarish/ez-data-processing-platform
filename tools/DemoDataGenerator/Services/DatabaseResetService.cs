@@ -13,6 +13,7 @@ public class DatabaseResetService
         try
         {
             // Reset DataSource Management collections
+            await ResetCollectionAsync<DataSourceCategory>("Categories");
             await ResetCollectionAsync<DataProcessingDataSource>("DataSources");
             await ResetCollectionAsync<DataProcessingSchema>("Schemas");
 
