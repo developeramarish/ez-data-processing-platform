@@ -1575,7 +1575,8 @@ public class InvalidRecordsGenerator
             // Missing required field intentionally
         };
 
-        var errors = new List<string> { "שדה חובה חסר: transactionId/userId/productId" };
+        // Corvus-format error message for required field
+        var errors = new List<string> { "Value is required at $.transactionId" };
 
         return (record, errors, "transactionId", "string (required)", "null", "Error");
     }
@@ -1589,7 +1590,8 @@ public class InvalidRecordsGenerator
             { "quantity", "5.5" }          // Should be integer
         };
 
-        var errors = new List<string> { "סוג שדה שגוי: amount צריך להיות מספר" };
+        // Corvus-format error message for type mismatch
+        var errors = new List<string> { "amount should have been 'number' but was 'string'" };
 
         return (record, errors, "amount", "number", "string", "Error");
     }
@@ -1603,7 +1605,8 @@ public class InvalidRecordsGenerator
             { "email", "not-an-email" }
         };
 
-        var errors = new List<string> { "הפרת תבנית: transactionId לא תואם לפורמט ^TXN-\\d{8}$" };
+        // Corvus-format error message for pattern violation
+        var errors = new List<string> { "transactionId 'INVALID123' did not match '^TXN-\\d{8}$'" };
 
         return (record, errors, "transactionId", "^TXN-\\d{8}$", "INVALID123", "Warning");
     }
@@ -1617,7 +1620,8 @@ public class InvalidRecordsGenerator
             { "quantity", 10000 }    // Might exceed maximum
         };
 
-        var errors = new List<string> { "חריגה מהטווח המותר: amount לא יכול להיות שלילי (minimum: 0)" };
+        // Corvus-format error message for range violation (minimum)
+        var errors = new List<string> { "-500 is less than 0 at $.amount" };
 
         return (record, errors, "amount", "≥ 0", "-500", "Error");
     }
@@ -1632,7 +1636,8 @@ public class InvalidRecordsGenerator
             { "uuid", "not-a-uuid" }
         };
 
-        var errors = new List<string> { "שגיאת פורמט: date לא תואם לפורמט תאריך (format: date)" };
+        // Corvus-format error message for format violation (date)
+        var errors = new List<string> { "date should have been 'date' but was '32/13/2025'" };
 
         return (record, errors, "date", "YYYY-MM-DD", "32/13/2025", "Error");
     }
@@ -1646,9 +1651,10 @@ public class InvalidRecordsGenerator
             { "priority", "SUPER_CRITICAL" }
         };
 
-        var errors = new List<string> { "ערך לא חוקי: status חייב להיות אחד מהערכים המותרים" };
+        // Corvus-format error message for enum violation
+        var errors = new List<string> { "status 'INVALID_STATUS' did not validate against the enumeration ['pending', 'approved', 'rejected']" };
 
-        return (record, errors, "status", "enum: [ממתין, אושר, נדחה]", "INVALID_STATUS", "Warning");
+        return (record, errors, "status", "enum: [pending, approved, rejected]", "INVALID_STATUS", "Warning");
     }
 
     private (MongoDB.Bson.BsonDocument, List<string>, string, string, string, string)
