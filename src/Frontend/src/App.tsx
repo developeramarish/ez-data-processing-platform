@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ConfigProvider, Layout, theme } from 'antd';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -9,6 +9,7 @@ import './i18n';
 import './App.css';
 
 // Components
+import SplashScreen from './components/SplashScreen';
 import AppHeader from './components/layout/AppHeader';
 import AppSidebar from './components/layout/AppSidebar';
 import RegexHelperProvider from './components/schema/RegexHelperProvider';
@@ -46,6 +47,21 @@ const App: React.FC = () => {
   const { i18n } = useTranslation();
   const isRTL = i18n.language === 'he';
   const antdLocale = isRTL ? heIL : enUS;
+
+  // Check if splash screen was already shown in this session
+  const [showSplash, setShowSplash] = useState(() => {
+    return !sessionStorage.getItem('ez-splash-shown');
+  });
+
+  // Handle splash screen finish
+  const handleSplashFinish = () => {
+    setShowSplash(false);
+  };
+
+  // Show splash screen on first load only
+  if (showSplash) {
+    return <SplashScreen onFinish={handleSplashFinish} duration={2500} />;
+  }
 
   return (
     <QueryClientProvider client={queryClient}>

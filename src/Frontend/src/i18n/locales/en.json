@@ -1,7 +1,8 @@
 {
   "app": {
     "title": "Data Processing System",
-    "subtitle": "Platform for Data Management and Processing"
+    "subtitle": "Platform for Data Management and Processing",
+    "logoAlt": "EZ Platform Logo"
   },
   "navigation": {
     "dashboard": "Dashboard",

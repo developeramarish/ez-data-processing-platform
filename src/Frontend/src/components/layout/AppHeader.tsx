@@ -35,12 +35,15 @@ const AppHeader: React.FC<AppHeaderProps> = ({ collapsed = false, onCollapse }) 
 
   const MenuIcon = collapsed ? MenuUnfoldOutlined : MenuFoldOutlined;
 
-  const titleSection = (
+  const logoSection = (
     <div style={{
       display: 'flex',
       alignItems: 'center',
-      flex: 1,
-      justifyContent: 'center'
+      gap: '16px',
+      position: 'absolute',
+      [isRTL ? 'right' : 'left']: 0,
+      paddingLeft: isRTL ? 0 : 16,
+      paddingRight: isRTL ? 16 : 0,
     }}>
       {onCollapse && (
         <>
@@ -52,20 +55,36 @@ const AppHeader: React.FC<AppHeaderProps> = ({ collapsed = false, onCollapse }) 
               fontSize: '16px',
               width: 48,
               height: 48,
-              marginRight: isRTL ? 0 : 16,
-              marginLeft: isRTL ? 16 : 0,
-              position: 'absolute',
-              [isRTL ? 'right' : 'left']: 0
             }}
           />
-          <Divider type="vertical" style={{ height: '32px', position: 'absolute', [isRTL ? 'right' : 'left']: 48 }} />
+          <Divider type="vertical" style={{ height: '32px' }} />
         </>
       )}
 
-      <div className="logo">
-        <Text strong style={{ fontSize: '20px', color: '#1890ff' }}>
-          {t('app.title')}
-        </Text>
+      {/* Logo - clickable to navigate home */}
+      <div
+        onClick={() => navigate('/datasources')}
+        className="logo-container"
+        role="button"
+        tabIndex={0}
+        onKeyPress={(e) => e.key === 'Enter' && navigate('/datasources')}
+        aria-label={t('app.logoAlt') || 'Navigate to home'}
+        style={{
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          height: '48px',
+        }}
+      >
+        <img
+          src="/assets/logo/ez-platform-logo.svg"
+          alt={t('app.logoAlt') || 'EZ Platform'}
+          style={{
+            height: '48px',
+            width: 'auto',
+            objectFit: 'contain',
+          }}
+        />
       </div>
     </div>
   );
@@ -126,7 +145,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({ collapsed = false, onCollapse }) 
 
   return (
     <Header className="app-header">
-      {titleSection}
+      {logoSection}
       {actionsSection}
     </Header>
   );
