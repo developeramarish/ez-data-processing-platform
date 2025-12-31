@@ -135,11 +135,13 @@ var logger = app.Services.GetRequiredService<ILogger<Program>>();
 logger.LogInformation("MongoDB initialized: {DatabaseName} at {ConnectionString}", databaseName, connectionString);
 
 // Configure the HTTP request pipeline
-if (app.Environment.IsDevelopment())
+// Swagger enabled for Beta (will disable in Production in future versions)
+app.UseSwagger();
+app.UseSwaggerUI(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Metrics Configuration API v1");
+    c.RoutePrefix = "swagger";
+});
 
 app.UseCors("AllowFrontend");
 app.UseAuthorization();

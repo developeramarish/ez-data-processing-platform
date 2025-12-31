@@ -147,15 +147,13 @@ var app = builder.Build();
 // Configure HTTP request pipeline
 app.UseDataProcessingHealthChecks();
 
-// Configure Swagger for Development
-if (app.Environment.IsDevelopment())
+// Configure Swagger (Enabled for Beta - will disable in Production later)
+app.UseSwagger();
+app.UseSwaggerUI(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Output Service API v1");
-    });
-}
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Output Service API v1");
+    c.RoutePrefix = "swagger"; // Swagger UI at /swagger
+});
 
 app.MapControllers();
 app.MapGet("/", () => "OutputService - Running");

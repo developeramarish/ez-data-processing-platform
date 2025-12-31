@@ -77,15 +77,13 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 
 // Configure the HTTP request pipeline
-if (app.Environment.IsDevelopment())
+// Swagger enabled for Beta (will disable in Production in future versions)
+app.UseSwagger();
+app.UseSwaggerUI(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Invalid Records Service API v1");
-        c.RoutePrefix = string.Empty; // Swagger UI at root
-    });
-}
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Invalid Records Service API v1");
+    c.RoutePrefix = "swagger"; // Swagger UI at /swagger
+});
 
 // IMPORTANT: HTTPS redirection disabled in containerized environments
 // as it breaks CORS preflight requests from frontend

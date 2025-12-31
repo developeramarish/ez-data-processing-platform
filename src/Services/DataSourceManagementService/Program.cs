@@ -242,15 +242,13 @@ app.Use(async (context, next) =>
     await next();
 });
 
-// Configure Swagger (Development only)
-if (app.Environment.IsDevelopment())
+// Configure Swagger (Enabled for Beta - will disable in Production later)
+app.UseSwagger();
+app.UseSwaggerUI(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "DataSource Management API v1");
-    });
-}
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "DataSource Management API v1");
+    c.RoutePrefix = "swagger"; // Swagger UI at /swagger
+});
 
 // Configure CORS
 if (app.Environment.IsDevelopment())

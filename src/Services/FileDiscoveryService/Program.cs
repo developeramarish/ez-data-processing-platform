@@ -101,14 +101,16 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 
 // Configure the HTTP request pipeline
+// Swagger enabled for Beta (will disable in Production in future versions)
+app.UseSwagger();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "File Discovery Service API v1");
+    c.RoutePrefix = "swagger"; // Swagger UI at /swagger
+});
+
 if (app.Environment.IsDevelopment())
 {
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "File Discovery Service API v1");
-        c.RoutePrefix = string.Empty;
-    });
     app.UseCors("AllowAll");
 }
 
