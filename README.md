@@ -1,6 +1,11 @@
-# EZ Platform v0.1.0-beta
+# EZ Platform v0.1.1-rc1
 
 **Data Processing Platform for Enterprise File Management**
+
+[![Release](https://img.shields.io/badge/release-v0.1.1--rc1-blue)](https://github.com/usercourses63/ez-data-processing-platform/releases/tag/v0.1.1-rc1)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![.NET](https://img.shields.io/badge/.NET-10.0-purple)](https://dotnet.microsoft.com/)
+[![React](https://img.shields.io/badge/React-19-blue)](https://react.dev/)
 
 ---
 
@@ -15,6 +20,7 @@ EZ Platform: Microservices-based data processing with automated file discovery, 
 - 📤 Multi-destination output
 - 🌐 Hebrew/RTL UI
 - 📊 Business metrics & monitoring
+- 📝 Swagger/OpenAPI documentation (NEW in v0.1.1)
 
 ---
 
@@ -71,7 +77,8 @@ scripts/start-port-forwards.ps1
 - **[Installation Guide](docs/installation/INSTALLATION-GUIDE.md)** - Complete deployment
 - **[Admin Guide](docs/admin/ADMIN-GUIDE.md)** - System administration
 - **[User Guide (Hebrew)](docs/user-guide/USER-GUIDE-HE.md)** - מדריך משתמש
-- **[Release Notes](docs/releases/RELEASE-NOTES-v0.1.0-beta.md)** - What's new
+- **[Release Notes](release-package/docs/docs/release-notes.md)** - What's new
+- **[Deployment Plan v0.1.1](release-package/Deployment Plan v0.1.1-rc1.md)** - Offline deployment guide
 - **[CHANGELOG.md](CHANGELOG.md)** - Version history
 
 ---
@@ -98,7 +105,14 @@ MongoDB, RabbitMQ, Kafka, Hazelcast, Elasticsearch, Prometheus, Grafana, Jaeger
 
 ---
 
-**Version:** v0.1.0-beta
-**Release:** December 29, 2025
-**Status:** Beta - Testing & Demonstration
-**Download:** [GitHub Releases](https://github.com/usercourses63/ez-data-processing-platform/releases/tag/v0.1.0-beta)
+**Version:** v0.1.1-rc1
+**Release:** January 1, 2026
+**Status:** Release Candidate - Production Readiness Update
+**Download:** [GitHub Releases](https://github.com/usercourses63/ez-data-processing-platform/releases/tag/v0.1.1-rc1)
+
+**What's New in v0.1.1-rc1:**
+- ✅ Swagger/OpenAPI documentation on all backend services
+- ✅ Frontend branding with EZ Platform logo and splash screen
+- ✅ Fixed MetricsConfigurationService health checks
+- ✅ Updated nginx routing for correct API v1 endpoints
+- ✅ Added database-name to ConfigMap for consistency
