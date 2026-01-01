@@ -10,6 +10,7 @@ metadata:
 data:
   # MongoDB Configuration - Using Service (not specific pod)
   mongodb-connection: "mongodb"
+  database-name: "ezplatform"
 
   # Kafka Configuration - Using Service (not specific pod)
   kafka-server: "kafka:9092"

@@ -27,7 +27,7 @@ spec:
     spec:
       containers:
       - name: invalidrecords
-        image: ez-platform/invalidrecords:latest
+        image: ez-platform/invalidrecords:v0.1.1-rc1
         imagePullPolicy: Always
         ports:
         - containerPort: 5006

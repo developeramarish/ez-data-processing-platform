@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.1-rc1] - 2026-01-01
+
+### Added
+- Swagger/OpenAPI documentation to all backend services (17 commits)
+- Frontend splash screen with EZ Platform branding
+- EZ Platform logo in SVG format (ez-platform-logo.svg)
+- Hebrew and English translations for branding elements
+- database-name ConfigMap key for consistent database naming
+- Deployment plan documentation in MkDocs site
+
+### Changed
+- Updated nginx.conf with correct `/api/v1/` API routing (4 new routes added)
+- Increased MetricsConfigurationService health check timeouts (liveness: 30s→60s, readiness: 15s→30s)
+- Changed global imagePullPolicy from `Always` to `Never` for offline deployment
+- Standardized error messages to Corvus.Json.Validator format in DemoDataGenerator
+- Enhanced frontend Docker build with explicit USER-GUIDE-HE.md copy
+
+### Fixed
+- MetricsConfigurationService MongoDB connection configuration
+- USER-GUIDE-HE.md not loading in frontend help page
+- Frontend API routing to backend services (was using incorrect paths)
+- Corvus error parser field name extraction and Hebrew translation
+- Frontend-to-backend communication issues
+
+### Technical
+- 17 commits since v0.1.0-beta
+- 38 files modified across deployment, configuration, and source code
+- 9 Docker images rebuilt with Swagger integration
+- Updated Helm chart to version 1.1.0
+- Helm chart appVersion updated to 0.1.1-rc1
+
+---
+
 ## [0.1.0-beta] - 2025-12-29
 
 ### Added

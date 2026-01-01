@@ -1,5 +1,5 @@
-site_name: EZ Platform v0.1.0-beta Documentation
-site_description: Official documentation for EZ Platform v0.1.0-beta
+site_name: EZ Platform v0.1.1-rc1 Documentation
+site_description: Official documentation for EZ Platform v0.1.1-rc1
 site_author: EZ Platform Team
 
 theme:
@@ -47,6 +47,8 @@ nav:
   - Architecture:
       - System Architecture: architecture/SYSTEM-ARCHITECTURE.md
       - Architecture (Hebrew): architecture/he/SYSTEM-ARCHITECTURE.md
+  - Deployment:
+      - Deployment Plan v0.1.1: deployment/DEPLOYMENT-PLAN-v0.1.1-rc1.md
   - Reference:
       - Release Notes: release-notes.md
       - Changelog: changelog.md
@@ -66,4 +68,4 @@ markdown_extensions:
 extra:
   version:
     provider: mike
-    default: 0.1.0-beta
+    default: 0.1.1-rc1

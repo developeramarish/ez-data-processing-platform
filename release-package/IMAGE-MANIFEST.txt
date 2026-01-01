@@ -1,17 +1,17 @@
-# EZ Platform v0.1.0-beta - Complete Image Manifest
+# EZ Platform v0.1.1-rc1 - Complete Image Manifest
 # All Docker images required for offline installation
 
 ## Application Services (10 images)
-datasource-management:v0.1.0-beta
-filediscovery:v0.1.0-beta
-fileprocessor:v0.1.0-beta
-validation:v0.1.0-beta
-output:v0.1.0-beta
-invalidrecords:v0.1.0-beta
-scheduling:v0.1.0-beta
-metrics-configuration:v0.1.0-beta
-frontend:v0.1.0-beta
-ezplatform-docs:v0.1.0-beta
+datasource-management:v0.1.1-rc1
+filediscovery:v0.1.1-rc1
+fileprocessor:v0.1.1-rc1
+validation:v0.1.1-rc1
+output:v0.1.1-rc1
+invalidrecords:v0.1.1-rc1
+scheduling:v0.1.1-rc1
+metrics-configuration:v0.1.1-rc1
+frontend:v0.1.1-rc1
+ezplatform-docs:v0.1.1-rc1
 
 ## Infrastructure Services (11 images)
 mongo:8.0

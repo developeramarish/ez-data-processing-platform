@@ -30,7 +30,7 @@ spec:
     spec:
       containers:
       - name: filediscovery
-        image: ez-platform/filediscovery:latest
+        image: ez-platform/filediscovery:v0.1.1-rc1
         imagePullPolicy: Never
         ports:
         - containerPort: 5007

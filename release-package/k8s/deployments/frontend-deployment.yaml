@@ -30,7 +30,7 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: frontend:latest
+        image: frontend:v0.1.1-rc1
         imagePullPolicy: Never
         ports:
         - containerPort: 80

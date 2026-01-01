@@ -1,12 +1,68 @@
-# EZ Platform - Release Notes v0.1.0-beta
-
-**Release Date:** December 29, 2025
-**Status:** Beta Release for Testing & Demonstration
-**Type:** Pre-Release
+# EZ Platform - Release Notes
 
 ---
 
-## Overview
+## v0.1.1-rc1 (January 1, 2026)
+
+**Status:** Release Candidate 1
+**Type:** Production Readiness Update
+
+### New Features
+
+#### Swagger/OpenAPI Integration
+- Added interactive API documentation to all 8 backend services
+- Swagger UI accessible at `/swagger` endpoint on each service
+- OpenAPI 3.0 specification with full endpoint documentation
+- Services: DataSourceManagement, FileDiscovery, FileProcessor, Validation, Output, InvalidRecords, Scheduling, MetricsConfiguration
+
+#### Frontend Enhancements
+- **Splash Screen:** Added EZ Platform branded splash screen on app startup
+- **Logo Integration:** EZ Platform logo in application header (ez-platform-logo.svg)
+- **Hebrew Localization:** Splash screen and branding text in Hebrew and English
+
+### Bug Fixes
+
+#### Critical Fixes
+- **MetricsConfigurationService:** Fixed MongoDB connection and health check configuration
+- **Frontend Documentation:** Fixed USER-GUIDE-HE.md not loading in help page
+- **Frontend Routing:** Corrected nginx.conf API proxy routes to use `/api/v1/` prefix correctly
+- **Error Messages:** Standardized error format to Corvus.Json.Validator format
+
+#### Configuration Updates
+- **services-config.yaml:** Added `database-name: "ezplatform"` for consistent database naming
+- **Probe Timings:** Increased health check timeouts for MetricsConfigurationService (60s liveness, 30s readiness)
+- **Image Pull Policy:** Changed to `Never` for offline deployment compatibility
+
+### Technical Improvements
+- Enhanced frontend Docker build with explicit documentation copy
+- Updated nginx configuration with proper proxy headers
+- Improved error message parsing in frontend error parser
+- Standardized demo data generator to use Corvus format
+
+### Deployment Changes
+- Updated image tags from v0.1.0-beta to v0.1.1-rc1 (9 images)
+- Modified ConfigMap with database-name key
+- Adjusted health check probe settings for production stability
+
+### Known Issues
+- E2E test gaps remain (XML, Excel, high-load scenarios)
+- Jaeger persistence still in-memory (requires Elasticsearch backend)
+- Grafana credentials hardcoded (needs K8s Secret)
+- Elasticsearch security disabled (needs production hardening)
+
+### Upgrade from v0.1.0-beta
+- **Backward Compatible:** Yes
+- **Breaking Changes:** None
+- **Migration Required:** No (clean deployment recommended)
+
+---
+
+## v0.1.0-beta (December 29, 2025)
+
+**Status:** Beta Release for Testing & Demonstration
+**Type:** Pre-Release
+
+### Overview
 
 First beta release of EZ Platform - a data processing platform for file discovery, format conversion, schema validation, and multi-destination output with full Hebrew/RTL support.
 

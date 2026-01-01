@@ -1,15 +1,56 @@
-# EZ Platform v0.1.0-beta - Release Package Manifest
+# EZ Platform v0.1.1-rc1 - Release Package Manifest
 
-**Release Date:** December 30, 2025
-**Version:** 0.1.0-beta
-**Git Commit:** d7e18f8
+**Release Date:** January 1, 2026
+**Version:** 0.1.1-rc1
+**Git Commit:** e99b71a
+
+---
+
+## Changes from v0.1.0-beta
+
+### Backend Services - Swagger/OpenAPI
+- Added interactive API documentation to all 8 backend services
+- Swagger UI available at `/swagger` endpoint on each service
+- OpenAPI 3.0 specification with full endpoint documentation
+
+### Frontend Enhancements
+- Added EZ Platform splash screen and logo (ez-platform-logo.svg)
+- Fixed documentation loading (USER-GUIDE-HE.md) in frontend help page
+- Updated nginx.conf routing for correct `/api/v1/` endpoint paths
+- Enhanced application header with branding
+
+### Configuration Fixes
+- Added `database-name: "ezplatform"` to services-config ConfigMap
+- Fixed MetricsConfigurationService health checks (increased probe timeouts)
+- Changed imagePullPolicy to `Never` for offline deployment compatibility
+- Updated probe timings for production stability
+
+### Technical Improvements
+- Enhanced frontend Docker build with explicit documentation copy
+- Standardized error messages to Corvus.Json.Validator format
+- Improved error message parsing in frontend error parser
+
+### Updated Images (9 total)
+- datasource-management:v0.1.1-rc1
+- filediscovery:v0.1.1-rc1
+- fileprocessor:v0.1.1-rc1
+- validation:v0.1.1-rc1
+- output:v0.1.1-rc1
+- invalidrecords:v0.1.1-rc1
+- scheduling:v0.1.1-rc1
+- metrics-configuration:v0.1.1-rc1
+- frontend:v0.1.1-rc1
+- ezplatform-docs:v0.1.1-rc1
+
+**Commits:** 17 commits since v0.1.0-beta
+**Backward Compatible:** Yes (no breaking changes)
 
 ---
 
 ## Package Structure
 
 ```
-ez-platform-v0.1.0-beta/
+ez-platform-v0.1.1-rc1/
 ├── helm/                           # Helm Chart (COMPLETE)
 │   └── ez-platform/
 │       ├── Chart.yaml              # Chart metadata

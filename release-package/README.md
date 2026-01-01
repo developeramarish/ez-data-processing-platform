@@ -1,4 +1,4 @@
-# EZ Platform v0.1.0-beta - Installation Package
+# EZ Platform v0.1.1-rc1 - Installation Package
 
 **Complete Offline Installation Package**
 
@@ -8,7 +8,7 @@
 
 This package contains everything needed for offline deployment:
 
-- ✅ **21 Docker Images** (3.96GB)
+- ✅ **21 Docker Images** (4.1GB)
   - 10 application services
   - 11 infrastructure services
   - See `IMAGE-MANIFEST.txt` for complete list
@@ -45,8 +45,8 @@ This package contains everything needed for offline deployment:
 
 ```bash
 # 1. Extract package
-tar -xzf ezplatform-v0.1.0-beta.tar.gz
-cd ezplatform-v0.1.0-beta
+tar -xzf ezplatform-v0.1.1-rc1.tar.gz
+cd ezplatform-v0.1.1-rc1
 
 # 2. Load Docker images (5-10 minutes)
 chmod +x scripts/*.sh
@@ -115,7 +115,7 @@ http://<NODE-IP>:30080
 ```bash
 # Deploy docs
 kubectl run ezplatform-docs \
-  --image=ezplatform-docs:v0.1.0-beta \
+  --image=ezplatform-docs:v0.1.1-rc1 \
   --port=80 \
   -n ez-platform
 
@@ -161,8 +161,8 @@ mkdocs serve
 ## Package Structure
 
 ```
-ezplatform-v0.1.0-beta/
-├── images/              # 21 Docker images (.tar files, 3.96GB)
+ezplatform-v0.1.1-rc1/
+├── images/              # 21 Docker images (.tar files, 4.1GB)
 ├── k8s/                 # Kubernetes manifests
 │   ├── deployments/     # Service deployments
 │   ├── services/        # Service definitions
@@ -195,10 +195,10 @@ kubectl describe pod <pod-name> -n ez-platform
 **Issue: Images not loading**
 ```bash
 # Verify Docker can see images
-docker images | grep v0.1.0-beta
+docker images | grep v0.1.1-rc1
 
 # Verify minikube can see images (if using minikube)
-minikube image ls | grep v0.1.0-beta
+minikube image ls | grep v0.1.1-rc1
 ```
 
 ---
@@ -211,6 +211,6 @@ minikube image ls | grep v0.1.0-beta
 
 ---
 
-**Version:** v0.1.0-beta
-**Release Date:** December 29, 2025
-**Package Size:** 3.96GB (images) + manifests + docs
+**Version:** v0.1.1-rc1
+**Release Date:** January 1, 2026
+**Package Size:** 4.1GB (images) + manifests + docs

@@ -1,7 +1,7 @@
 #!/bin/bash
 # EZ Platform Uninstallation Script
-# Version: 0.1.0-beta
-# Date: December 30, 2025
+# Version: 0.1.1-rc1
+# Date: January 1, 2026
 
 set -e
 
@@ -12,7 +12,7 @@ RED='\033[0;31m'
 NC='\033[0m'
 
 echo "=========================================="
-echo "  EZ Platform v0.1.0-beta Uninstallation"
+echo "  EZ Platform v0.1.1-rc1 Uninstallation"
 echo "=========================================="
 echo ""
 

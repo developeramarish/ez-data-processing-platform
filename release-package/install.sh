@@ -1,12 +1,12 @@
 #!/bin/bash
 # EZ Platform Installation Script
-# Version: 0.1.0-beta
-# Date: December 30, 2025
+# Version: 0.1.1-rc1
+# Date: January 1, 2026
 
 set -e
 
 echo "=========================================="
-echo "  EZ Platform v0.1.0-beta Installation"
+echo "  EZ Platform v0.1.1-rc1 Installation"
 echo "=========================================="
 echo ""
 

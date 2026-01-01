@@ -27,7 +27,7 @@ spec:
     spec:
       containers:
       - name: scheduling
-        image: ez-platform/scheduling:latest
+        image: ez-platform/scheduling:v0.1.1-rc1
         imagePullPolicy: Always
         ports:
         - containerPort: 5004
