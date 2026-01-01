@@ -168,15 +168,15 @@ services:
         cpu: 2000m
         memory: 3Gi
     livenessProbe:
+      initialDelaySeconds: 60
+      periodSeconds: 30
+      timeoutSeconds: 5
+      failureThreshold: 5
+    readinessProbe:
       initialDelaySeconds: 30
       periodSeconds: 10
       timeoutSeconds: 5
       failureThreshold: 3
-    readinessProbe:
-      initialDelaySeconds: 20
-      periodSeconds: 5
-      timeoutSeconds: 3
-      failureThreshold: 2
     extraEnv: []
 
   invalidrecords:
